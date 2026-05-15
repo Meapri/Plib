@@ -98,6 +98,7 @@ class NativeCommandRunner(
             timeoutMs = 1500,
             pathRewrite = true,
             pathRewriteLimit = 1,
+            pathRewriteIdleSyscallLimit = 16,
         )
     }
 
@@ -151,6 +152,27 @@ class NativeCommandRunner(
             ),
         )
 
+    fun runAlrRuntimeTrampolineDpkgVersion(rootfsDir: File): NativeCommandResult =
+        runAlrRuntimeTrampolineGlibcRootfsProgram(rootfsDir, "/usr/bin/dpkg", listOf("--version"))
+
+    fun runAlrRuntimeTrampolineDpkgPrintArchitecture(rootfsDir: File): NativeCommandResult =
+        runAlrRuntimeTrampolineGlibcRootfsProgram(rootfsDir, "/usr/bin/dpkg", listOf("--print-architecture"))
+
+    fun runAlrRuntimeTrampolineDpkgQueryVersion(rootfsDir: File): NativeCommandResult =
+        runAlrRuntimeTrampolineGlibcRootfsProgram(rootfsDir, "/usr/bin/dpkg-query", listOf("--version"))
+
+    fun runAlrRuntimeTrampolineAptVersion(rootfsDir: File): NativeCommandResult =
+        runAlrRuntimeTrampolineGlibcRootfsProgram(rootfsDir, "/usr/bin/apt", listOf("--version"), timeoutMs = 5000)
+
+    fun runAlrRuntimeTrampolineAptGetVersion(rootfsDir: File): NativeCommandResult =
+        runAlrRuntimeTrampolineGlibcRootfsProgram(rootfsDir, "/usr/bin/apt-get", listOf("--version"), timeoutMs = 5000)
+
+    fun runAlrRuntimeTrampolineAptCacheVersion(rootfsDir: File): NativeCommandResult =
+        runAlrRuntimeTrampolineGlibcRootfsProgram(rootfsDir, "/usr/bin/apt-cache", listOf("--version"), timeoutMs = 5000)
+
+    fun runAlrRuntimeTrampolineAptConfigVersion(rootfsDir: File): NativeCommandResult =
+        runAlrRuntimeTrampolineGlibcRootfsProgram(rootfsDir, "/usr/bin/apt-config", listOf("--version"), timeoutMs = 5000)
+
     private fun glibcLibraryPath(rootfsDir: File): String =
         listOf(
             File(rootfsDir, "lib/aarch64-linux-gnu").absolutePath,
@@ -165,6 +187,31 @@ class NativeCommandRunner(
         return File(rootfsDir, guestPath.removePrefix("/")).absolutePath
     }
 
+    private fun runAlrRuntimeTrampolineGlibcRootfsProgram(
+        rootfsDir: File,
+        program: String,
+        arguments: List<String>,
+        timeoutMs: Int = 5000,
+    ): NativeCommandResult {
+        val libraryPath = glibcLibraryPath(rootfsDir)
+        return runAlrRuntimeTrampoline(
+            rootfsDir,
+            "/lib/ld-linux-aarch64.so.1",
+            executeEntry = true,
+            extraArgs = listOf(
+                "--argv0",
+                program,
+                "--library-path",
+                libraryPath,
+                translateGuestPath(rootfsDir, program),
+            ) + arguments,
+            timeoutMs = timeoutMs,
+            pathRewrite = true,
+            pathRewriteLimit = 128,
+            pathRewriteIdleSyscallLimit = 32,
+        )
+    }
+
     private fun runAlrRuntimeTrampoline(
         rootfsDir: File,
         program: String,
@@ -175,14 +222,15 @@ class NativeCommandRunner(
         repeatCount: Int = 1,
         pathRewrite: Boolean = false,
         pathRewriteLimit: Int = 0,
+        pathRewriteIdleSyscallLimit: Int = 0,
     ): NativeCommandResult {
         require(program.startsWith("/")) { "ALR trampoline program must be an absolute guest path" }
         require(!program.split('/').any { it == ".." }) { "ALR trampoline program must not contain .." }
         val targetHost = File(rootfsDir, program.removePrefix("/"))
         val mode = if (executeEntry) "entry-probe" else "preflight"
         val extraArgEnv = buildMap {
-            put("ALR_TRAMPOLINE_EXTRA_ARG_COUNT", extraArgs.size.coerceAtMost(8).toString())
-            extraArgs.take(8).forEachIndexed { index, value ->
+            put("ALR_TRAMPOLINE_EXTRA_ARG_COUNT", extraArgs.size.coerceAtMost(16).toString())
+            extraArgs.take(16).forEachIndexed { index, value ->
                 put("ALR_TRAMPOLINE_EXTRA_ARG_$index", value)
             }
             val guestEnv = extraGuestEnvironment.entries
@@ -208,6 +256,7 @@ class NativeCommandRunner(
                 "ALR_TRAMPOLINE_REPEAT_COUNT" to repeatCount.coerceIn(1, 50).toString(),
                 "ALR_TRAMPOLINE_PATH_REWRITE" to if (pathRewrite) "1" else "0",
                 "ALR_TRAMPOLINE_PATH_REWRITE_LIMIT" to pathRewriteLimit.coerceAtLeast(0).toString(),
+                "ALR_TRAMPOLINE_PATH_REWRITE_IDLE_SYSCALL_LIMIT" to pathRewriteIdleSyscallLimit.coerceAtLeast(0).toString(),
                 "LD_LIBRARY_PATH" to nativeLibraryDir.absolutePath,
                 "PATH" to "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
             ) + extraArgEnv,

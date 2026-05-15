@@ -27,6 +27,8 @@ struct StaticEntryHandoffResult {
     std::uint32_t syscall_emulated_count = 0;
     bool path_rewrite_enabled = false;
     std::uint32_t path_rewrite_limit = 0;
+    std::uint32_t path_rewrite_idle_syscall_limit = 0;
+    std::uint32_t path_rewrite_syscall_count = 0;
     std::uint32_t path_rewrite_count = 0;
     std::string last_guest_path;
     std::string last_host_path;
@@ -39,6 +41,7 @@ struct StaticEntryHandoffResult {
 struct StaticEntryHandoffOptions {
     bool path_rewrite_enabled = false;
     std::uint32_t path_rewrite_limit = 0;
+    std::uint32_t path_rewrite_idle_syscall_limit = 0;
     std::string rootfs_path;
 };
 

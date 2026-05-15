@@ -70,6 +70,13 @@ class MainActivity : Activity() {
         val prootAptGetVersionResult = nativeCommandRunner.runProotRootfsAptGetVersion(rootfsStatus.rootfsDir)
         val prootAptCacheVersionResult = nativeCommandRunner.runProotRootfsAptCacheVersion(rootfsStatus.rootfsDir)
         val prootAptConfigVersionResult = nativeCommandRunner.runProotRootfsAptConfigVersion(rootfsStatus.rootfsDir)
+        val alrDpkgVersionResult = nativeCommandRunner.runAlrRuntimeTrampolineDpkgVersion(rootfsStatus.rootfsDir)
+        val alrDpkgArchResult = nativeCommandRunner.runAlrRuntimeTrampolineDpkgPrintArchitecture(rootfsStatus.rootfsDir)
+        val alrDpkgQueryVersionResult = nativeCommandRunner.runAlrRuntimeTrampolineDpkgQueryVersion(rootfsStatus.rootfsDir)
+        val alrAptVersionResult = nativeCommandRunner.runAlrRuntimeTrampolineAptVersion(rootfsStatus.rootfsDir)
+        val alrAptGetVersionResult = nativeCommandRunner.runAlrRuntimeTrampolineAptGetVersion(rootfsStatus.rootfsDir)
+        val alrAptCacheVersionResult = nativeCommandRunner.runAlrRuntimeTrampolineAptCacheVersion(rootfsStatus.rootfsDir)
+        val alrAptConfigVersionResult = nativeCommandRunner.runAlrRuntimeTrampolineAptConfigVersion(rootfsStatus.rootfsDir)
         val prootDpkgInstallLocalResult = nativeCommandRunner.runProotRootfsDpkgInstallLocalSmoke(rootfsStatus.rootfsDir)
         val prootInstalledPackageSmokeResult = nativeCommandRunner.runProotRootfsInstalledPackageSmoke(rootfsStatus.rootfsDir)
         val prootGuestGpuClientResult = nativeCommandRunner.runProotRootfsGuestGpuClient(rootfsStatus.rootfsDir)
@@ -219,6 +226,24 @@ class MainActivity : Activity() {
         val aptConfigVersionExecutionPassed = prootAptConfigVersionResult.exitCode == 0 &&
             prootAptConfigVersionResult.stdout.contains("apt ") &&
             prootAptConfigVersionResult.stdout.contains("arm64")
+        val alrDpkgVersionExecutionPassed = alrDpkgVersionResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+            alrDpkgVersionResult.stdout.alrHandoffStdoutText().contains("Debian 'dpkg' package management program")
+        val alrDpkgArchExecutionPassed = alrDpkgArchResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+            alrDpkgArchResult.stdout.alrHandoffStdoutText().trim() == "arm64"
+        val alrDpkgQueryExecutionPassed = alrDpkgQueryVersionResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+            alrDpkgQueryVersionResult.stdout.alrHandoffStdoutText().contains("Debian dpkg-query package management program")
+        val alrAptVersionExecutionPassed = alrAptVersionResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+            alrAptVersionResult.stdout.alrHandoffStdoutText().contains("apt ") &&
+            alrAptVersionResult.stdout.alrHandoffStdoutText().contains("arm64")
+        val alrAptGetVersionExecutionPassed = alrAptGetVersionResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+            alrAptGetVersionResult.stdout.alrHandoffStdoutText().contains("apt ") &&
+            alrAptGetVersionResult.stdout.alrHandoffStdoutText().contains("arm64")
+        val alrAptCacheVersionExecutionPassed = alrAptCacheVersionResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+            alrAptCacheVersionResult.stdout.alrHandoffStdoutText().contains("apt ") &&
+            alrAptCacheVersionResult.stdout.alrHandoffStdoutText().contains("arm64")
+        val alrAptConfigVersionExecutionPassed = alrAptConfigVersionResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+            alrAptConfigVersionResult.stdout.alrHandoffStdoutText().contains("apt ") &&
+            alrAptConfigVersionResult.stdout.alrHandoffStdoutText().contains("arm64")
         val dpkgLocalInstallExecutionPassed = prootDpkgInstallLocalResult.exitCode == 0 &&
             !prootDpkgInstallLocalResult.stderr.contains("dpkg: error") &&
             (prootDpkgInstallLocalResult.stdout.contains("Setting up alr-smoke") ||
@@ -291,6 +316,13 @@ class MainActivity : Activity() {
             "\nAPT-GET VERSION EXECUTION: ${if (aptGetVersionExecutionPassed) "PASS" else "FAIL"}" +
             "\nAPT-CACHE VERSION EXECUTION: ${if (aptCacheVersionExecutionPassed) "PASS" else "FAIL"}" +
             "\nAPT-CONFIG VERSION EXECUTION: ${if (aptConfigVersionExecutionPassed) "PASS" else "FAIL"}" +
+            "\nALR DPKG VERSION EXECUTION: ${if (alrDpkgVersionExecutionPassed) "PASS" else "FAIL"}" +
+            "\nALR DPKG ARCH EXECUTION: ${if (alrDpkgArchExecutionPassed) "PASS" else "FAIL"}" +
+            "\nALR DPKG QUERY EXECUTION: ${if (alrDpkgQueryExecutionPassed) "PASS" else "FAIL"}" +
+            "\nALR APT VERSION EXECUTION: ${if (alrAptVersionExecutionPassed) "PASS" else "FAIL"}" +
+            "\nALR APT-GET VERSION EXECUTION: ${if (alrAptGetVersionExecutionPassed) "PASS" else "FAIL"}" +
+            "\nALR APT-CACHE VERSION EXECUTION: ${if (alrAptCacheVersionExecutionPassed) "PASS" else "FAIL"}" +
+            "\nALR APT-CONFIG VERSION EXECUTION: ${if (alrAptConfigVersionExecutionPassed) "PASS" else "FAIL"}" +
             "\nDPKG LOCAL INSTALL EXECUTION: ${if (dpkgLocalInstallExecutionPassed) "PASS" else "FAIL"}" +
             "\nINSTALLED PACKAGE EXECUTION: ${if (installedPackageExecutionPassed) "PASS" else "FAIL"}" +
             "\nHOST GPU EGL/GLES EXECUTION: ${if (hostGpuHardwareCandidate) "PASS" else "FAIL"}" +
@@ -543,6 +575,27 @@ class MainActivity : Activity() {
             "\nproot apt-config --version exit=${prootAptConfigVersionResult.exitCode}" +
             "\nproot apt-config --version stdout=${prootAptConfigVersionResult.stdout}" +
             "\nproot apt-config --version stderr=${prootAptConfigVersionResult.stderr}" +
+            "\nalr dpkg --version handoff=${alrDpkgVersionResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr dpkg --version path rewrite=${alrDpkgVersionResult.stdout.lineStartingWith("alr handoff path rewrite count=")}" +
+            "\nalr dpkg --version stdout=${alrDpkgVersionResult.stdout.alrHandoffStdoutText()}" +
+            "\nalr dpkg --print-architecture handoff=${alrDpkgArchResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr dpkg --print-architecture path rewrite=${alrDpkgArchResult.stdout.lineStartingWith("alr handoff path rewrite count=")}" +
+            "\nalr dpkg --print-architecture stdout=${alrDpkgArchResult.stdout.alrHandoffStdoutText()}" +
+            "\nalr dpkg-query --version handoff=${alrDpkgQueryVersionResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr dpkg-query --version path rewrite=${alrDpkgQueryVersionResult.stdout.lineStartingWith("alr handoff path rewrite count=")}" +
+            "\nalr dpkg-query --version stdout=${alrDpkgQueryVersionResult.stdout.alrHandoffStdoutText()}" +
+            "\nalr apt --version handoff=${alrAptVersionResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr apt --version path rewrite=${alrAptVersionResult.stdout.lineStartingWith("alr handoff path rewrite count=")}" +
+            "\nalr apt --version stdout=${alrAptVersionResult.stdout.alrHandoffStdoutText()}" +
+            "\nalr apt-get --version handoff=${alrAptGetVersionResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr apt-get --version path rewrite=${alrAptGetVersionResult.stdout.lineStartingWith("alr handoff path rewrite count=")}" +
+            "\nalr apt-get --version stdout=${alrAptGetVersionResult.stdout.alrHandoffStdoutText()}" +
+            "\nalr apt-cache --version handoff=${alrAptCacheVersionResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr apt-cache --version path rewrite=${alrAptCacheVersionResult.stdout.lineStartingWith("alr handoff path rewrite count=")}" +
+            "\nalr apt-cache --version stdout=${alrAptCacheVersionResult.stdout.alrHandoffStdoutText()}" +
+            "\nalr apt-config --version handoff=${alrAptConfigVersionResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr apt-config --version path rewrite=${alrAptConfigVersionResult.stdout.lineStartingWith("alr handoff path rewrite count=")}" +
+            "\nalr apt-config --version stdout=${alrAptConfigVersionResult.stdout.alrHandoffStdoutText()}" +
             "\nproot dpkg -i local deb exit=${prootDpkgInstallLocalResult.exitCode}" +
             "\nproot dpkg -i local deb stdout=${prootDpkgInstallLocalResult.stdout}" +
             "\nproot dpkg -i local deb stderr=${prootDpkgInstallLocalResult.stderr}" +
@@ -619,6 +672,13 @@ class MainActivity : Activity() {
             resultBlock("proot apt-get --version", prootAptGetVersionResult) +
             resultBlock("proot apt-cache --version", prootAptCacheVersionResult) +
             resultBlock("proot apt-config --version", prootAptConfigVersionResult) +
+            resultBlock("alr dpkg --version", alrDpkgVersionResult) +
+            resultBlock("alr dpkg --print-architecture", alrDpkgArchResult) +
+            resultBlock("alr dpkg-query --version", alrDpkgQueryVersionResult) +
+            resultBlock("alr apt --version", alrAptVersionResult) +
+            resultBlock("alr apt-get --version", alrAptGetVersionResult) +
+            resultBlock("alr apt-cache --version", alrAptCacheVersionResult) +
+            resultBlock("alr apt-config --version", alrAptConfigVersionResult) +
             resultBlock("proot dpkg -i local deb", prootDpkgInstallLocalResult) +
             resultBlock("proot installed package smoke", prootInstalledPackageSmokeResult) +
             resultBlock("proot guest gpu client", prootGuestGpuClientResult) +

@@ -85,6 +85,8 @@ std::string build_report(const alr::runtime::StaticEntryHandoffResult& result) {
     out << "\nalr handoff syscall emulated count=" << result.syscall_emulated_count;
     out << "\nalr handoff path rewrite enabled=" << (result.path_rewrite_enabled ? "true" : "false");
     out << "\nalr handoff path rewrite limit=" << result.path_rewrite_limit;
+    out << "\nalr handoff path rewrite idle syscall limit=" << result.path_rewrite_idle_syscall_limit;
+    out << "\nalr handoff path rewrite syscall count=" << result.path_rewrite_syscall_count;
     out << "\nalr handoff path rewrite count=" << result.path_rewrite_count;
     out << "\nalr handoff last guest path=" << one_line_text(result.last_guest_path);
     out << "\nalr handoff last host path=" << one_line_text(result.last_host_path);
@@ -463,6 +465,7 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
     result.timeout_ms = timeout_ms > 0 ? timeout_ms : 1000;
     result.path_rewrite_enabled = options.path_rewrite_enabled && !options.rootfs_path.empty();
     result.path_rewrite_limit = options.path_rewrite_limit;
+    result.path_rewrite_idle_syscall_limit = options.path_rewrite_idle_syscall_limit;
 #if defined(__aarch64__)
     result.available = true;
 #endif
@@ -543,6 +546,7 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
     bool trace_syscalls = result.path_rewrite_enabled;
 #if defined(__ANDROID__) && defined(__aarch64__)
     bool stop_tracing_after_syscall_exit = false;
+    std::uint32_t syscalls_since_last_rewrite = 0;
 #endif
     do {
         waited = ::waitpid(child, &status, WNOHANG);
@@ -597,14 +601,23 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
                 if (was_entering_syscall) {
                     user_pt_regs regs {};
                     const std::uint32_t rewrite_count_before = result.path_rewrite_count;
+                    ++result.path_rewrite_syscall_count;
                     if (get_child_registers(child, regs) &&
                         maybe_rewrite_syscall_path(child, context, options, regs, result)) {
                         (void)set_child_registers(child, regs);
                     }
-                    if (result.path_rewrite_limit > 0 &&
-                        result.path_rewrite_count > rewrite_count_before &&
-                        result.path_rewrite_count >= result.path_rewrite_limit) {
-                        stop_tracing_after_syscall_exit = true;
+                    if (result.path_rewrite_count > rewrite_count_before) {
+                        syscalls_since_last_rewrite = 0;
+                        if (result.path_rewrite_limit > 0 &&
+                            result.path_rewrite_count >= result.path_rewrite_limit) {
+                            stop_tracing_after_syscall_exit = true;
+                        }
+                    } else if (result.path_rewrite_count > 0) {
+                        ++syscalls_since_last_rewrite;
+                        if (result.path_rewrite_idle_syscall_limit > 0 &&
+                            syscalls_since_last_rewrite >= result.path_rewrite_idle_syscall_limit) {
+                            stop_tracing_after_syscall_exit = true;
+                        }
                     }
                 }
                 entering_syscall = !entering_syscall;
@@ -703,6 +716,8 @@ std::string build_static_entry_handoff_skip_report() {
         "alr handoff syscall emulated count=0\n"
         "alr handoff path rewrite enabled=false\n"
         "alr handoff path rewrite limit=0\n"
+        "alr handoff path rewrite idle syscall limit=0\n"
+        "alr handoff path rewrite syscall count=0\n"
         "alr handoff path rewrite count=0\n"
         "alr handoff last guest path=\n"
         "alr handoff last host path=\n"

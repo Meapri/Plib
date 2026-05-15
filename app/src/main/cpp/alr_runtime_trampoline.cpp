@@ -48,7 +48,7 @@ int env_int_clamped(const char* key, int fallback, int minimum, int maximum) {
 std::vector<std::string> env_extra_args() {
     std::vector<std::string> args;
     const int count = env_int_or_default("ALR_TRAMPOLINE_EXTRA_ARG_COUNT", 0);
-    for (int index = 0; index < count && index < 8; ++index) {
+    for (int index = 0; index < count && index < 16; ++index) {
         const std::string key = "ALR_TRAMPOLINE_EXTRA_ARG_" + std::to_string(index);
         const char* value = std::getenv(key.c_str());
         if (value != nullptr) {
@@ -155,6 +155,7 @@ int main(int argc, char** argv) {
     std::cout << "alr trampoline handoff timeout ms=" << env_int_or_default("ALR_TRAMPOLINE_HANDOFF_TIMEOUT_MS", 1000) << "\n";
     std::cout << "alr trampoline path rewrite=" << (env_enabled("ALR_TRAMPOLINE_PATH_REWRITE") ? "true" : "false") << "\n";
     std::cout << "alr trampoline path rewrite limit=" << env_int_or_default("ALR_TRAMPOLINE_PATH_REWRITE_LIMIT", 0) << "\n";
+    std::cout << "alr trampoline path rewrite idle syscall limit=" << env_int_or_default("ALR_TRAMPOLINE_PATH_REWRITE_IDLE_SYSCALL_LIMIT", 0) << "\n";
     const int repeat_count = env_int_clamped("ALR_TRAMPOLINE_REPEAT_COUNT", 1, 1, 50);
     std::cout << "alr trampoline repeat count=" << repeat_count << "\n";
     const char* target_host = std::getenv("ALR_TRAMPOLINE_TARGET_HOST_PATH");
@@ -186,6 +187,7 @@ int main(int argc, char** argv) {
         const alr::runtime::StaticEntryHandoffOptions handoff_options{
             .path_rewrite_enabled = env_enabled("ALR_TRAMPOLINE_PATH_REWRITE"),
             .path_rewrite_limit = static_cast<std::uint32_t>(env_int_or_default("ALR_TRAMPOLINE_PATH_REWRITE_LIMIT", 0)),
+            .path_rewrite_idle_syscall_limit = static_cast<std::uint32_t>(env_int_or_default("ALR_TRAMPOLINE_PATH_REWRITE_IDLE_SYSCALL_LIMIT", 0)),
             .rootfs_path = rootfs_env == "none" ? "" : std::string(rootfs_env),
         };
         const auto handoff_summary = run_handoff_benchmark(
