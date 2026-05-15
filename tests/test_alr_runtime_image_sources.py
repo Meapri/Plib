@@ -16,9 +16,12 @@ def test_static_image_plan_api_exists():
     assert "struct StaticImageSegmentMap" in header
     assert "struct StaticImagePlan" in header
     assert "build_static_image_plan" in header
+    assert "load_static_image_for_preflight" in header
     assert "ALR STATIC IMAGE MAP PLAN: " in source
     assert "ALR STATIC IMAGE ENTRY READY: " in source
+    assert "ALR STATIC IMAGE LOAD PREFLIGHT: " in source
     assert "PT_LOAD file offset and vaddr page alignment differ" in source
+    assert "mprotect static image segment" in source
 
 
 def test_elf_load_plan_preserves_segments():

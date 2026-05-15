@@ -19,6 +19,25 @@ class NativeCommandRunner(
 ) {
     fun runSmokeTest(): NativeCommandResult = runPackagedCommand("libalr_test_command.so", listOf("smoke"))
 
+    fun runAlrRuntimeTrampolinePreflight(rootfsDir: File, program: String): NativeCommandResult {
+        require(program.startsWith("/")) { "ALR trampoline program must be an absolute guest path" }
+        require(!program.split('/').any { it == ".." }) { "ALR trampoline program must not contain .." }
+        val targetHost = File(rootfsDir, program.removePrefix("/"))
+        return runPackagedCommand(
+            "libalr_runtime_trampoline.so",
+            listOf("--preflight"),
+            mapOf(
+                "ALR_ROOTFS" to rootfsDir.absolutePath,
+                "ALR_PROGRAM" to program,
+                "ALR_TRAMPOLINE_TARGET_GUEST_PATH" to program,
+                "ALR_TRAMPOLINE_TARGET_HOST_PATH" to targetHost.absolutePath,
+                "ALR_TRAMPOLINE_MODE" to "preflight",
+                "LD_LIBRARY_PATH" to nativeLibraryDir.absolutePath,
+                "PATH" to "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+            ),
+        )
+    }
+
     fun runProotCandidateSmokeTest(): NativeCommandResult =
         runPackagedCommand("libalr_proot.so", listOf("--version"), prootEnvironment())
 

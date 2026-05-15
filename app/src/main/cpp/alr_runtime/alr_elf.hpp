@@ -31,6 +31,10 @@ struct ElfLoadPlan {
     std::uint64_t entry = 0;
     std::uint64_t min_vaddr = 0;
     std::uint64_t max_vaddr = 0;
+    std::uint64_t program_header_offset = 0;
+    std::uint64_t program_header_vaddr = 0;
+    std::uint16_t program_header_entry_size = 0;
+    std::uint16_t program_header_count = 0;
     std::uint32_t load_segment_count = 0;
     std::vector<ElfLoadSegment> load_segments;
     std::string interpreter;

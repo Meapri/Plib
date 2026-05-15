@@ -79,6 +79,9 @@ std::string build_report(const ElfLoadPlan& plan) {
     out << "\nalr elf type=" << plan.type;
     out << "\nalr elf status=" << elf_load_plan_status_name(plan.status);
     out << "\nalr elf entry=" << hex_value(plan.entry);
+    out << "\nalr elf phdr=" << hex_value(plan.program_header_vaddr);
+    out << "\nalr elf phent=" << plan.program_header_entry_size;
+    out << "\nalr elf phnum=" << plan.program_header_count;
     out << "\nalr elf min vaddr=" << hex_value(plan.min_vaddr);
     out << "\nalr elf max vaddr=" << hex_value(plan.max_vaddr);
     out << "\nalr elf interp=" << (plan.interpreter.empty() ? "none" : plan.interpreter);
@@ -134,6 +137,14 @@ ElfLoadPlan build_elf_load_plan(const std::string& host_path) {
         plan.machine = "aarch64";
         plan.type = type_name(ehdr.e_type);
         plan.entry = ehdr.e_entry;
+        plan.program_header_offset = ehdr.e_phoff;
+        plan.program_header_entry_size = ehdr.e_phentsize;
+        plan.program_header_count = ehdr.e_phnum;
+        const std::uint64_t phdr_file_end = ehdr.e_phoff +
+            static_cast<std::uint64_t>(ehdr.e_phentsize) * ehdr.e_phnum;
+        if (phdr_file_end < ehdr.e_phoff) {
+            throw std::runtime_error("ELF program header table overflow");
+        }
         std::uint64_t min_vaddr = std::numeric_limits<std::uint64_t>::max();
         std::uint64_t max_vaddr = 0;
         bool has_load = false;
@@ -157,6 +168,17 @@ ElfLoadPlan build_elf_load_plan(const std::string& host_path) {
                     .flags = static_cast<std::uint32_t>(phdr.p_flags),
                     .align = static_cast<std::uint64_t>(phdr.p_align),
                 });
+                const auto segment_file_end = static_cast<std::uint64_t>(phdr.p_offset) +
+                    static_cast<std::uint64_t>(phdr.p_filesz);
+                if (segment_file_end < static_cast<std::uint64_t>(phdr.p_offset)) {
+                    throw std::runtime_error("ELF PT_LOAD file range overflow");
+                }
+                if (plan.program_header_vaddr == 0 &&
+                    ehdr.e_phoff >= static_cast<std::uint64_t>(phdr.p_offset) &&
+                    phdr_file_end <= segment_file_end) {
+                    plan.program_header_vaddr = segment_vaddr +
+                        (ehdr.e_phoff - static_cast<std::uint64_t>(phdr.p_offset));
+                }
                 min_vaddr = std::min(min_vaddr, segment_vaddr);
                 max_vaddr = std::max(max_vaddr, segment_end);
             } else if (phdr.p_type == PT_INTERP) {

@@ -3,6 +3,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CMAKE = ROOT / "app/src/main/cpp/CMakeLists.txt"
+TRAMPOLINE_MAIN = ROOT / "app/src/main/cpp/alr_runtime_trampoline.cpp"
 GRADLE = ROOT / "app/build.gradle.kts"
 LAUNCH_CPP = ROOT / "app/src/main/cpp/alr_runtime/alr_launch.cpp"
 TRAMPOLINE_HPP = ROOT / "app/src/main/cpp/alr_runtime/alr_trampoline.hpp"
@@ -20,6 +21,7 @@ def test_packaged_trampoline_is_declared_and_packaged():
     assert "add_executable(alr_runtime_trampoline" in cmake
     assert 'OUTPUT_NAME "alr-runtime-trampoline"' in cmake
     assert "libalr_runtime_trampoline.so" in gradle
+    assert "target_link_libraries(alr_runtime_trampoline PRIVATE alr_runtime)" in cmake
 
 
 def test_trampoline_report_contract_exists():
@@ -39,6 +41,7 @@ def test_trampoline_report_contract_exists():
     assert "ALR TRAMPOLINE PREFLIGHT: PASS" in main
     assert "ALR_TRAMPOLINE_TARGET_HOST_PATH" in source
     assert "build_static_image_plan" in source
+    assert "load_static_image_for_preflight" in main
 
 
 def test_launch_report_and_runtime_plan_include_trampoline():

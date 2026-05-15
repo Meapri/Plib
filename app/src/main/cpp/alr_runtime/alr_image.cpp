@@ -1,8 +1,15 @@
 #include "alr_runtime/alr_image.hpp"
 
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <unistd.h>
+
 #include <algorithm>
+#include <cerrno>
+#include <cstring>
 #include <limits>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 
 #include "alr_runtime/alr_elf_format.hpp"
@@ -48,6 +55,35 @@ bool entry_inside_segment(std::uint64_t entry, const StaticImageSegmentMap& segm
     return end >= segment.vaddr && entry >= segment.vaddr && entry < end;
 }
 
+std::string errno_message(const char* action) {
+    std::ostringstream out;
+    out << action << " failed errno=" << errno << " message=" << std::strerror(errno);
+    return out.str();
+}
+
+int mmap_protection(std::uint32_t flags) {
+    int prot = PROT_NONE;
+    if ((flags & PF_R) != 0) prot |= PROT_READ;
+    if ((flags & PF_W) != 0) prot |= PROT_WRITE;
+    if ((flags & PF_X) != 0) prot |= PROT_EXEC;
+    return prot;
+}
+
+void read_exact(int fd, void* buffer, std::size_t size, std::uint64_t offset) {
+    auto* out = static_cast<unsigned char*>(buffer);
+    std::size_t done = 0;
+    while (done < size) {
+        const ssize_t count = ::pread(fd, out + done, size - done, static_cast<off_t>(offset + done));
+        if (count > 0) {
+            done += static_cast<std::size_t>(count);
+        } else if (count == 0) {
+            throw std::runtime_error("unexpected EOF while loading static image");
+        } else if (errno != EINTR) {
+            throw std::runtime_error(errno_message("pread static image"));
+        }
+    }
+}
+
 std::string build_report(const StaticImagePlan& plan) {
     std::ostringstream out;
     out << "ALR STATIC IMAGE MAP PLAN: " << (plan.valid ? "PASS" : "FAIL");
@@ -77,6 +113,21 @@ std::string build_report(const StaticImagePlan& plan) {
     return out.str();
 }
 
+std::string build_report(const StaticImageLoadResult& result) {
+    std::ostringstream out;
+    out << "ALR STATIC IMAGE LOAD PREFLIGHT: " << (result.loaded ? "PASS" : "FAIL");
+    out << "\nALR STATIC IMAGE MPROTECT: " << (result.protected_segments ? "PASS" : "SKIP");
+    out << "\nalr image mapped base=" << hex_value(result.mapped_base);
+    out << "\nalr image mapped size=" << result.mapped_size;
+    out << "\nalr image entry offset=" << hex_value(result.entry_offset);
+    out << "\nalr image loaded segments=" << result.loaded_segment_count;
+    out << "\nalr image unmapped=" << (result.unmapped ? "true" : "false");
+    if (!result.error.empty()) {
+        out << "\nalr image load error=" << result.error;
+    }
+    return out.str();
+}
+
 }  // namespace
 
 std::string build_static_image_skip_report() {
@@ -89,6 +140,17 @@ std::string build_static_image_skip_report() {
         "alr image max vaddr=0x0\n"
         "alr image size=0\n"
         "alr image load segments=0";
+}
+
+std::string build_static_image_load_skip_report() {
+    return
+        "ALR STATIC IMAGE LOAD PREFLIGHT: SKIP\n"
+        "ALR STATIC IMAGE MPROTECT: SKIP\n"
+        "alr image mapped base=0x0\n"
+        "alr image mapped size=0\n"
+        "alr image entry offset=0x0\n"
+        "alr image loaded segments=0\n"
+        "alr image unmapped=false";
 }
 
 StaticImagePlan build_static_image_plan(const ElfLoadPlan& elf_plan, std::uint64_t page_size) {
@@ -177,6 +239,86 @@ StaticImagePlan build_static_image_plan(const ElfLoadPlan& elf_plan, std::uint64
     }
     plan.report = build_report(plan);
     return plan;
+}
+
+StaticImageLoadResult load_static_image_for_preflight(const std::string& host_path, const StaticImagePlan& plan) {
+    StaticImageLoadResult result;
+    result.mapped_size = plan.image_size;
+    if (!plan.valid || !plan.entry_ready) {
+        result.error = plan.error.empty() ? "static image plan is not entry-ready" : plan.error;
+        result.report = build_report(result);
+        return result;
+    }
+    if (plan.image_size == 0 || plan.image_size > static_cast<std::uint64_t>(std::numeric_limits<std::size_t>::max())) {
+        result.error = "static image size is not mappable";
+        result.report = build_report(result);
+        return result;
+    }
+
+    const int fd = ::open(host_path.c_str(), O_RDONLY | O_CLOEXEC);
+    if (fd < 0) {
+        result.error = errno_message("open static image");
+        result.report = build_report(result);
+        return result;
+    }
+
+    void* mapped = ::mmap(
+        nullptr,
+        static_cast<std::size_t>(plan.image_size),
+        PROT_READ | PROT_WRITE,
+        MAP_PRIVATE | MAP_ANONYMOUS,
+        -1,
+        0);
+    if (mapped == MAP_FAILED) {
+        const int saved_errno = errno;
+        ::close(fd);
+        errno = saved_errno;
+        result.error = errno_message("mmap static image");
+        result.report = build_report(result);
+        return result;
+    }
+    result.mapped_base = reinterpret_cast<std::uintptr_t>(mapped);
+    result.entry_offset = plan.entry - plan.image_min_vaddr;
+
+    auto* base = static_cast<unsigned char*>(mapped);
+    try {
+        for (const auto& segment : plan.segments) {
+            const std::uint64_t relative = segment.map_vaddr - plan.image_min_vaddr;
+            if (relative > plan.image_size || segment.mem_map_size > plan.image_size - relative) {
+                throw std::runtime_error("static image segment falls outside mapped image");
+            }
+            read_exact(
+                fd,
+                base + relative + segment.page_delta,
+                static_cast<std::size_t>(segment.file_size),
+                segment.source_offset);
+            ++result.loaded_segment_count;
+        }
+        result.loaded = true;
+        for (const auto& segment : plan.segments) {
+            const std::uint64_t relative = segment.map_vaddr - plan.image_min_vaddr;
+            if (::mprotect(base + relative, static_cast<std::size_t>(segment.mem_map_size), mmap_protection(segment.flags)) != 0) {
+                throw std::runtime_error(errno_message("mprotect static image segment"));
+            }
+        }
+        result.protected_segments = true;
+    } catch (const std::exception& exc) {
+        result.error = exc.what();
+    }
+
+    const int saved_errno = errno;
+    if (::munmap(mapped, static_cast<std::size_t>(plan.image_size)) == 0) {
+        result.unmapped = true;
+    } else if (result.error.empty()) {
+        result.error = errno_message("munmap static image");
+    }
+    ::close(fd);
+    errno = saved_errno;
+    if (!result.loaded || !result.protected_segments || !result.unmapped) {
+        result.loaded = false;
+    }
+    result.report = build_report(result);
+    return result;
 }
 
 }  // namespace alr::runtime

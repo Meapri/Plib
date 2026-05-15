@@ -38,6 +38,7 @@ class MainActivity : Activity() {
             File(cacheDir, "proot-tmp"),
         )
         val nativeCommandResult = nativeCommandRunner.runSmokeTest()
+        val alrTrampolinePreflightResult = nativeCommandRunner.runAlrRuntimeTrampolinePreflight(rootfsStatus.rootfsDir, "/bin/hello")
         val prootCandidateResult = nativeCommandRunner.runProotCandidateSmokeTest()
         val prootShortVersionResult = nativeCommandRunner.runProotShortVersionProbe()
         val prootHelpResult = nativeCommandRunner.runProotHelpProbe()
@@ -361,6 +362,9 @@ class MainActivity : Activity() {
             "\nproot dpkg-split --version stderr=${prootDpkgSplitVersionResult.stderr}" +
             "\nnative smoke exit=${nativeCommandResult.exitCode}" +
             "\nnative smoke stdout=${nativeCommandResult.stdout}" +
+            "\nalr trampoline preflight exit=${alrTrampolinePreflightResult.exitCode}" +
+            "\nalr trampoline image load=${alrTrampolinePreflightResult.stdout.lineStartingWith("ALR STATIC IMAGE LOAD PREFLIGHT:")}" +
+            "\nalr trampoline entry stack=${alrTrampolinePreflightResult.stdout.lineStartingWith("ALR STATIC ENTRY STACK PLAN:")}" +
             "\nproot --version exit=${prootCandidateResult.exitCode}" +
             "\nlinker64 proot --version exit=${prootViaLinkerResult.exitCode}" +
             "\nproot hello quiet exit=${prootHelloResult.exitCode}" +
@@ -441,6 +445,7 @@ class MainActivity : Activity() {
             "\nnative command exit=${nativeCommandResult.exitCode}" +
             "\nnative command stdout=${nativeCommandResult.stdout}" +
             "\nnative command stderr=${nativeCommandResult.stderr}" +
+            resultBlock("alr trampoline preflight", alrTrampolinePreflightResult) +
             "\n\nnative library probe:" +
             "\n$nativeProbe" +
             "\n\nAndroid host GPU probe:" +

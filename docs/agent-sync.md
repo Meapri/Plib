@@ -389,6 +389,8 @@ Branch/worktree:
 
 Touched files:
 - `app/src/main/cpp/CMakeLists.txt`
+- `app/src/main/cpp/alr_runtime/alr_entry.hpp`
+- `app/src/main/cpp/alr_runtime/alr_entry.cpp`
 - `app/src/main/cpp/alr_runtime/alr_elf.hpp`
 - `app/src/main/cpp/alr_runtime/alr_elf.cpp`
 - `app/src/main/cpp/alr_runtime/alr_elf_format.hpp`
@@ -446,6 +448,9 @@ Touched files:
 - `app/src/main/cpp/alr_runtime/alr_launch.cpp`
 - `app/src/main/cpp/alr_runtime/alr_trampoline.hpp`
 - `app/src/main/cpp/alr_runtime/alr_trampoline.cpp`
+- `app/src/main/cpp/alr_runtime_trampoline.cpp`
+- `app/src/main/java/dev/chanwoo/androlinux/MainActivity.kt`
+- `app/src/main/java/dev/chanwoo/androlinux/NativeCommandRunner.kt`
 - `app/src/main/cpp/alr_runtime_trampoline.cpp`
 - `app/src/main/cpp/runtime_plan.cpp`
 - `scripts/test-native-core.sh`
@@ -518,19 +523,23 @@ What changed:
 - Added preserved `PT_LOAD` segment details to the ELF load plan.
 - Added a static ELF image mapping plan that computes page-aligned offsets, virtual spans, segment protection strings, and entry-in-segment readiness.
 - Wired static image readiness into trampoline preflight so `ALR TRAMPOLINE POLICY PREFLIGHT` depends on both static ELF classification and image entry readiness.
-- Kept actual guest entry execution disabled; this is still pre-entry loader work.
+- Added static image load preflight that opens the target ELF, anonymous-maps the image, copies PT_LOAD file bytes, applies segment `mprotect`, and unmaps cleanly.
+- Added an initial Linux/AArch64 entry stack image plan with `argc`, `argv`, `envp`, and auxv values such as `AT_PHDR`, `AT_PHENT`, `AT_PHNUM`, `AT_PAGESZ`, `AT_ENTRY`, and `AT_RANDOM`.
+- Linked the packaged `libalr_runtime_trampoline.so` executable against ALR runtime code so it can perform image-load and entry-stack preflight from Android.
+- Added a Kotlin runner path that invokes `libalr_runtime_trampoline.so --preflight` against rootfs `/bin/hello` and includes the result in the app report.
+- Kept actual guest entry execution disabled; this is still pre-entry-transfer loader work.
 
 Commands/tests:
-- `/Users/naen/.venvs/plib-py313/bin/python -m pytest tests -q` -> PASS, 171 passed.
-- `scripts/test-native-core.sh` -> PASS.
+- `/Users/naen/.venvs/plib-py313/bin/python -m pytest tests -q` -> PASS, 171 passed before the latest entry-stack/Kotlin runner additions.
+- `scripts/test-native-core.sh` -> PASS after entry-stack/image-load additions.
 - `CXX=clang++ scripts/test-native-core.sh` -> PASS.
-- `JAVA_HOME=/Users/naen/.jdks/jdk-17.0.19+10/Contents/Home ./gradlew :app:assembleDebug --no-daemon` -> PASS.
+- `JAVA_HOME=/Users/naen/.jdks/jdk-17.0.19+10/Contents/Home ./gradlew :app:assembleDebug --no-daemon` -> PASS after Kotlin runner and trampoline-link additions.
 - `unzip -l app/build/outputs/apk/debug/app-debug.apk | rg 'libalr_runtime_trampoline|libalr_runtime_(launcher|hook|interposer)|libalr_loader|libalr_test_command'` -> PASS.
 
 Evidence:
 - Debug APK: `app/build/outputs/apk/debug/app-debug.apk`
-- APK sha256: `5fa6d4ab847cba819ae087ddff25da9bfb4f1c9eb5706f5b5bf5c16c9643e233`
+- APK sha256: `3f840319842fe498390df8bc51ef5b0d0cce671be399bd2226a42382266aabf8`
 
 Blockers:
 - No Android device PASS is claimed yet.
-- Next implementation step is actual static image mmap/copy/protect inside the packaged trampoline, then controlled entry transfer after device policy is proven.
+- Next implementation step is controlled entry transfer mechanics and Android device evidence for whether anonymous executable mappings are allowed on the target devices.

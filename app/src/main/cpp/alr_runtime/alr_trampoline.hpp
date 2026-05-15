@@ -5,6 +5,7 @@
 
 #include "alr_runtime/alr_config.hpp"
 #include "alr_runtime/alr_elf.hpp"
+#include "alr_runtime/alr_entry.hpp"
 #include "alr_runtime/alr_exec.hpp"
 #include "alr_runtime/alr_image.hpp"
 
@@ -21,6 +22,7 @@ struct TrampolineAttemptResult {
     bool policy_preflight = false;
     bool image_map_ready = false;
     bool image_entry_ready = false;
+    bool entry_stack_ready = false;
     bool attempted = false;
     bool static_hello_executed = false;
     int exit_code = -1;
@@ -29,6 +31,7 @@ struct TrampolineAttemptResult {
     std::string stderr_text;
     std::string error;
     StaticImagePlan image_plan;
+    EntryStackPlan entry_stack_plan;
     std::string report;
 };
 

@@ -98,6 +98,13 @@ int main() {
     require(valid_plan.segments[0].protection == "r-x", "protection");
     require(valid_plan.report.find("ALR STATIC IMAGE MAP PLAN: PASS") != std::string::npos, "image report");
     require(valid_plan.report.find("ALR STATIC IMAGE ENTRY READY: PASS") != std::string::npos, "entry report");
+    const auto load_result = alr::runtime::load_static_image_for_preflight(valid_path.string(), valid_plan);
+    require(load_result.loaded, "static image load preflight");
+    require(load_result.protected_segments, "static image mprotect preflight");
+    require(load_result.unmapped, "static image unmapped");
+    require(load_result.loaded_segment_count == 1, "static image loaded segment count");
+    require(load_result.report.find("ALR STATIC IMAGE LOAD PREFLIGHT: PASS") != std::string::npos, "load report");
+    require(load_result.report.find("ALR STATIC IMAGE MPROTECT: PASS") != std::string::npos, "mprotect report");
 
     const auto bad_mem_plan = alr::runtime::build_static_image_plan(alr::runtime::build_elf_load_plan(bad_mem_path.string()));
     require(!bad_mem_plan.valid, "bad mem invalid");

@@ -3,6 +3,7 @@ project(androlinux_runtime_lab LANGUAGES CXX)
 
 add_library(alr_runtime STATIC
     alr_runtime/alr_config.cpp
+    alr_runtime/alr_entry.cpp
     alr_runtime/alr_elf.cpp
     alr_runtime/alr_exec.cpp
     alr_runtime/alr_image.cpp
@@ -38,3 +39,4 @@ target_link_libraries(alr_loader PRIVATE alr_runtime log android EGL GLESv2)
 target_link_libraries(alr_runtime_launcher PRIVATE alr_runtime)
 target_link_libraries(alr_runtime_hook PRIVATE alr_runtime)
 target_link_libraries(alr_runtime_interposer PRIVATE alr_runtime)
+target_link_libraries(alr_runtime_trampoline PRIVATE alr_runtime)

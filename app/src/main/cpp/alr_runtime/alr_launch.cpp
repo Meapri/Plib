@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "alr_runtime/alr_elf.hpp"
+#include "alr_runtime/alr_entry.hpp"
 #include "alr_runtime/alr_image.hpp"
 #include "alr_runtime/alr_trampoline.hpp"
 
@@ -79,6 +80,9 @@ std::string build_report(std::string_view requested_program, const LaunchAttempt
             "alr elf type=none\n"
             "alr elf status=unsupported\n"
             "alr elf entry=0x0\n"
+            "alr elf phdr=0x0\n"
+            "alr elf phent=0\n"
+            "alr elf phnum=0\n"
             "alr elf min vaddr=0x0\n"
             "alr elf max vaddr=0x0\n"
             "alr elf interp=none\n"
@@ -94,6 +98,14 @@ std::string build_report(std::string_view requested_program, const LaunchAttempt
             "alr image max vaddr=0x0\n"
             "alr image size=0\n"
             "alr image load segments=0\n"
+            "ALR STATIC ENTRY STACK PLAN: SKIP\n"
+            "alr entry stack top=0x0\n"
+            "alr entry stack size=0\n"
+            "alr entry initial sp=0x0\n"
+            "alr entry vaddr=0x0\n"
+            "alr entry argc=0\n"
+            "alr entry envc=0\n"
+            "alr entry auxv pairs=0\n"
             "ALR TRAMPOLINE AVAILABLE: SKIP\n"
             "ALR TRAMPOLINE CONFIG HANDOFF: SKIP\n"
             "ALR TRAMPOLINE POLICY PREFLIGHT: SKIP\n"

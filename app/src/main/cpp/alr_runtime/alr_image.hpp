@@ -35,7 +35,21 @@ struct StaticImagePlan {
     std::string report;
 };
 
+struct StaticImageLoadResult {
+    bool loaded = false;
+    bool protected_segments = false;
+    bool unmapped = false;
+    std::string error;
+    std::uintptr_t mapped_base = 0;
+    std::uint64_t mapped_size = 0;
+    std::uint64_t entry_offset = 0;
+    std::uint32_t loaded_segment_count = 0;
+    std::string report;
+};
+
 StaticImagePlan build_static_image_plan(const ElfLoadPlan& elf_plan, std::uint64_t page_size = 4096);
 std::string build_static_image_skip_report();
+StaticImageLoadResult load_static_image_for_preflight(const std::string& host_path, const StaticImagePlan& plan);
+std::string build_static_image_load_skip_report();
 
 }  // namespace alr::runtime

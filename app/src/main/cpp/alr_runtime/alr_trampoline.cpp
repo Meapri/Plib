@@ -42,6 +42,12 @@ std::string image_report_or_skip(const TrampolineAttemptResult& result) {
         : result.image_plan.report;
 }
 
+std::string entry_stack_report_or_skip(const TrampolineAttemptResult& result) {
+    return result.entry_stack_plan.report.empty()
+        ? build_entry_stack_skip_report()
+        : result.entry_stack_plan.report;
+}
+
 std::string read_all_from_fd(int fd) {
     std::string out;
     char buffer[512];
@@ -171,6 +177,7 @@ void execute_trampoline(
 std::string build_report(const TrampolineAttemptResult& result) {
     std::ostringstream out;
     out << image_report_or_skip(result);
+    out << "\n" << entry_stack_report_or_skip(result);
     out << "\nALR TRAMPOLINE AVAILABLE: " << (result.available ? "PASS" : "SKIP");
     out << "\nALR TRAMPOLINE CONFIG HANDOFF: " << (result.config_handoff ? "PASS" : "SKIP");
     out << "\nALR TRAMPOLINE POLICY PREFLIGHT: " << (result.policy_preflight ? "PASS" : "SKIP");
@@ -219,7 +226,20 @@ TrampolineAttemptResult attempt_packaged_trampoline(
     result.image_plan = build_static_image_plan(elf_plan);
     result.image_map_ready = result.image_plan.valid;
     result.image_entry_ready = result.image_plan.entry_ready;
-    result.policy_preflight = result.config_handoff && static_hello_candidate && result.image_map_ready && result.image_entry_ready;
+    result.entry_stack_plan = build_static_entry_stack_plan(
+        elf_plan,
+        result.image_plan,
+        EntryStackInput{
+            .argv = {std::string{requested_program}},
+            .env = {"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"},
+        });
+    result.entry_stack_ready = result.entry_stack_plan.valid;
+    result.policy_preflight =
+        result.config_handoff &&
+        static_hello_candidate &&
+        result.image_map_ready &&
+        result.image_entry_ready &&
+        result.entry_stack_ready;
     if (!policy.allow_trampoline_exec) {
         result.report = build_report(result);
         return result;
