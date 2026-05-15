@@ -16,6 +16,18 @@ Working product definition:
 6. Research Vulkan through Venus or a custom proxy ICD after OpenGL MVP.
 7. Research a proroot-style low-overhead runtime separately from the graphics bridge.
 
+## Planning documents
+
+Start here when changing project direction or implementing a new runtime layer:
+
+- [Product requirements](docs/product-requirements.md): product target, goals, non-goals, acceptance ladder, and risk model.
+- [Clean-room protocol](docs/clean-room-protocol.md): rules for using open-source components, optional closed/proprietary probes, and black-box behavior evidence without contaminating ALR implementation.
+- [ALR execution backend spec](docs/alr-execution-backend-spec.md): staged design for the open low-overhead runtime backend that should eventually outperform PRoot on hot paths.
+- [Android graphics bridge spec](docs/android-graphics-bridge-spec.md): Surface/EGL/GLES/Vulkan bridge target for Linux GUI/GPU output.
+- [Implementation milestones](docs/plans/implementation-milestones.md): five-version bundle plan, acceptance strings, and stop conditions.
+- [Agent coordination](docs/agent-coordination.md): Codex/Hermes ownership boundaries, handoff format, and conflict rules.
+- [Parallel workstreams](docs/plans/parallel-workstreams.md): recommended split for clean ALR runtime work and device/probe evidence work.
+
 ## Repository layout
 
 ```text
