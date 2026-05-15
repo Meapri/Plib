@@ -1,7 +1,10 @@
 #include "alr_runtime/alr_entry.hpp"
 
+#include <sys/mman.h>
+
 #include <algorithm>
 #include <array>
+#include <cerrno>
 #include <cstring>
 #include <limits>
 #include <sstream>
@@ -34,6 +37,12 @@ std::string hex_value(std::uint64_t value) {
     return out.str();
 }
 
+std::string errno_message(const char* action) {
+    std::ostringstream out;
+    out << action << " failed errno=" << errno << " message=" << std::strerror(errno);
+    return out.str();
+}
+
 std::uint64_t align_down(std::uint64_t value, std::uint64_t alignment) {
     return value / alignment * alignment;
 }
@@ -56,6 +65,20 @@ std::string build_report(const EntryStackPlan& plan) {
     out << "\nalr entry auxv pairs=" << plan.auxv_pair_count;
     if (!plan.error.empty()) {
         out << "\nalr entry stack error=" << plan.error;
+    }
+    return out.str();
+}
+
+std::string build_report(const EntryStackRuntimeMapping& mapping) {
+    std::ostringstream out;
+    out << "ALR STATIC ENTRY STACK TRANSFER MAP: " << (mapping.mapped ? "PASS" : "FAIL");
+    out << "\nALR STATIC ENTRY STACK TRANSFER MPROTECT: " << (mapping.protected_stack ? "PASS" : "SKIP");
+    out << "\nalr transfer stack base=" << hex_value(mapping.mapped_base);
+    out << "\nalr transfer stack size=" << mapping.mapped_size;
+    out << "\nalr transfer initial sp address=" << hex_value(mapping.initial_sp_address);
+    out << "\nalr transfer stack unmapped=" << (mapping.unmapped ? "true" : "false");
+    if (!mapping.error.empty()) {
+        out << "\nalr transfer stack error=" << mapping.error;
     }
     return out.str();
 }
@@ -197,6 +220,69 @@ EntryStackPlan build_static_entry_stack_plan(
     }
     plan.report = build_report(plan);
     return plan;
+}
+
+EntryStackRuntimeMapping map_entry_stack_for_transfer(const EntryStackPlan& plan) {
+    EntryStackRuntimeMapping mapping;
+    mapping.mapped_size = plan.stack_size;
+    if (!plan.valid) {
+        mapping.error = plan.error.empty() ? "entry stack plan is not valid" : plan.error;
+        mapping.report = build_report(mapping);
+        return mapping;
+    }
+    if (plan.image.empty() || plan.stack_size == 0 ||
+        plan.stack_size > static_cast<std::uint64_t>(std::numeric_limits<std::size_t>::max())) {
+        mapping.error = "entry stack image is not mappable";
+        mapping.report = build_report(mapping);
+        return mapping;
+    }
+    const std::uint64_t stack_base_vaddr = plan.stack_top_vaddr - plan.stack_size;
+    if (plan.initial_sp_vaddr < stack_base_vaddr || plan.initial_sp_vaddr > plan.stack_top_vaddr) {
+        mapping.error = "entry stack initial sp falls outside stack image";
+        mapping.report = build_report(mapping);
+        return mapping;
+    }
+
+    void* mapped = ::mmap(
+        nullptr,
+        static_cast<std::size_t>(plan.stack_size),
+        PROT_READ | PROT_WRITE,
+        MAP_PRIVATE | MAP_ANONYMOUS,
+        -1,
+        0);
+    if (mapped == MAP_FAILED) {
+        mapping.error = errno_message("mmap transfer stack");
+        mapping.report = build_report(mapping);
+        return mapping;
+    }
+
+    mapping.mapped = true;
+    mapping.mapped_base = reinterpret_cast<std::uintptr_t>(mapped);
+    mapping.initial_sp_address = mapping.mapped_base + (plan.initial_sp_vaddr - stack_base_vaddr);
+    std::memcpy(mapped, plan.image.data(), plan.image.size());
+    if (::mprotect(mapped, static_cast<std::size_t>(plan.stack_size), PROT_READ | PROT_WRITE) == 0) {
+        mapping.protected_stack = true;
+    } else {
+        mapping.error = errno_message("mprotect transfer stack");
+        unmap_entry_stack_runtime_mapping(mapping);
+    }
+    mapping.report = build_report(mapping);
+    return mapping;
+}
+
+void unmap_entry_stack_runtime_mapping(EntryStackRuntimeMapping& mapping) {
+    if (!mapping.mapped || mapping.mapped_base == 0 || mapping.mapped_size == 0 || mapping.unmapped) {
+        return;
+    }
+    if (::munmap(reinterpret_cast<void*>(mapping.mapped_base), static_cast<std::size_t>(mapping.mapped_size)) == 0) {
+        mapping.unmapped = true;
+    } else if (mapping.error.empty()) {
+        mapping.error = errno_message("munmap transfer stack");
+    }
+    if (mapping.unmapped) {
+        mapping.mapped = false;
+    }
+    mapping.report = build_report(mapping);
 }
 
 }  // namespace alr::runtime

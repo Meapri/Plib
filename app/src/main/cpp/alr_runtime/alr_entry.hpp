@@ -30,11 +30,24 @@ struct EntryStackPlan {
     std::string report;
 };
 
+struct EntryStackRuntimeMapping {
+    bool mapped = false;
+    bool protected_stack = false;
+    bool unmapped = false;
+    std::string error;
+    std::uintptr_t mapped_base = 0;
+    std::uint64_t mapped_size = 0;
+    std::uintptr_t initial_sp_address = 0;
+    std::string report;
+};
+
 EntryStackPlan build_static_entry_stack_plan(
     const ElfLoadPlan& elf_plan,
     const StaticImagePlan& image_plan,
     const EntryStackInput& input);
 
 std::string build_entry_stack_skip_report();
+EntryStackRuntimeMapping map_entry_stack_for_transfer(const EntryStackPlan& plan);
+void unmap_entry_stack_runtime_mapping(EntryStackRuntimeMapping& mapping);
 
 }  // namespace alr::runtime

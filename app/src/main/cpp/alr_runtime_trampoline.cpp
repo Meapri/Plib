@@ -5,6 +5,7 @@
 #include "alr_runtime/alr_elf.hpp"
 #include "alr_runtime/alr_entry.hpp"
 #include "alr_runtime/alr_image.hpp"
+#include "alr_runtime/alr_transfer.hpp"
 
 namespace {
 
@@ -42,9 +43,16 @@ int main(int argc, char** argv) {
         std::cout << entry_plan.report << "\n";
         const auto load_result = alr::runtime::load_static_image_for_preflight(target_host, image_plan);
         std::cout << load_result.report << "\n";
+        auto transfer_context = alr::runtime::prepare_static_entry_transfer_context(
+            target_host,
+            image_plan,
+            entry_plan);
+        alr::runtime::cleanup_static_entry_transfer_context(transfer_context);
+        std::cout << transfer_context.report << "\n";
     } else {
         std::cout << alr::runtime::build_entry_stack_skip_report() << "\n";
         std::cout << alr::runtime::build_static_image_load_skip_report() << "\n";
+        std::cout << alr::runtime::build_static_entry_transfer_skip_report() << "\n";
     }
     return 0;
 }

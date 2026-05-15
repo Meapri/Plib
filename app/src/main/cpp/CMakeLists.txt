@@ -9,6 +9,7 @@ add_library(alr_runtime STATIC
     alr_runtime/alr_image.cpp
     alr_runtime/alr_launch.cpp
     alr_runtime/alr_path.cpp
+    alr_runtime/alr_transfer.cpp
     alr_runtime/alr_trampoline.cpp
     alr_runtime/alr_env.cpp
     alr_runtime/alr_hook.cpp

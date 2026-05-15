@@ -16,6 +16,7 @@ cxx="${CXX:-g++}"
   app/src/main/cpp/alr_runtime/alr_image.cpp \
   app/src/main/cpp/alr_runtime/alr_launch.cpp \
   app/src/main/cpp/alr_runtime/alr_trampoline.cpp \
+  app/src/main/cpp/alr_runtime/alr_transfer.cpp \
   app/src/main/cpp/runtime_plan.cpp \
   -o /tmp/alr-native-runtime-plan-test
 
@@ -32,6 +33,7 @@ cxx="${CXX:-g++}"
   app/src/main/cpp/alr_runtime/alr_image.cpp \
   app/src/main/cpp/alr_runtime/alr_launch.cpp \
   app/src/main/cpp/alr_runtime/alr_trampoline.cpp \
+  app/src/main/cpp/alr_runtime/alr_transfer.cpp \
   app/src/main/cpp/runtime_plan.cpp \
   -o /tmp/alr-native-backend-policy-test
 
@@ -84,6 +86,7 @@ cxx="${CXX:-g++}"
   app/src/main/cpp/alr_runtime/alr_image.cpp \
   app/src/main/cpp/alr_runtime/alr_launch.cpp \
   app/src/main/cpp/alr_runtime/alr_trampoline.cpp \
+  app/src/main/cpp/alr_runtime/alr_transfer.cpp \
   -o /tmp/alr-native-runtime-trampoline-test
 
 /tmp/alr-native-runtime-trampoline-test
@@ -108,6 +111,7 @@ cxx="${CXX:-g++}"
   app/src/main/cpp/alr_runtime/alr_image.cpp \
   app/src/main/cpp/alr_runtime/alr_launch.cpp \
   app/src/main/cpp/alr_runtime/alr_trampoline.cpp \
+  app/src/main/cpp/alr_runtime/alr_transfer.cpp \
   -o /tmp/alr-native-runtime-launch-test
 
 /tmp/alr-native-runtime-launch-test
