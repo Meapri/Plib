@@ -24,6 +24,13 @@ fi
   -Wl,-soname,libalr_gles_shim.so \
   -o "$OUT_DIR/libalr_gles_shim.so"
 
+for abi_lib in libEGL.so libGLESv2.so; do
+  "$ZIG_BIN" cc -target aarch64-linux-gnu -O2 -s -fPIC -shared \
+    "$SRC_DIR/alr_gles_shim.c" \
+    -Wl,-soname,"$abi_lib" \
+    -o "$OUT_DIR/$abi_lib"
+done
+
 "$ZIG_BIN" cc -target aarch64-linux-gnu -O2 -s \
   "$SRC_DIR/alr_gles_api_smoke.c" \
   -L"$OUT_DIR" \
@@ -31,4 +38,18 @@ fi
   -Wl,-rpath,/usr/lib/androlinux \
   -o "$OUT_DIR/alr-gles-shim-smoke"
 
-file "$OUT_DIR/libalr_gles_shim.so" "$OUT_DIR/alr-gles-shim-smoke"
+"$ZIG_BIN" cc -target aarch64-linux-gnu -O2 -s \
+  "$SRC_DIR/alr_gles_abi_smoke.c" \
+  -L"$OUT_DIR" \
+  -Wl,--no-as-needed \
+  -lEGL \
+  -lGLESv2 \
+  -Wl,-rpath,/usr/lib/androlinux \
+  -o "$OUT_DIR/alr-gles-abi-smoke"
+
+file \
+  "$OUT_DIR/libalr_gles_shim.so" \
+  "$OUT_DIR/libEGL.so" \
+  "$OUT_DIR/libGLESv2.so" \
+  "$OUT_DIR/alr-gles-shim-smoke" \
+  "$OUT_DIR/alr-gles-abi-smoke"

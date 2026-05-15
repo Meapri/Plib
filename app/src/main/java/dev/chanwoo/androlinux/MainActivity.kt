@@ -22,7 +22,7 @@ class MainActivity : Activity() {
 
         val rootfsManifest = RootfsManifest(
             name = "debian-arm64",
-            version = "bookworm-slim-2026-05-gui-gpu-v50",
+            version = "bookworm-slim-2026-05-gui-gpu-v51",
             assets = listOf(
                 RootfsAsset(
                     path = "rootfs.tar.zst",
@@ -101,18 +101,24 @@ class MainActivity : Activity() {
         val glesShimDrawFrameCount = 32
         val prootGuestGlesShimSmokeResult = nativeCommandRunner.runProotRootfsGuestGlesShimSmoke(rootfsStatus.rootfsDir)
         val alrGuestGlesShimSmokeResult = nativeCommandRunner.runAlrRuntimeTrampolineGuestGlesShimSmoke(rootfsStatus.rootfsDir)
+        val prootGuestGlesAbiSmokeResult = nativeCommandRunner.runProotRootfsGuestGlesAbiSmoke(rootfsStatus.rootfsDir)
+        val alrGuestGlesAbiSmokeResult = nativeCommandRunner.runAlrRuntimeTrampolineGuestGlesAbiSmoke(rootfsStatus.rootfsDir)
         val prootGuestGlesShimBenchmarkResult = nativeCommandRunner.runProotRootfsGuestGlesShimBenchmark(rootfsStatus.rootfsDir, glesShimBenchmarkFrameCount)
         val alrGuestGlesShimBenchmarkResult = nativeCommandRunner.runAlrRuntimeTrampolineGuestGlesShimBenchmark(rootfsStatus.rootfsDir, glesShimBenchmarkFrameCount)
         val prootGuestGlesShimDrawBenchmarkResult = nativeCommandRunner.runProotRootfsGuestGlesShimDrawBenchmark(rootfsStatus.rootfsDir, glesShimDrawFrameCount)
         val alrGuestGlesShimDrawBenchmarkResult = nativeCommandRunner.runAlrRuntimeTrampolineGuestGlesShimDrawBenchmark(rootfsStatus.rootfsDir, glesShimDrawFrameCount)
         val prootGuestGlesShimStdout = prootGuestGlesShimSmokeResult.stdout
         val alrGuestGlesShimStdout = alrGuestGlesShimSmokeResult.stdout.alrHandoffStdoutText()
+        val prootGuestGlesAbiStdout = prootGuestGlesAbiSmokeResult.stdout
+        val alrGuestGlesAbiStdout = alrGuestGlesAbiSmokeResult.stdout.alrHandoffStdoutText()
         val prootGuestGlesShimBenchmarkStdout = prootGuestGlesShimBenchmarkResult.stdout
         val alrGuestGlesShimBenchmarkStdout = alrGuestGlesShimBenchmarkResult.stdout.alrHandoffStdoutText()
         val prootGuestGlesShimDrawBenchmarkStdout = prootGuestGlesShimDrawBenchmarkResult.stdout
         val alrGuestGlesShimDrawBenchmarkStdout = alrGuestGlesShimDrawBenchmarkResult.stdout.alrHandoffStdoutText()
         val guestGlesShimCommands = parseGuestGlesShimCommands(prootGuestGlesShimStdout)
         val alrGuestGlesShimCommands = parseGuestGlesShimCommands(alrGuestGlesShimStdout)
+        val guestGlesAbiCommands = parseGuestGlesShimCommands(prootGuestGlesAbiStdout)
+        val alrGuestGlesAbiCommands = parseGuestGlesShimCommands(alrGuestGlesAbiStdout)
         val guestGlesShimBenchmarkCommands = parseGuestGlesShimCommands(prootGuestGlesShimBenchmarkStdout)
         val alrGuestGlesShimBenchmarkCommands = parseGuestGlesShimCommands(alrGuestGlesShimBenchmarkStdout)
         val guestGlesShimDrawBenchmarkCommands = parseGuestGlesShimCommands(prootGuestGlesShimDrawBenchmarkStdout)
@@ -134,6 +140,7 @@ class MainActivity : Activity() {
             addAll(if (alrGuestGpuCommands.isNotEmpty()) alrGuestGpuCommands else guestGpuCommands)
             addAll(if (alrGuestGlesShimBenchmarkCommands.isNotEmpty()) alrGuestGlesShimBenchmarkCommands else guestGlesShimBenchmarkCommands)
             addAll(if (alrGuestGlesShimDrawBenchmarkCommands.isNotEmpty()) alrGuestGlesShimDrawBenchmarkCommands else guestGlesShimDrawBenchmarkCommands)
+            addAll(if (alrGuestGlesAbiCommands.isNotEmpty()) alrGuestGlesAbiCommands else guestGlesAbiCommands)
             addAll(nativeGlesBaselineCommands)
             addAll(if (alrGuestGlesShimCommands.isNotEmpty()) alrGuestGlesShimCommands else guestGlesShimCommands)
             if (isEmpty()) {
@@ -200,7 +207,10 @@ class MainActivity : Activity() {
         val rootfsDpkgSplitFile = File(rootfsStatus.rootfsDir, "usr/bin/dpkg-split")
         val rootfsGuestGpuClientFile = File(rootfsStatus.rootfsDir, "usr/bin/alr-gpu-client")
         val rootfsGuestGlesShimSmokeFile = File(rootfsStatus.rootfsDir, "usr/bin/alr-gles-shim-smoke")
+        val rootfsGuestGlesAbiSmokeFile = File(rootfsStatus.rootfsDir, "usr/bin/alr-gles-abi-smoke")
         val rootfsGuestGlesShimLibraryFile = File(rootfsStatus.rootfsDir, "usr/lib/androlinux/libalr_gles_shim.so")
+        val rootfsGuestEglLibraryFile = File(rootfsStatus.rootfsDir, "usr/lib/androlinux/libEGL.so")
+        val rootfsGuestGlesv2LibraryFile = File(rootfsStatus.rootfsDir, "usr/lib/androlinux/libGLESv2.so")
         val rootfsWaylandGuiClientFile = File(rootfsStatus.rootfsDir, "usr/bin/alr-wayland-gpu-client")
         val rootfsX11GuiClientFile = File(rootfsStatus.rootfsDir, "usr/bin/alr-x11-gpu-client")
         val rootfsExecutionPassed = prootHelloResult.exitCode == 0 &&
@@ -315,6 +325,14 @@ class MainActivity : Activity() {
             alrGuestGlesShimStdout.contains("alr guest gles shim smoke ok") &&
             alrGuestGlesShimStdout.contains("ALR_GLES_SHIM_LOAD ok") &&
             alrGuestGlesShimCommands.isNotEmpty()
+        val guestGlesAbiSmokePassed = prootGuestGlesAbiSmokeResult.exitCode == 0 &&
+            prootGuestGlesAbiStdout.contains("alr guest gles abi smoke ok") &&
+            prootGuestGlesAbiStdout.contains("ALR_GLES_ABI_LIBS visible libEGL.so libGLESv2.so") &&
+            guestGlesAbiCommands.isNotEmpty()
+        val alrGuestGlesAbiSmokePassed = alrGuestGlesAbiSmokeResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+            alrGuestGlesAbiStdout.contains("alr guest gles abi smoke ok") &&
+            alrGuestGlesAbiStdout.contains("ALR_GLES_ABI_LIBS visible libEGL.so libGLESv2.so") &&
+            alrGuestGlesAbiCommands.isNotEmpty()
         val guestGlesShimBenchmarkPassed = prootGuestGlesShimBenchmarkResult.exitCode == 0 &&
             prootGuestGlesShimBenchmarkStdout.contains("ALR_GLES_FRAME_WORKLOAD requested=$glesShimBenchmarkFrameCount submitted=$glesShimBenchmarkFrameCount") &&
             guestGlesShimBenchmarkCommands.size == glesShimBenchmarkFrameCount
@@ -361,7 +379,7 @@ class MainActivity : Activity() {
             alrGuestX11GuiBridgeResult.error == null
         val hostGpuHardwareCandidate = hostGpuProbe.lineStartingWith("host gpu hardware candidate=") == "host gpu hardware candidate=true"
 
-        val executionSummary = "build: 0.4.50-gles-triangle-draw" +
+        val executionSummary = "build: 0.4.51-gles-abi-names" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -396,6 +414,8 @@ class MainActivity : Activity() {
             "\nALR GUEST GPU IPC BRIDGE EXECUTION: ${if (alrGuestGpuIpcBridgePassed) "PASS" else "FAIL"}" +
             "\nGUEST GLES SHIM SMOKE EXECUTION: ${if (guestGlesShimSmokePassed) "PASS" else "FAIL"}" +
             "\nALR GUEST GLES SHIM SMOKE EXECUTION: ${if (alrGuestGlesShimSmokePassed) "PASS" else "FAIL"}" +
+            "\nGUEST EGL/GLES ABI LIB EXECUTION: ${if (guestGlesAbiSmokePassed) "PASS" else "FAIL"}" +
+            "\nALR GUEST EGL/GLES ABI LIB EXECUTION: ${if (alrGuestGlesAbiSmokePassed) "PASS" else "FAIL"}" +
             "\nGUEST GLES SHIM FRAME WORKLOAD EXECUTION: ${if (guestGlesShimBenchmarkPassed) "PASS" else "FAIL"}" +
             "\nALR GUEST GLES SHIM FRAME WORKLOAD EXECUTION: ${if (alrGuestGlesShimBenchmarkPassed) "PASS" else "FAIL"}" +
             "\nGUEST GLES DRAW VIA SHIM EXECUTION: ${if (guestGlesShimDrawBenchmarkPassed || guestGlesShimDrawApiPassed) "PASS" else "FAIL"}" +
@@ -467,7 +487,10 @@ class MainActivity : Activity() {
             "\nrootfs /usr/bin/dpkg-split exists=${rootfsDpkgSplitFile.isFile} executable=${rootfsDpkgSplitFile.canExecute()} bytes=${rootfsDpkgSplitFile.length()}" +
             "\nrootfs /usr/bin/alr-gpu-client exists=${rootfsGuestGpuClientFile.isFile} executable=${rootfsGuestGpuClientFile.canExecute()} bytes=${rootfsGuestGpuClientFile.length()}" +
             "\nrootfs /usr/bin/alr-gles-shim-smoke exists=${rootfsGuestGlesShimSmokeFile.isFile} executable=${rootfsGuestGlesShimSmokeFile.canExecute()} bytes=${rootfsGuestGlesShimSmokeFile.length()}" +
+            "\nrootfs /usr/bin/alr-gles-abi-smoke exists=${rootfsGuestGlesAbiSmokeFile.isFile} executable=${rootfsGuestGlesAbiSmokeFile.canExecute()} bytes=${rootfsGuestGlesAbiSmokeFile.length()}" +
             "\nrootfs /usr/lib/androlinux/libalr_gles_shim.so exists=${rootfsGuestGlesShimLibraryFile.isFile} executable=${rootfsGuestGlesShimLibraryFile.canExecute()} bytes=${rootfsGuestGlesShimLibraryFile.length()}" +
+            "\nrootfs /usr/lib/androlinux/libEGL.so exists=${rootfsGuestEglLibraryFile.isFile} executable=${rootfsGuestEglLibraryFile.canExecute()} bytes=${rootfsGuestEglLibraryFile.length()}" +
+            "\nrootfs /usr/lib/androlinux/libGLESv2.so exists=${rootfsGuestGlesv2LibraryFile.isFile} executable=${rootfsGuestGlesv2LibraryFile.canExecute()} bytes=${rootfsGuestGlesv2LibraryFile.length()}" +
             "\nrootfs /usr/bin/alr-wayland-gpu-client exists=${rootfsWaylandGuiClientFile.isFile} executable=${rootfsWaylandGuiClientFile.canExecute()} bytes=${rootfsWaylandGuiClientFile.length()}" +
             "\nrootfs /usr/bin/alr-x11-gpu-client exists=${rootfsX11GuiClientFile.isFile} executable=${rootfsX11GuiClientFile.canExecute()} bytes=${rootfsX11GuiClientFile.length()}" +
             "\nproot guest gpu client exit=${prootGuestGpuClientResult.exitCode}" +
@@ -498,6 +521,10 @@ class MainActivity : Activity() {
             "\nproot guest gles shim smoke stdout=${prootGuestGlesShimSmokeResult.stdout}" +
             "\nproot guest gles shim smoke stderr=${prootGuestGlesShimSmokeResult.stderr}" +
             "\nguest gles shim command parsed count=${guestGlesShimCommands.size}" +
+            "\nproot guest gles abi smoke exit=${prootGuestGlesAbiSmokeResult.exitCode}" +
+            "\nproot guest gles abi smoke stdout=${prootGuestGlesAbiStdout}" +
+            "\nproot guest gles abi smoke stderr=${prootGuestGlesAbiSmokeResult.stderr}" +
+            "\nguest gles abi command parsed count=${guestGlesAbiCommands.size}" +
             "\nguest gles shim frame workload requested=$glesShimBenchmarkFrameCount" +
             "\nguest gles shim frame workload elapsed ms=${prootGuestGlesShimBenchmarkResult.elapsedMs}" +
             "\nguest gles shim frame workload commands=${guestGlesShimBenchmarkCommands.size}" +
@@ -511,6 +538,9 @@ class MainActivity : Activity() {
             "\nalr guest gles shim smoke path rewrite=${alrGuestGlesShimSmokeResult.stdout.lineStartingWith("alr handoff path rewrite count=")}" +
             "\nalr guest gles shim smoke stdout=${alrGuestGlesShimSmokeResult.stdout.alrHandoffStdoutText()}" +
             "\nalr guest gles shim command parsed count=${alrGuestGlesShimCommands.size}" +
+            "\nalr guest gles abi smoke handoff=${alrGuestGlesAbiSmokeResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr guest gles abi smoke stdout=${alrGuestGlesAbiStdout}" +
+            "\nalr guest gles abi command parsed count=${alrGuestGlesAbiCommands.size}" +
             "\nalr guest gles shim frame workload elapsed ms=${alrGuestGlesShimBenchmarkResult.elapsedMs}" +
             "\nalr guest gles shim frame workload commands=${alrGuestGlesShimBenchmarkCommands.size}" +
             "\nalr guest gles shim frame workload handoff=${alrGuestGlesShimBenchmarkResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
@@ -798,6 +828,8 @@ class MainActivity : Activity() {
             resultBlock("alr guest gpu ipc client", alrGuestGpuIpcBridgeResult.clientResult) +
             resultBlock("proot guest gles shim smoke", prootGuestGlesShimSmokeResult) +
             resultBlock("alr guest gles shim smoke", alrGuestGlesShimSmokeResult) +
+            resultBlock("proot guest gles abi smoke", prootGuestGlesAbiSmokeResult) +
+            resultBlock("alr guest gles abi smoke", alrGuestGlesAbiSmokeResult) +
             resultBlock("proot guest wayland gui client", prootGuestWaylandGuiResult) +
             resultBlock("proot guest x11 gui client", prootGuestX11GuiResult) +
             resultBlock("alr guest wayland gui client", alrGuestWaylandGuiResult) +

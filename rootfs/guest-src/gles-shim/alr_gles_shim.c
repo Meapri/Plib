@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 
 #define ALR_GL_COLOR_BUFFER_BIT 0x00004000u
 #define ALR_GL_FLOAT 0x1406u
@@ -21,6 +22,22 @@ static int g_pending_clear = 0;
 static int g_pending_draw = 0;
 static int g_clear_count = 0;
 static int g_swap_count = 0;
+
+void* eglGetDisplay(void* native_display);
+int eglInitialize(void* display, int* major, int* minor);
+int eglChooseConfig(void* display, const int* attrib_list, void** configs, int config_size, int* num_config);
+void* eglCreateContext(void* display, void* config, void* share_context, const int* attrib_list);
+int eglMakeCurrent(void* display, void* draw, void* read, void* context);
+int eglSwapBuffers(void* display, void* surface);
+int eglDestroyContext(void* display, void* context);
+int eglTerminate(void* display);
+void glViewport(int x, int y, int width, int height);
+void glClearColor(float red, float green, float blue, float alpha);
+void glClear(unsigned int mask);
+void glUseProgram(unsigned int program);
+void glEnableVertexAttribArray(unsigned int index);
+void glVertexAttribPointer(unsigned int index, int size, unsigned int type, unsigned char normalized, int stride, const void* pointer);
+void glDrawArrays(unsigned int mode, int first, int count);
 
 const char* alr_gles_shim_version(void) {
     return "alr-gles-shim egl-gles-subset-v3-triangle";
@@ -205,4 +222,89 @@ int alr_gles_submit_triangle(float red, float green, float blue, const char* tag
     alr_egl_destroy_context(display, context);
     alr_egl_terminate(display);
     return 1;
+}
+
+void* eglGetDisplay(void* native_display) {
+    return alr_egl_get_display(native_display);
+}
+
+int eglInitialize(void* display, int* major, int* minor) {
+    return alr_egl_initialize(display, major, minor);
+}
+
+int eglChooseConfig(void* display, const int* attrib_list, void** configs, int config_size, int* num_config) {
+    (void)attrib_list;
+    if (num_config != 0) *num_config = 1;
+    if (config_size <= 0 || configs == 0) return g_initialized && display != 0;
+    return alr_egl_choose_config(display, configs);
+}
+
+void* eglCreateContext(void* display, void* config, void* share_context, const int* attrib_list) {
+    (void)share_context;
+    (void)attrib_list;
+    return alr_egl_create_context(display, config);
+}
+
+int eglMakeCurrent(void* display, void* draw, void* read, void* context) {
+    return alr_egl_make_current(display, draw, read, context);
+}
+
+int eglSwapBuffers(void* display, void* surface) {
+    return alr_egl_swap_buffers(display, surface);
+}
+
+int eglDestroyContext(void* display, void* context) {
+    return alr_egl_destroy_context(display, context);
+}
+
+int eglTerminate(void* display) {
+    return alr_egl_terminate(display);
+}
+
+void* eglGetProcAddress(const char* procname) {
+    if (procname == 0) return 0;
+    if (strcmp(procname, "eglGetDisplay") == 0) return (void*)eglGetDisplay;
+    if (strcmp(procname, "eglInitialize") == 0) return (void*)eglInitialize;
+    if (strcmp(procname, "eglChooseConfig") == 0) return (void*)eglChooseConfig;
+    if (strcmp(procname, "eglCreateContext") == 0) return (void*)eglCreateContext;
+    if (strcmp(procname, "eglMakeCurrent") == 0) return (void*)eglMakeCurrent;
+    if (strcmp(procname, "eglSwapBuffers") == 0) return (void*)eglSwapBuffers;
+    if (strcmp(procname, "eglDestroyContext") == 0) return (void*)eglDestroyContext;
+    if (strcmp(procname, "eglTerminate") == 0) return (void*)eglTerminate;
+    if (strcmp(procname, "glViewport") == 0) return (void*)glViewport;
+    if (strcmp(procname, "glClearColor") == 0) return (void*)glClearColor;
+    if (strcmp(procname, "glClear") == 0) return (void*)glClear;
+    if (strcmp(procname, "glUseProgram") == 0) return (void*)glUseProgram;
+    if (strcmp(procname, "glEnableVertexAttribArray") == 0) return (void*)glEnableVertexAttribArray;
+    if (strcmp(procname, "glVertexAttribPointer") == 0) return (void*)glVertexAttribPointer;
+    if (strcmp(procname, "glDrawArrays") == 0) return (void*)glDrawArrays;
+    return 0;
+}
+
+void glViewport(int x, int y, int width, int height) {
+    alr_gl_viewport(x, y, width, height);
+}
+
+void glClearColor(float red, float green, float blue, float alpha) {
+    alr_gl_clear_color(red, green, blue, alpha);
+}
+
+void glClear(unsigned int mask) {
+    (void)alr_gl_clear(mask);
+}
+
+void glUseProgram(unsigned int program) {
+    (void)alr_gl_use_program(program);
+}
+
+void glEnableVertexAttribArray(unsigned int index) {
+    (void)alr_gl_enable_vertex_attrib_array(index);
+}
+
+void glVertexAttribPointer(unsigned int index, int size, unsigned int type, unsigned char normalized, int stride, const void* pointer) {
+    (void)alr_gl_vertex_attrib_pointer(index, size, type, normalized ? 1 : 0, stride, pointer);
+}
+
+void glDrawArrays(unsigned int mode, int first, int count) {
+    (void)alr_gl_draw_arrays(mode, first, count);
 }

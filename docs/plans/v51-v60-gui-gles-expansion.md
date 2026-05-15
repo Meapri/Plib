@@ -128,6 +128,10 @@ The V56–V60 shim subset is deliberately small and must be listed in tests/docs
 - `glViewport`
 - `glClearColor`
 - `glClear`
+- `glUseProgram`
+- `glEnableVertexAttribArray`
+- `glVertexAttribPointer`
+- `glDrawArrays`
 - `eglSwapBuffers`
 - `eglDestroyContext`
 - `eglTerminate`
@@ -146,6 +150,7 @@ Out of scope for V56–V60:
 Implementation notes:
 
 - Package guest-visible `libEGL`/`libGLES` shim names or loader redirects.
+- Verify `libEGL.so` and `libGLESv2.so` are real rootfs files because the Android tar extractor rejects links.
 - Verify the required subset symbols are exported or deliberately routed.
 - Ensure the shim reports its constrained subset clearly.
 
@@ -153,6 +158,7 @@ Acceptance lines:
 
 ```text
 GUEST EGL/GLES SHIM LIBRARIES VISIBLE: PASS
+GUEST EGL/GLES ABI LIB EXECUTION: PASS
 GLES SHIM REQUIRED SUBSET LISTED: PASS
 GLES SHIM SCOPE IS CONSTRAINED: PASS
 ```
@@ -177,6 +183,7 @@ ANDROID SURFACE/EGL HARDWARE PROOF REQUIRED: PASS
 Implementation notes:
 
 - Forward `glViewport`, `glClearColor`, and `glClear` from the guest shim to Android host GLES.
+- Forward a tiny `glUseProgram` + `glVertexAttribPointer` + `glDrawArrays` triangle path after the clear path is stable.
 - Render a deterministic clear color and report the command sequence.
 
 Acceptance lines:
@@ -184,6 +191,7 @@ Acceptance lines:
 ```text
 GUEST GLES VIEWPORT VIA SHIM: PASS
 GUEST GLES CLEAR VIA SHIM: PASS
+GUEST GLES DRAW VIA SHIM: PASS
 GUEST GLES COMMAND SEQUENCE LOSSLESS: PASS
 ```
 
@@ -234,14 +242,14 @@ software renderer rejected=true
 surface frames submitted=<n>
 surface frames rendered=<n>
 surface frames dropped=0
-surface gles shim render elapsed us=563352
-surface gles shim average frame render us=16095
-surface gles shim draw frames rendered=34
-surface gles shim draw render elapsed us=507139
-surface gles shim draw average frame render us=14915
+surface gles shim render elapsed us=579562
+surface gles shim average frame render us=16098
+surface gles shim draw frames rendered=35
+surface gles shim draw render elapsed us=513270
+surface gles shim draw average frame render us=14664
 surface native gles frames rendered=32
-surface native gles render elapsed us=349889
-surface native gles average frame render us=10934
+surface native gles render elapsed us=349958
+surface native gles average frame render us=10936
 surface gles shim vs native average ratio pct=147
 ```
 
@@ -249,13 +257,15 @@ Do not mark V51–V60 complete unless Android Surface/EGL hardware proof is pres
 
 ## Latest Device Evidence
 
-Build `0.4.50-gles-triangle-draw` now feeds GUI, IPC, GLES clear,
-and GLES triangle draw commands into the same Android Surface/EGL/GLES stream, including 32-frame clear and draw workloads. ADB UI-tree evidence
+Build `0.4.51-gles-abi-names` now feeds GUI, IPC, GLES clear,
+GLES triangle draw, and `libEGL.so`/`libGLESv2.so` ABI-name smoke commands into the same Android Surface/EGL/GLES stream, including 32-frame clear and draw workloads. ADB UI-tree evidence
 from device `R5KL20B6S3X`:
 
 ```text
 GUEST GLES SHIM SMOKE EXECUTION: PASS
 ALR GUEST GLES SHIM SMOKE EXECUTION: PASS
+GUEST EGL/GLES ABI LIB EXECUTION: PASS
+ALR GUEST EGL/GLES ABI LIB EXECUTION: PASS
 GUEST EGL INIT VIA SHIM EXECUTION: PASS
 GUEST EGL CONTEXT VIA SHIM EXECUTION: PASS
 GUEST GLES CLEAR VIA SHIM EXECUTION: PASS
@@ -283,23 +293,26 @@ ALR_GLES_API_STEP glEnableVertexAttribArray ok
 ALR_GLES_API_STEP glVertexAttribPointer ok
 ALR_GLES_API_STEP glDrawArrays ok
 ALR_GLES_API_STEP eglSwapBuffers ok
-surface callback frames rendered=123
+ALR_GLES_ABI_LIBS visible libEGL.so libGLESv2.so
+ALR_GLES_ABI_STEP eglGetProcAddress ok
+ALR_GLES_ABI_STEP eglSwapBuffersDraw ok
+surface callback frames rendered=125
 surface callback hardware render=true
 surface gl renderer=Mali-G615 MC2
-surface frames rendered=123
+surface frames rendered=125
 surface frames dropped=0
-surface gles shim render elapsed us=563352
-surface gles shim average frame render us=16095
-surface gles shim draw frames rendered=34
-surface gles shim draw render elapsed us=507139
-surface gles shim draw average frame render us=14915
+surface gles shim render elapsed us=579562
+surface gles shim average frame render us=16098
+surface gles shim draw frames rendered=35
+surface gles shim draw render elapsed us=513270
+surface gles shim draw average frame render us=14664
 surface native gles frames rendered=32
-surface native gles render elapsed us=349889
-surface native gles average frame render us=10934
+surface native gles render elapsed us=349958
+surface native gles average frame render us=10936
 surface gles shim vs native average ratio pct=147
 surface frame lossless=true
 surface gpu hardware render=true
-surface gles shim frames rendered=35
+surface gles shim frames rendered=36
 guest egl swap via android surface=true
 guest gles hardware render=true
 guest gles draw via android surface=true

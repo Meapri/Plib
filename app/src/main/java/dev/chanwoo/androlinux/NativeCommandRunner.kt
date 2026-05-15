@@ -85,6 +85,9 @@ class NativeCommandRunner(
     fun runAlrRuntimeTrampolineGuestGlesShimSmoke(rootfsDir: File): NativeCommandResult =
         runAlrRuntimeTrampolineGuestGlesShim(rootfsDir)
 
+    fun runAlrRuntimeTrampolineGuestGlesAbiSmoke(rootfsDir: File): NativeCommandResult =
+        runAlrRuntimeTrampolineGuestGlesShim(rootfsDir, binaryPath = "/usr/bin/alr-gles-abi-smoke")
+
     fun runAlrRuntimeTrampolineGuestGlesShimBenchmark(rootfsDir: File, frameCount: Int): NativeCommandResult =
         runAlrRuntimeTrampolineGuestGlesShim(
             rootfsDir,
@@ -110,6 +113,7 @@ class NativeCommandRunner(
         rootfsDir: File,
         extraGuestEnvironment: Map<String, String> = emptyMap(),
         timeoutMs: Int = 1500,
+        binaryPath: String = "/usr/bin/alr-gles-shim-smoke",
     ): NativeCommandResult {
         val libraryPath = glibcLibraryPath(rootfsDir) + ":" + File(rootfsDir, "usr/lib/androlinux").absolutePath
         return runAlrRuntimeTrampoline(
@@ -118,10 +122,10 @@ class NativeCommandRunner(
             executeEntry = true,
             extraArgs = listOf(
                 "--argv0",
-                "/usr/bin/alr-gles-shim-smoke",
+                binaryPath,
                 "--library-path",
                 libraryPath,
-                translateGuestPath(rootfsDir, "/usr/bin/alr-gles-shim-smoke"),
+                translateGuestPath(rootfsDir, binaryPath),
             ),
             timeoutMs = timeoutMs,
             extraGuestEnvironment = extraGuestEnvironment,
@@ -418,6 +422,9 @@ class NativeCommandRunner(
 
     fun runProotRootfsGuestGlesShimSmoke(rootfsDir: File): NativeCommandResult =
         runProotRootfsCommand(rootfsDir, "/usr/bin/alr-gles-shim-smoke", rootId = true, rawRootfs = true)
+
+    fun runProotRootfsGuestGlesAbiSmoke(rootfsDir: File): NativeCommandResult =
+        runProotRootfsCommand(rootfsDir, "/usr/bin/alr-gles-abi-smoke", rootId = true, rawRootfs = true)
 
     fun runProotRootfsGuestGlesShimBenchmark(rootfsDir: File, frameCount: Int): NativeCommandResult =
         runProotRootfsCommand(

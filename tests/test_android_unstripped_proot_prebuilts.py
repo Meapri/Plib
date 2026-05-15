@@ -14,4 +14,4 @@ def test_termux_proot_prebuilts_are_excluded_from_gradle_strip():
 
 def test_build_stamp_identifies_unstripped_proot_package():
     text = BUILD.read_text()
-    assert 'versionName = "0.4.50-gles-triangle-draw"' in text
+    assert 'versionName = "0.4.51-gles-abi-names"' in text
