@@ -1,5 +1,7 @@
 #include <jni.h>
 
+#include <android/native_window_jni.h>
+
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
 
@@ -163,6 +165,114 @@ std::string build_host_gpu_probe_report() {
     return out.str();
 }
 
+
+std::string render_to_android_surface(JNIEnv* env, jobject surface_obj) {
+    std::ostringstream out;
+    out << "host gpu surface renderer=android-surface-egl-gles";
+    if (surface_obj == nullptr) {
+        out << "\nsurface render=fail reason=null-surface";
+        return out.str();
+    }
+    ANativeWindow* window = ANativeWindow_fromSurface(env, surface_obj);
+    if (window == nullptr) {
+        out << "\nsurface render=fail reason=ANativeWindow_fromSurface";
+        return out.str();
+    }
+    out << "\nsurface window=ok width=" << ANativeWindow_getWidth(window)
+        << " height=" << ANativeWindow_getHeight(window);
+
+    EGLDisplay display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+    if (display == EGL_NO_DISPLAY) {
+        out << "\nsurface egl display=fail error=" << egl_error_hex();
+        ANativeWindow_release(window);
+        return out.str();
+    }
+    EGLint major = 0;
+    EGLint minor = 0;
+    if (eglInitialize(display, &major, &minor) != EGL_TRUE) {
+        out << "\nsurface egl initialize=fail error=" << egl_error_hex();
+        ANativeWindow_release(window);
+        return out.str();
+    }
+    out << "\nsurface egl initialize=ok version=" << major << "." << minor;
+
+    const EGLint config_attribs[] = {
+        EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+        EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+        EGL_RED_SIZE, 8,
+        EGL_GREEN_SIZE, 8,
+        EGL_BLUE_SIZE, 8,
+        EGL_ALPHA_SIZE, 8,
+        EGL_NONE,
+    };
+    EGLConfig config = nullptr;
+    EGLint config_count = 0;
+    if (eglChooseConfig(display, config_attribs, &config, 1, &config_count) != EGL_TRUE || config_count < 1) {
+        out << "\nsurface egl choose config=fail error=" << egl_error_hex();
+        eglTerminate(display);
+        ANativeWindow_release(window);
+        return out.str();
+    }
+    out << "\nsurface egl choose config=ok count=" << config_count;
+
+    EGLSurface egl_surface = eglCreateWindowSurface(display, config, window, nullptr);
+    if (egl_surface == EGL_NO_SURFACE) {
+        out << "\nsurface egl window surface=fail error=" << egl_error_hex();
+        eglTerminate(display);
+        ANativeWindow_release(window);
+        return out.str();
+    }
+    out << "\nsurface egl window surface=ok";
+
+    const EGLint context_attribs[] = {EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE};
+    EGLContext context = eglCreateContext(display, config, EGL_NO_CONTEXT, context_attribs);
+    if (context == EGL_NO_CONTEXT) {
+        out << "\nsurface egl context=fail error=" << egl_error_hex();
+        eglDestroySurface(display, egl_surface);
+        eglTerminate(display);
+        ANativeWindow_release(window);
+        return out.str();
+    }
+    out << "\nsurface egl context=ok api=gles2";
+
+    if (eglMakeCurrent(display, egl_surface, egl_surface, context) != EGL_TRUE) {
+        out << "\nsurface egl make current=fail error=" << egl_error_hex();
+        eglDestroyContext(display, context);
+        eglDestroySurface(display, egl_surface);
+        eglTerminate(display);
+        ANativeWindow_release(window);
+        return out.str();
+    }
+    out << "\nsurface egl make current=ok";
+
+    const int width = std::max(1, ANativeWindow_getWidth(window));
+    const int height = std::max(1, ANativeWindow_getHeight(window));
+    glViewport(0, 0, width, height);
+    glClearColor(0.05F, 0.18F, 0.45F, 1.0F);
+    glClear(GL_COLOR_BUFFER_BIT);
+    const GLenum gl_error = glGetError();
+    const auto vendor = safe_gl_string(GL_VENDOR);
+    const auto renderer = safe_gl_string(GL_RENDERER);
+    const bool software = renderer_looks_software(vendor, renderer);
+    const EGLBoolean swapped = eglSwapBuffers(display, egl_surface);
+    out << "\nsurface gl vendor=" << vendor;
+    out << "\nsurface gl renderer=" << renderer;
+    out << "\nsurface gl clear error=0x" << std::hex << gl_error << std::dec;
+    out << "\nsurface egl swap buffers=" << (swapped == EGL_TRUE ? "ok" : "fail");
+    if (swapped != EGL_TRUE) {
+        out << " error=" << egl_error_hex();
+    }
+    out << "\nsurface gpu software renderer=" << (software ? "true" : "false");
+    out << "\nsurface gpu hardware render=" << (!software && gl_error == GL_NO_ERROR && swapped == EGL_TRUE ? "true" : "false");
+
+    eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+    eglDestroyContext(display, context);
+    eglDestroySurface(display, egl_surface);
+    eglTerminate(display);
+    ANativeWindow_release(window);
+    return out.str();
+}
+
 void append_dlopen_probe(std::ostringstream& out, const std::string& path, const std::string& label) {
     dlerror();
     void* handle = dlopen(path.c_str(), RTLD_NOW | RTLD_LOCAL);
@@ -259,5 +369,15 @@ Java_dev_chanwoo_androlinux_MainActivity_nativeHostGpuProbe(
     JNIEnv* env,
     jobject /* thiz */) {
     const auto report = build_host_gpu_probe_report();
+    return env->NewStringUTF(report.c_str());
+}
+
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_dev_chanwoo_androlinux_MainActivity_nativeRenderGpuSurface(
+    JNIEnv* env,
+    jobject /* thiz */,
+    jobject surface) {
+    const auto report = render_to_android_surface(env, surface);
     return env->NewStringUTF(report.c_str());
 }

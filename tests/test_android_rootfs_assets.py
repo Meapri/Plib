@@ -9,7 +9,7 @@ PAYLOAD = ROOT / "app" / "src" / "main" / "assets" / "rootfs" / "payloads" / "ti
 def test_android_assets_include_rootfs_manifest_and_payload():
     assert MANIFEST.is_file()
     assert PAYLOAD.is_file()
-    assert PAYLOAD.stat().st_size == 32327680
+    assert PAYLOAD.stat().st_size == 32460800
 
 
 def test_android_asset_manifest_matches_host_manifest():
@@ -292,3 +292,15 @@ def test_tiny_rootfs_contains_dpkg_install_helper_programs():
             "./lib/aarch64-linux-gnu/libacl.so.1",
         ]:
             assert member in names
+
+
+def test_tiny_rootfs_cleans_host_dpkg_needrestart_and_contains_dpkg_split():
+    import tarfile
+
+    with tarfile.open(PAYLOAD) as archive:
+        names = set(archive.getnames())
+        assert "./etc/dpkg/dpkg.cfg.d/needrestart" not in names
+        assert "./etc/dpkg/dpkg.cfg.d/00-androlinux-minimal" in names
+        assert "./usr/bin/dpkg-split" in names
+        minimal = archive.extractfile("./etc/dpkg/dpkg.cfg.d/00-androlinux-minimal").read().decode()
+        assert "needrestart" in minimal

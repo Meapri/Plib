@@ -1,12 +1,12 @@
 {
   "name": "debian-arm64",
   "version": "bookworm-slim-2026-05",
-  "description": "Tiny PoC rootfs archive with bulk dpkg/apt base bundle, local alr-smoke .deb package, dpkg install helper programs, minimal device binds/state files, and Android host GPU probe support. Not a full Debian rootfs yet.",
+  "description": "Tiny PoC rootfs with dpkg/apt base bundle, local .deb smoke, clean dpkg config without host needrestart status-logger, dpkg-split, helper programs, minimal device binds/state files, and Android GPU probes.",
   "assets": [
     {
       "path": "tiny-rootfs.tar",
-      "sha256": "ee709b3557a171552910d26163330e4e0d804a84ab262d3f344234460d3cc105",
-      "size_bytes": 32327680
+      "sha256": "3d175b6d185a7288e543a50bd6663d995da8a68b524366d75d5a537e8f7685b1",
+      "size_bytes": 32460800
     }
   ],
   "unsupported_features": [

@@ -11,4 +11,4 @@ target_compile_features(alr_loader PRIVATE cxx_std_20)
 target_compile_features(alr_test_command PRIVATE cxx_std_20)
 target_compile_features(alr_proot_candidate PRIVATE cxx_std_20)
 
-target_link_libraries(alr_loader PRIVATE log EGL GLESv2)
+target_link_libraries(alr_loader PRIVATE log android EGL GLESv2)

@@ -34,8 +34,8 @@ android {
         applicationId = "dev.chanwoo.androlinux"
         minSdk = 26
         targetSdk = 35
-        versionCode = 24
-        versionName = "0.4.11-permission-network-helper"
+        versionCode = 25
+        versionName = "0.4.12-surface-gpu-dpkg-split"
         ndkVersion = "27.2.12479018"
 
         externalNativeBuild {
