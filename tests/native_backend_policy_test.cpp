@@ -33,6 +33,26 @@ int main() {
         return EXIT_FAILURE;
     }
 
+    const auto absent_probe = alr::probe_optional_runtime_backend(input);
+    if (absent_probe.framework_status != "PASS" || absent_probe.available_status != "SKIP" ||
+        absent_probe.source != "none" || absent_probe.can_execute) {
+        std::cerr << absent_probe.framework_status << " " << absent_probe.available_status << " "
+                  << absent_probe.source << "\n";
+        return EXIT_FAILURE;
+    }
+
+    auto external_input = input;
+    external_input.optional_runtime_backend_name = "low-overhead-external";
+    external_input.optional_runtime_backend_path = "/data/local/tmp/alr/proroot";
+    const auto external_probe = alr::probe_optional_runtime_backend(external_input);
+    if (external_probe.framework_status != "PASS" || external_probe.available_status != "PASS" ||
+        external_probe.source != "external" || external_probe.backend != "low-overhead-external" ||
+        external_probe.candidate_path != "/data/local/tmp/alr/proroot" || external_probe.can_execute) {
+        std::cerr << external_probe.framework_status << " " << external_probe.available_status << " "
+                  << external_probe.source << " " << external_probe.backend << "\n";
+        return EXIT_FAILURE;
+    }
+
     std::cout << "native backend policy test ok\n";
     return EXIT_SUCCESS;
 }

@@ -19,6 +19,51 @@ class LaunchPlan:
             raise ValueError("executable must live in native_library_dir")
 
 
+@dataclass(frozen=True)
+class OptionalRuntimeBackendProbe:
+    framework_status: str
+    available_status: str
+    source: str
+    backend: str
+    candidate_path: str
+    can_execute: bool
+    reason: str
+
+
+def probe_optional_runtime_backend(
+    *,
+    backend: str = "none",
+    candidate_path: str = "",
+) -> OptionalRuntimeBackendProbe:
+    """Describe optional low-overhead runtime backend availability without executing it.
+
+    This is intentionally absent-safe scaffolding: no external runtime is bundled,
+    launched, or required. A later OSS/proroot-style backend can replace this with
+    a real file/signature/smoke probe while preserving these report fields.
+    """
+    if not candidate_path:
+        return OptionalRuntimeBackendProbe(
+            framework_status="PASS",
+            available_status="SKIP",
+            source="none",
+            backend="none",
+            candidate_path="",
+            can_execute=False,
+            reason="no optional external runtime backend configured",
+        )
+    if not candidate_path.startswith("/"):
+        raise ValueError("absolute optional runtime backend path required")
+    return OptionalRuntimeBackendProbe(
+        framework_status="PASS",
+        available_status="PASS",
+        source="external",
+        backend=backend or "external",
+        candidate_path=_normalize(candidate_path),
+        can_execute=False,
+        reason="external candidate declared for future probe integration; not executed by absent-safe scaffolding",
+    )
+
+
 def build_launch_plan(
     *,
     package_name: str,

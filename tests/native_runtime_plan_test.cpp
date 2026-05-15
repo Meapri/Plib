@@ -20,6 +20,9 @@ int main() {
     const bool report_ok =
         text.find("loader executable: /data/app/pkg/lib/arm64/libalr-loader.so") != std::string::npos &&
         text.find("rootfs dir: /data/user/0/dev.chanwoo.androlinux/files/rootfs/debian-arm64") != std::string::npos &&
+        text.find("LOW-OVERHEAD BACKEND PROBE FRAMEWORK: PASS") != std::string::npos &&
+        text.find("OPTIONAL RUNTIME BACKEND AVAILABLE: SKIP") != std::string::npos &&
+        text.find("optional runtime backend source=none") != std::string::npos &&
         text.find("Runtime policy: rootfs files stay in app-private writable storage") != std::string::npos;
 
     const bool launch_ok =
