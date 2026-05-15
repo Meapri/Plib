@@ -59,6 +59,11 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "ALR GUEST WAYLAND GUI GPU BRIDGE EXECUTION" in text
     assert "ALR GUEST X11 GUI GPU BRIDGE EXECUTION" in text
     assert "alr guest gles shim smoke path rewrite" in text
+    assert "GUEST EGL INIT VIA SHIM UPDATE:" in text
+    assert "GUEST GLES CLEAR VIA SHIM UPDATE:" in text
+    assert "GUEST EGL SWAP VIA ANDROID SURFACE UPDATE:" in text
+    assert "GUEST GLES HARDWARE RENDER UPDATE:" in text
+    assert "surface gles shim frames rendered=" in text
     assert "alrHandoffStdoutText" in text
 
 
@@ -68,6 +73,7 @@ def test_native_surface_renderer_accepts_multi_frame_stream_and_reports_bridge()
     assert "surface requested frames=" in text
     assert "surface wayland frames rendered=" in text
     assert "surface x11 frames rendered=" in text
+    assert "surface gles shim frames rendered=" in text
     assert "surface gui total frames rendered=" in text
     assert "surface frames rendered=" in text
     assert "surface frames dropped=" in text
@@ -75,4 +81,6 @@ def test_native_surface_renderer_accepts_multi_frame_stream_and_reports_bridge()
     assert "guest gpu ipc bridge hardware render=" in text
     assert "guest gui gpu compositor hardware render=" in text
     assert "guest wayland/x11 gui gpu surface hardware render=" in text
+    assert "guest egl swap via android surface=" in text
+    assert "guest gles hardware render=" in text
     assert "eglSwapBuffers" in text

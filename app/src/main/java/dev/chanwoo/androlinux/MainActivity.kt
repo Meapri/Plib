@@ -111,15 +111,17 @@ class MainActivity : Activity() {
         val alrGuestX11GuiBridgeResult = runGuestGuiBridge(nativeCommandRunner, rootfsStatus.rootfsDir, "X11", useAlr = true)
         val guestGuiSurfaceCommands = alrGuestWaylandGuiBridgeResult.commands + alrGuestX11GuiBridgeResult.commands +
             guestWaylandGuiBridgeResult.commands + guestX11GuiBridgeResult.commands
-        val surfaceGpuCommands = when {
-            guestGuiSurfaceCommands.isNotEmpty() -> guestGuiSurfaceCommands
-            alrGuestGpuIpcBridgeResult.commands.isNotEmpty() -> alrGuestGpuIpcBridgeResult.commands
-            guestGpuIpcBridgeResult.commands.isNotEmpty() -> guestGpuIpcBridgeResult.commands
-            alrGuestGpuCommands.isNotEmpty() -> alrGuestGpuCommands
-            guestGpuCommands.isNotEmpty() -> guestGpuCommands
-            alrGuestGlesShimCommand != null -> listOf(alrGuestGlesShimCommand)
-            guestGlesShimCommand != null -> listOf(guestGlesShimCommand)
-            else -> listOf(GuestGpuCommand(0.05f, 0.18f, 0.45f, "host-default"))
+        val surfaceGpuCommands = buildList {
+            addAll(guestGuiSurfaceCommands)
+            addAll(if (alrGuestGpuIpcBridgeResult.commands.isNotEmpty()) alrGuestGpuIpcBridgeResult.commands else guestGpuIpcBridgeResult.commands)
+            addAll(if (alrGuestGpuCommands.isNotEmpty()) alrGuestGpuCommands else guestGpuCommands)
+            alrGuestGlesShimCommand?.let(::add)
+            if (alrGuestGlesShimCommand == null) {
+                guestGlesShimCommand?.let(::add)
+            }
+            if (isEmpty()) {
+                add(GuestGpuCommand(0.05f, 0.18f, 0.45f, "host-default"))
+            }
         }
         val prootHelloVerboseResult = if (prootHelloResult.exitCode == 0) {
             null
@@ -319,7 +321,7 @@ class MainActivity : Activity() {
             alrGuestX11GuiBridgeResult.error == null
         val hostGpuHardwareCandidate = hostGpuProbe.lineStartingWith("host gpu hardware candidate=") == "host gpu hardware candidate=true"
 
-        val executionSummary = "build: 0.4.46-gpu-surface-callback-evidence" +
+        val executionSummary = "build: 0.4.47-gles-shim-surface-present" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -760,7 +762,10 @@ class MainActivity : Activity() {
                 override fun surfaceCreated(holder: SurfaceHolder) {
                     val encodedFrames = encodeSurfaceFrames(surfaceGpuCommands)
                     val surfaceReport = nativeRenderGpuSurfaceFrames(holder.surface, encodedFrames)
-                    val executionUpdate = surfaceExecutionUpdate(surfaceReport)
+                    val executionUpdate = surfaceExecutionUpdate(
+                        surfaceReport,
+                        guestGlesShimSmokePassed || alrGuestGlesShimSmokePassed,
+                    )
                     surfaceStatusView.text = "Linux guest GPU Surface renderer callback complete\n$executionUpdate"
                     view.append("\n\n--- Linux guest Wayland/X11 GUI GPU surface renderer ---\n$executionUpdate\n$surfaceReport")
                 }
@@ -967,6 +972,7 @@ class MainActivity : Activity() {
             .firstOrNull { it.startsWith("ALR_GLES_SHIM_COMMAND ALR_GPU_CLEAR ") }
             ?.removePrefix("ALR_GLES_SHIM_COMMAND ")
             ?.let { parseGuestGpuClearLine(it) }
+            ?.copy(protocol = "GLES", seq = 1)
 
     private fun parseGuestGpuClearLine(line: String): GuestGpuCommand? {
         val parts = line.trim().split(Regex("\\s+"))
@@ -1074,9 +1080,13 @@ class MainActivity : Activity() {
     private fun optionalResultBlock(label: String, result: NativeCommandResult?): String =
         result?.let { resultBlock(label, it) } ?: "\n\n$label skipped=quiet rootfs execution passed"
 
-    private fun surfaceExecutionUpdate(surfaceReport: String): String {
+    private fun surfaceExecutionUpdate(surfaceReport: String, glesShimLifecyclePassed: Boolean): String {
         val framesRendered = surfaceReport.lineStartingWith("surface frames rendered=")
             .removePrefix("surface frames rendered=")
+            .toIntOrNull()
+            ?: 0
+        val glesShimFramesRendered = surfaceReport.lineStartingWith("surface gles shim frames rendered=")
+            .removePrefix("surface gles shim frames rendered=")
             .toIntOrNull()
             ?: 0
         val hostSurfacePassed =
@@ -1088,18 +1098,30 @@ class MainActivity : Activity() {
         val guiSurfacePassed =
             surfaceReport.lineStartingWith("guest wayland/x11 gui gpu surface hardware render=") ==
                 "guest wayland/x11 gui gpu surface hardware render=true"
+        val glesShimSurfacePassed =
+            glesShimLifecyclePassed &&
+                surfaceReport.lineStartingWith("guest egl swap via android surface=") == "guest egl swap via android surface=true" &&
+                surfaceReport.lineStartingWith("guest gles hardware render=") == "guest gles hardware render=true" &&
+                glesShimFramesRendered > 0
 
         return "HOST GPU SURFACE EXECUTION UPDATE: ${if (hostSurfacePassed) "PASS" else "FAIL"}" +
             "\nGUEST GPU MULTI-FRAME SURFACE EXECUTION UPDATE: ${if (multiFrameSurfacePassed) "PASS" else "FAIL"}" +
             "\nGUEST GUI GPU SURFACE EXECUTION UPDATE: ${if (guiSurfacePassed) "PASS" else "FAIL"}" +
+            "\nGUEST EGL INIT VIA SHIM UPDATE: ${if (glesShimLifecyclePassed) "PASS" else "FAIL"}" +
+            "\nGUEST GLES CLEAR VIA SHIM UPDATE: ${if (glesShimSurfacePassed) "PASS" else "FAIL"}" +
+            "\nGUEST EGL SWAP VIA ANDROID SURFACE UPDATE: ${if (glesShimSurfacePassed) "PASS" else "FAIL"}" +
+            "\nGUEST GLES HARDWARE RENDER UPDATE: ${if (glesShimSurfacePassed) "PASS" else "FAIL"}" +
             "\nsurface callback frames rendered=$framesRendered" +
-            "\nsurface callback hardware render=${hostSurfacePassed && multiFrameSurfacePassed && guiSurfacePassed}" +
+            "\nsurface callback hardware render=${hostSurfacePassed && multiFrameSurfacePassed && guiSurfacePassed && glesShimSurfacePassed}" +
             "\n${surfaceReport.lineStartingWith("surface gl renderer=")}" +
             "\n${surfaceReport.lineStartingWith("surface frames rendered=")}" +
             "\n${surfaceReport.lineStartingWith("surface frames dropped=")}" +
             "\n${surfaceReport.lineStartingWith("surface frame lossless=")}" +
             "\n${surfaceReport.lineStartingWith("surface gpu hardware render=")}" +
             "\n${surfaceReport.lineStartingWith("guest wayland/x11 gui gpu surface hardware render=")}" +
+            "\n${surfaceReport.lineStartingWith("surface gles shim frames rendered=")}" +
+            "\n${surfaceReport.lineStartingWith("guest egl swap via android surface=")}" +
+            "\n${surfaceReport.lineStartingWith("guest gles hardware render=")}" +
             "\n${surfaceReport.lineStartingWith("surface wayland frames rendered=")}" +
             "\n${surfaceReport.lineStartingWith("surface x11 frames rendered=")}"
     }

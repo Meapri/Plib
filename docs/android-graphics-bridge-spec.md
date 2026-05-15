@@ -492,6 +492,21 @@ GUEST EGL SWAP VIA ANDROID SURFACE: PASS
 GUEST GLES HARDWARE RENDER: PASS
 ```
 
+Current device evidence from build `0.4.47-gles-shim-surface-present`:
+
+```text
+GUEST EGL INIT VIA SHIM UPDATE: PASS
+GUEST GLES CLEAR VIA SHIM UPDATE: PASS
+GUEST EGL SWAP VIA ANDROID SURFACE UPDATE: PASS
+GUEST GLES HARDWARE RENDER UPDATE: PASS
+surface frames rendered=23
+surface frames dropped=0
+surface gpu hardware render=true
+surface gles shim frames rendered=1
+guest egl swap via android surface=true
+guest gles hardware render=true
+```
+
 ### Vulkan MVP
 
 ```text

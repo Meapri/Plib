@@ -237,3 +237,28 @@ surface frames dropped=0
 ```
 
 Do not mark V51–V60 complete unless Android Surface/EGL hardware proof is present in the same evidence bundle as the guest proxy/shim result.
+
+## Latest Device Evidence
+
+Build `0.4.47-gles-shim-surface-present` now feeds GUI, IPC, and GLES shim
+commands into the same Android Surface/EGL/GLES stream. ADB UI-tree evidence
+from device `R5KL20B6S3X`:
+
+```text
+GUEST EGL INIT VIA SHIM UPDATE: PASS
+GUEST GLES CLEAR VIA SHIM UPDATE: PASS
+GUEST EGL SWAP VIA ANDROID SURFACE UPDATE: PASS
+GUEST GLES HARDWARE RENDER UPDATE: PASS
+surface callback frames rendered=23
+surface callback hardware render=true
+surface gl renderer=Mali-G615 MC2
+surface frames rendered=23
+surface frames dropped=0
+surface frame lossless=true
+surface gpu hardware render=true
+surface gles shim frames rendered=1
+guest egl swap via android surface=true
+guest gles hardware render=true
+surface wayland frames rendered=8
+surface x11 frames rendered=8
+```

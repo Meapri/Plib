@@ -30,4 +30,7 @@ def test_main_activity_owns_surface_view_and_appends_native_surface_report():
     assert 'surfaceReport.lineStartingWith("surface frames rendered=")' in text
     assert 'surfaceReport.lineStartingWith("surface gpu hardware render=")' in text
     assert 'surfaceReport.lineStartingWith("guest wayland/x11 gui gpu surface hardware render=")' in text
+    assert 'surfaceReport.lineStartingWith("surface gles shim frames rendered=")' in text
+    assert 'surfaceReport.lineStartingWith("guest egl swap via android surface=")' in text
+    assert 'surfaceReport.lineStartingWith("guest gles hardware render=")' in text
     assert "Linux guest Wayland/X11 GUI GPU surface renderer" in text

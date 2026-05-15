@@ -289,6 +289,7 @@ std::string render_to_android_surface_frames(JNIEnv* env, jobject surface_obj, c
     int rendered = 0;
     int wayland_rendered = 0;
     int x11_rendered = 0;
+    int gles_shim_rendered = 0;
     int other_rendered = 0;
     GLenum last_gl_error = GL_NO_ERROR;
     EGLBoolean last_swapped = EGL_FALSE;
@@ -315,6 +316,8 @@ std::string render_to_android_surface_frames(JNIEnv* env, jobject surface_obj, c
             ++wayland_rendered;
         } else if (frame.tag.rfind("X11-", 0) == 0) {
             ++x11_rendered;
+        } else if (frame.tag.rfind("GLES-", 0) == 0) {
+            ++gles_shim_rendered;
         } else {
             ++other_rendered;
         }
@@ -323,6 +326,7 @@ std::string render_to_android_surface_frames(JNIEnv* env, jobject surface_obj, c
     const int dropped = static_cast<int>(frames.size()) - rendered;
     out << "\nsurface wayland frames rendered=" << wayland_rendered;
     out << "\nsurface x11 frames rendered=" << x11_rendered;
+    out << "\nsurface gles shim frames rendered=" << gles_shim_rendered;
     out << "\nsurface other frames rendered=" << other_rendered;
     out << "\nsurface gui total frames rendered=" << (wayland_rendered + x11_rendered);
     out << "\nsurface frames rendered=" << rendered;
@@ -337,6 +341,8 @@ std::string render_to_android_surface_frames(JNIEnv* env, jobject surface_obj, c
     out << "\nguest gui gpu compositor hardware render=" << (!software && rendered == static_cast<int>(frames.size()) && rendered > 0 ? "true" : "false");
     out << "\nguest wayland/x11 gui gpu surface hardware render=" << (!software && rendered == static_cast<int>(frames.size()) && rendered > 0 ? "true" : "false");
     out << "\nguest gpu bridge hardware render=" << (!software && rendered > 0 ? "true" : "false");
+    out << "\nguest egl swap via android surface=" << (!software && gles_shim_rendered > 0 && last_swapped == EGL_TRUE ? "true" : "false");
+    out << "\nguest gles hardware render=" << (!software && gles_shim_rendered > 0 && last_gl_error == GL_NO_ERROR && last_swapped == EGL_TRUE ? "true" : "false");
 
     eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     eglDestroyContext(display, context);
