@@ -62,13 +62,18 @@ tasks.register("packageNativeTestCommand") {
     doLast {
         val abis = listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
         abis.forEach { abi ->
-            val built = fileTree(layout.buildDirectory.dir("intermediates/cxx/Debug")) {
+            val builtTestCommand = fileTree(layout.buildDirectory.dir("intermediates/cxx/Debug")) {
                 include("**/obj/$abi/alr-test-command")
             }.files.singleOrNull()
                 ?: throw GradleException("missing alr-test-command for $abi; run buildCMakeDebug[$abi] first")
+            val builtTrampoline = fileTree(layout.buildDirectory.dir("intermediates/cxx/Debug")) {
+                include("**/obj/$abi/alr-runtime-trampoline")
+            }.files.singleOrNull()
+                ?: throw GradleException("missing alr-runtime-trampoline for $abi; run buildCMakeDebug[$abi] first")
             val destDir = generatedDir.get().dir(abi).asFile
             destDir.mkdirs()
-            built.copyTo(destDir.resolve("libalr_test_command.so"), overwrite = true)
+            builtTestCommand.copyTo(destDir.resolve("libalr_test_command.so"), overwrite = true)
+            builtTrampoline.copyTo(destDir.resolve("libalr_runtime_trampoline.so"), overwrite = true)
         }
     }
 }

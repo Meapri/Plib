@@ -45,6 +45,10 @@ std::string alr_runtime_interposer_for(const RuntimeReportInput& input) {
     return join_path(input.native_library_dir, "libalr_runtime_interposer.so");
 }
 
+std::string alr_runtime_trampoline_for(const RuntimeReportInput& input) {
+    return join_path(input.native_library_dir, "libalr_runtime_trampoline.so");
+}
+
 std::string alr_runtime_bridge_for(const RuntimeReportInput& input) {
     return join_path(input.native_library_dir, "libalr_runtime_bridge.so");
 }
@@ -123,6 +127,7 @@ RuntimeReport build_runtime_report(const RuntimeReportInput& input, const Execut
     out << "alr runtime launcher path=" << alr_runtime.executable << "\n";
     out << "alr runtime hook path=" << alr_runtime.env.at("ALR_HOOK_PATH") << "\n";
     out << "alr runtime interposer path=" << alr_runtime.env.at("ALR_INTERPOSER_PATH") << "\n";
+    out << "alr runtime trampoline path=" << alr_runtime.env.at("ALR_TRAMPOLINE_PATH") << "\n";
     out << "alr runtime bridge path=" << alr_runtime.env.at("ALR_BRIDGE_PATH") << "\n";
     out << "alr runtime config source=env-skeleton\n";
     out << "alr runtime config format=alr-config-v1\n";
@@ -217,6 +222,7 @@ LoaderLaunchPlan build_alr_runtime_launch_plan(const RuntimeReportInput& input) 
         {"ALR_BACKEND", "alr-runtime"},
         {"ALR_HOOK_PATH", alr_runtime_hook_for(input)},
         {"ALR_INTERPOSER_PATH", alr_runtime_interposer_for(input)},
+        {"ALR_TRAMPOLINE_PATH", alr_runtime_trampoline_for(input)},
         {"ALR_BRIDGE_PATH", alr_runtime_bridge_for(input)},
         {"ALR_CONFIG_FORMAT", "alr-config-v1"},
         {"ALR_FAKE_ROOT", "0"},

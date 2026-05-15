@@ -45,6 +45,10 @@ def test_jni_report_includes_alr_runtime_launcher_plan_section():
     assert "ALR LOW-OVERHEAD RUNTIME HELLO EXECUTION: " in launch_source
     assert "ALR ELF LOAD PLAN: " in (ROOT / "app/src/main/cpp/alr_runtime/alr_elf.cpp").read_text()
     assert "ALR ELF STATIC HELLO CANDIDATE: " in (ROOT / "app/src/main/cpp/alr_runtime/alr_elf.cpp").read_text()
+    trampoline_source = (ROOT / "app/src/main/cpp/alr_runtime/alr_trampoline.cpp").read_text()
+    assert "ALR TRAMPOLINE AVAILABLE: " in trampoline_source
+    assert "ALR TRAMPOLINE CONFIG HANDOFF: " in trampoline_source
+    assert "ALR STATIC HELLO VIA TRAMPOLINE: " in trampoline_source
     assert "launch_attempt.report" in plan
     assert "ALR RUNTIME DIRECT APP-DATA EXEC POLICY: PASS" in plan
 
