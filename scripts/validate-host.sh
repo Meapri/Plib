@@ -17,6 +17,7 @@ required=(
   "docs/architecture.md"
   "docs/build-environment.md"
   "docs/poc-roadmap.md"
+  "rootfs/manifests/debian-arm64-bookworm-slim.json"
 )
 
 for path in "${required[@]}"; do

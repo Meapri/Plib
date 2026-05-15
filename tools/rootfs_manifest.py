@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
@@ -53,6 +54,24 @@ class RootfsInstallPlan:
     rootfs_dir: str
     marker_path: str
     asset_destinations: dict[str, str]
+
+
+def load_rootfs_manifest(path: str | Path) -> RootfsManifest:
+    manifest_path = Path(path)
+    data = json.loads(manifest_path.read_text())
+    assets = [
+        RootfsAsset(
+            path=item["path"],
+            sha256=item["sha256"],
+            size_bytes=int(item["size_bytes"]),
+        )
+        for item in data["assets"]
+    ]
+    return RootfsManifest(
+        name=data["name"],
+        version=data["version"],
+        assets=assets,
+    )
 
 
 def plan_rootfs_install(manifest: RootfsManifest, *, app_files_dir: str) -> RootfsInstallPlan:

@@ -1,0 +1,20 @@
+{
+  "name": "debian-arm64",
+  "version": "bookworm-slim-2026-05",
+  "description": "Placeholder manifest for the first tiny Debian arm64 rootfs PoC archive. The zero hash/size means no real payload is bundled yet.",
+  "assets": [
+    {
+      "path": "rootfs.tar.zst",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "size_bytes": 0
+    }
+  ],
+  "unsupported_features": [
+    "systemd",
+    "docker",
+    "real_chroot",
+    "real_bind_mounts",
+    "kernel_modules",
+    "privileged_device_nodes"
+  ]
+}
