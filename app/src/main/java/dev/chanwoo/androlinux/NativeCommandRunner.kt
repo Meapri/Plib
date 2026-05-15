@@ -60,6 +60,12 @@ class NativeCommandRunner(
     fun runProotRootfsDpkgVersion(rootfsDir: File): NativeCommandResult =
         runProotRootfsCommand(rootfsDir, "/usr/bin/dpkg", listOf("--version"), rootId = true, rawRootfs = true)
 
+    fun runProotRootfsDpkgPrintArchitecture(rootfsDir: File): NativeCommandResult =
+        runProotRootfsCommand(rootfsDir, "/usr/bin/dpkg", listOf("--print-architecture"), rootId = true, rawRootfs = true)
+
+    fun runProotRootfsDpkgQueryVersion(rootfsDir: File): NativeCommandResult =
+        runProotRootfsCommand(rootfsDir, "/usr/bin/dpkg-query", listOf("--version"), rootId = true, rawRootfs = true)
+
     fun runProotRootfsProgramVerbose(rootfsDir: File, program: String): NativeCommandResult =
         runProotRootfsCommand(rootfsDir, program, verbose = "9")
 

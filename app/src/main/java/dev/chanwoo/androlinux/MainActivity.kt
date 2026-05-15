@@ -47,6 +47,8 @@ class MainActivity : Activity() {
         )
         val prootIdResult = nativeCommandRunner.runProotRootfsIdAsRoot(rootfsStatus.rootfsDir)
         val prootDpkgVersionResult = nativeCommandRunner.runProotRootfsDpkgVersion(rootfsStatus.rootfsDir)
+        val prootDpkgArchResult = nativeCommandRunner.runProotRootfsDpkgPrintArchitecture(rootfsStatus.rootfsDir)
+        val prootDpkgQueryVersionResult = nativeCommandRunner.runProotRootfsDpkgQueryVersion(rootfsStatus.rootfsDir)
         val prootHelloVerboseResult = if (prootHelloResult.exitCode == 0) {
             null
         } else {
@@ -73,6 +75,9 @@ class MainActivity : Activity() {
         val rootfsLibmdFile = File(rootfsStatus.rootfsDir, "lib/aarch64-linux-gnu/libmd.so.0")
         val rootfsDpkgConfigDir = File(rootfsStatus.rootfsDir, "etc/dpkg/dpkg.cfg.d")
         val rootfsDpkgConfigFile = File(rootfsStatus.rootfsDir, "etc/dpkg/dpkg.cfg")
+        val rootfsDpkgQueryFile = File(rootfsStatus.rootfsDir, "usr/bin/dpkg-query")
+        val rootfsDpkgCpuTableFile = File(rootfsStatus.rootfsDir, "usr/share/dpkg/cputable")
+        val rootfsDpkgTupleTableFile = File(rootfsStatus.rootfsDir, "usr/share/dpkg/tupletable")
         val rootfsExecutionPassed = prootHelloResult.exitCode == 0 &&
             prootHelloResult.stdout.contains("hello from static arm64 rootfs")
         val shellScriptExecutionPassed = prootScriptResult.exitCode == 0 &&
@@ -109,8 +114,12 @@ class MainActivity : Activity() {
         val identityNssExecutionPassed = identityNumericRoot && identityNamedRoot
         val dpkgVersionExecutionPassed = prootDpkgVersionResult.exitCode == 0 &&
             prootDpkgVersionResult.stdout.contains("Debian 'dpkg' package management program")
+        val dpkgArchExecutionPassed = prootDpkgArchResult.exitCode == 0 &&
+            prootDpkgArchResult.stdout.trim() == "arm64"
+        val dpkgQueryExecutionPassed = prootDpkgQueryVersionResult.exitCode == 0 &&
+            prootDpkgQueryVersionResult.stdout.contains("Debian dpkg-query package management program")
 
-        val executionSummary = "build: 0.4.4-dpkg-config-smoke" +
+        val executionSummary = "build: 0.4.5-dpkg-query-arch-smoke" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -120,6 +129,8 @@ class MainActivity : Activity() {
             "\nCLEAN GUEST ENVIRONMENT: ${if (!guestEnvLeakedAndroidVars) "PASS" else "FAIL"}" +
             "\nIDENTITY NSS EXECUTION: ${if (identityNssExecutionPassed) "PASS" else "FAIL"}" +
             "\nDPKG VERSION EXECUTION: ${if (dpkgVersionExecutionPassed) "PASS" else "FAIL"}" +
+            "\nDPKG ARCH EXECUTION: ${if (dpkgArchExecutionPassed) "PASS" else "FAIL"}" +
+            "\nDPKG QUERY EXECUTION: ${if (dpkgQueryExecutionPassed) "PASS" else "FAIL"}" +
             "\nidentity numeric root=$identityNumericRoot" +
             "\nidentity named root=$identityNamedRoot" +
             "\nidentity proot mode=raw -r" +
@@ -145,6 +156,9 @@ class MainActivity : Activity() {
             "\nrootfs libmd exists=${rootfsLibmdFile.isFile} executable=${rootfsLibmdFile.canExecute()} bytes=${rootfsLibmdFile.length()}" +
             "\nrootfs /etc/dpkg/dpkg.cfg exists=${rootfsDpkgConfigFile.isFile} bytes=${rootfsDpkgConfigFile.length()}" +
             "\nrootfs /etc/dpkg/dpkg.cfg.d exists=${rootfsDpkgConfigDir.isDirectory}" +
+            "\nrootfs /usr/bin/dpkg-query exists=${rootfsDpkgQueryFile.isFile} executable=${rootfsDpkgQueryFile.canExecute()} bytes=${rootfsDpkgQueryFile.length()}" +
+            "\nrootfs /usr/share/dpkg/cputable exists=${rootfsDpkgCpuTableFile.isFile} bytes=${rootfsDpkgCpuTableFile.length()}" +
+            "\nrootfs /usr/share/dpkg/tupletable exists=${rootfsDpkgTupleTableFile.isFile} bytes=${rootfsDpkgTupleTableFile.length()}" +
             "\nnative smoke exit=${nativeCommandResult.exitCode}" +
             "\nnative smoke stdout=${nativeCommandResult.stdout}" +
             "\nproot --version exit=${prootCandidateResult.exitCode}" +
@@ -170,6 +184,12 @@ class MainActivity : Activity() {
             "\nproot dpkg --version exit=${prootDpkgVersionResult.exitCode}" +
             "\nproot dpkg --version stdout=${prootDpkgVersionResult.stdout}" +
             "\nproot dpkg --version stderr=${prootDpkgVersionResult.stderr}" +
+            "\nproot dpkg --print-architecture exit=${prootDpkgArchResult.exitCode}" +
+            "\nproot dpkg --print-architecture stdout=${prootDpkgArchResult.stdout}" +
+            "\nproot dpkg --print-architecture stderr=${prootDpkgArchResult.stderr}" +
+            "\nproot dpkg-query --version exit=${prootDpkgQueryVersionResult.exitCode}" +
+            "\nproot dpkg-query --version stdout=${prootDpkgQueryVersionResult.stdout}" +
+            "\nproot dpkg-query --version stderr=${prootDpkgQueryVersionResult.stderr}" +
             "\nprobe dlopen talloc=${nativeProbe.lineStartingWith("dlopen libtalloc.so")}" +
             "\nprobe dlopen proot=${nativeProbe.lineStartingWith("dlopen libalr_proot.so")}" +
             "\nproot loader=${prootCandidateResult.environment["PROOT_LOADER"]}" +
@@ -216,6 +236,8 @@ class MainActivity : Activity() {
             resultBlock("proot dash", prootDashResult) +
             resultBlock("proot id", prootIdResult) +
             resultBlock("proot dpkg --version", prootDpkgVersionResult) +
+            resultBlock("proot dpkg --print-architecture", prootDpkgArchResult) +
+            resultBlock("proot dpkg-query --version", prootDpkgQueryVersionResult) +
             optionalResultBlock("proot hello verbose on failure", prootHelloVerboseResult)
 
         val report = executionSummary + "\n\n--- verbose report ---\n" + verboseReport

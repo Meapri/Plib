@@ -127,3 +127,14 @@ def test_main_activity_reports_dpkg_version_smoke_result():
     assert "proot dpkg --version exit=" in text
     assert "proot dpkg --version stdout=" in text
     assert "proot dpkg --version stderr=" in text
+
+
+def test_main_activity_reports_dpkg_arch_and_query_smoke_results():
+    text = MAIN.read_text()
+    assert "DPKG ARCH EXECUTION:" in text
+    assert "DPKG QUERY EXECUTION:" in text
+    assert "rootfs /usr/bin/dpkg-query exists=" in text
+    assert "rootfs /usr/share/dpkg/cputable exists=" in text
+    assert "rootfs /usr/share/dpkg/tupletable exists=" in text
+    assert "proot dpkg --print-architecture exit=" in text
+    assert "proot dpkg-query --version exit=" in text

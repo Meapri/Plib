@@ -9,7 +9,7 @@ PAYLOAD = ROOT / "app" / "src" / "main" / "assets" / "rootfs" / "payloads" / "ti
 def test_android_assets_include_rootfs_manifest_and_payload():
     assert MANIFEST.is_file()
     assert PAYLOAD.is_file()
-    assert PAYLOAD.stat().st_size == 9830400
+    assert PAYLOAD.stat().st_size == 10045440
 
 
 def test_android_asset_manifest_matches_host_manifest():
@@ -173,7 +173,15 @@ def test_tiny_rootfs_contains_dpkg_version_smoke_files():
         assert "./etc/dpkg" in names
         assert "./etc/dpkg/dpkg.cfg" in names
         assert "./etc/dpkg/dpkg.cfg.d" in names
+        assert "./usr/bin/dpkg-query" in names
+        assert "./usr/share/dpkg/abitable" in names
+        assert "./usr/share/dpkg/cputable" in names
+        assert "./usr/share/dpkg/ostable" in names
+        assert "./usr/share/dpkg/tupletable" in names
+        assert "./var/lib/dpkg/info" in names
+        assert "./var/lib/dpkg/updates" in names
         assert archive.extractfile("./usr/bin/dpkg").read(4) == b"\x7fELF"
+        assert archive.extractfile("./usr/bin/dpkg-query").read(4) == b"\x7fELF"
         assert archive.extractfile("./lib/aarch64-linux-gnu/libmd.so.0").read(4) == b"\x7fELF"
 
 
@@ -190,4 +198,19 @@ def test_real_distro_dpkg_requests_rootfs_loader_and_libmd():
     assert "Requesting program interpreter: /lib/ld-linux-aarch64.so.1" in program_headers
     assert "libmd.so.0" in dynamic
     assert "libselinux.so.1" in dynamic
+    assert "libc.so.6" in dynamic
+
+
+def test_real_distro_dpkg_query_requests_rootfs_loader_and_libmd():
+    import subprocess
+    import tarfile
+    import tempfile
+
+    with tarfile.open(PAYLOAD) as archive, tempfile.NamedTemporaryFile() as tmp:
+        tmp.write(archive.extractfile("./usr/bin/dpkg-query").read())
+        tmp.flush()
+        program_headers = subprocess.check_output(["readelf", "-l", tmp.name], text=True)
+        dynamic = subprocess.check_output(["readelf", "-d", tmp.name], text=True)
+    assert "Requesting program interpreter: /lib/ld-linux-aarch64.so.1" in program_headers
+    assert "libmd.so.0" in dynamic
     assert "libc.so.6" in dynamic
