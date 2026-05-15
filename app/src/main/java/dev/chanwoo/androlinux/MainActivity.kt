@@ -3,6 +3,7 @@ package dev.chanwoo.androlinux
 import android.app.Activity
 import android.os.Bundle
 import android.widget.TextView
+import java.io.File
 
 class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -22,6 +23,7 @@ class MainActivity : Activity() {
         )
         val rootfsPlan = buildRootfsInstallPlan(rootfsManifest, filesDir)
         val rootfsStatus = RootfsInstaller(this).prepareBundledTinyRootfs()
+        val nativeCommandResult = NativeCommandRunner(File(applicationInfo.nativeLibraryDir)).runSmokeTest()
 
         val report = nativeRuntimeReport(
             packageName,
@@ -37,7 +39,10 @@ class MainActivity : Activity() {
             "\nrootfs extracted dir: ${rootfsStatus.rootfsDir.absolutePath}" +
             "\nrootfs marker=${rootfsStatus.markerPath.absolutePath}" +
             "\n\nnext executable backend: android-native-test-command" +
-            "\npackaged command: ${applicationInfo.nativeLibraryDir}/libalr_test_command.so"
+            "\npackaged command: ${applicationInfo.nativeLibraryDir}/libalr_test_command.so" +
+            "\nnative command exit=${nativeCommandResult.exitCode}" +
+            "\nnative command stdout=${nativeCommandResult.stdout}" +
+            "\nnative command stderr=${nativeCommandResult.stderr}"
 
         val view = TextView(this).apply {
             text = report
