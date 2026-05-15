@@ -10,14 +10,20 @@ data class NativeCommandResult(
 )
 
 class NativeCommandRunner(private val nativeLibraryDir: File) {
-    fun runSmokeTest(): NativeCommandResult = runPackagedCommand("libalr_test_command.so", "smoke")
+    fun runSmokeTest(): NativeCommandResult = runPackagedCommand("libalr_test_command.so", listOf("smoke"))
 
     fun runProotCandidateSmokeTest(): NativeCommandResult =
-        runPackagedCommand("libalr_proot.so", "--version")
+        runPackagedCommand("libalr_proot.so", listOf("--version"))
 
-    private fun runPackagedCommand(fileName: String, argument: String): NativeCommandResult {
+    fun runProotRootfsProgram(rootfsDir: File, program: String): NativeCommandResult =
+        runPackagedCommand(
+            "libalr_proot.so",
+            listOf("-R", rootfsDir.absolutePath, "-w", "/root", program),
+        )
+
+    private fun runPackagedCommand(fileName: String, arguments: List<String>): NativeCommandResult {
         val command = File(nativeLibraryDir, fileName)
-        val process = ProcessBuilder(command.absolutePath, argument)
+        val process = ProcessBuilder(listOf(command.absolutePath) + arguments)
             .redirectErrorStream(false)
             .start()
         val stdout = process.inputStream.bufferedReader().use { it.readText() }.trim()

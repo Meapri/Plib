@@ -26,6 +26,7 @@ class MainActivity : Activity() {
         val nativeCommandRunner = NativeCommandRunner(File(applicationInfo.nativeLibraryDir))
         val nativeCommandResult = nativeCommandRunner.runSmokeTest()
         val prootCandidateResult = nativeCommandRunner.runProotCandidateSmokeTest()
+        val prootHelloResult = nativeCommandRunner.runProotRootfsProgram(rootfsStatus.rootfsDir, "/bin/hello")
 
         val report = nativeRuntimeReport(
             packageName,
@@ -49,7 +50,10 @@ class MainActivity : Activity() {
             "\nproot command: ${applicationInfo.nativeLibraryDir}/libalr_proot.so" +
             "\nproot candidate exit=${prootCandidateResult.exitCode}" +
             "\nproot candidate stdout=${prootCandidateResult.stdout}" +
-            "\nproot candidate stderr=${prootCandidateResult.stderr}"
+            "\nproot candidate stderr=${prootCandidateResult.stderr}" +
+            "\n\nproot hello exit=${prootHelloResult.exitCode}" +
+            "\nproot hello stdout=${prootHelloResult.stdout}" +
+            "\nproot hello stderr=${prootHelloResult.stderr}"
 
         val view = TextView(this).apply {
             text = report
