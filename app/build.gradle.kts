@@ -19,6 +19,14 @@ android {
     packaging {
         jniLibs {
             useLegacyPackaging = true
+            // Termux prebuilts carry Android/Bionic GNU version metadata.
+            // The Android Gradle strip task can corrupt/remove the loadable dynstr data,
+            // making the device linker read garbage NEEDED names such as "h_file"/"nk".
+            keepDebugSymbols += listOf(
+                "**/libalr_proot.so",
+                "**/libtalloc.so",
+                "**/libproot-loader.so",
+            )
         }
     }
 
@@ -26,8 +34,8 @@ android {
         applicationId = "dev.chanwoo.androlinux"
         minSdk = 26
         targetSdk = 35
-        versionCode = 5
-        versionName = "0.3.2-proot-segv-probes"
+        versionCode = 6
+        versionName = "0.3.3-unstripped-proot"
         ndkVersion = "27.2.12479018"
 
         externalNativeBuild {

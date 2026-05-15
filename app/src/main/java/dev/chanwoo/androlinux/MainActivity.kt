@@ -39,7 +39,7 @@ class MainActivity : Activity() {
         val prootHelloResult = nativeCommandRunner.runProotRootfsProgram(rootfsStatus.rootfsDir, "/bin/hello")
         val nativeProbe = nativeLibraryProbe(applicationInfo.nativeLibraryDir)
 
-        val executionSummary = "build: 0.3.2-proot-segv-probes" +
+        val executionSummary = "build: 0.3.3-unstripped-proot" +
             "\nexecution summary" +
             "\nrootfs verified=${rootfsStatus.verified} extracted=${rootfsStatus.extracted}" +
             "\nnative smoke exit=${nativeCommandResult.exitCode}" +
