@@ -237,6 +237,16 @@ class NativeCommandRunner(
     fun runAlrRuntimeTrampolineAptConfigVersion(rootfsDir: File): NativeCommandResult =
         runAlrRuntimeTrampolineGlibcRootfsProgram(rootfsDir, "/usr/bin/apt-config", listOf("--version"), timeoutMs = 5000)
 
+    fun runAlrRuntimeTrampolineAptConfigVersionPreload(rootfsDir: File): NativeCommandResult =
+        runAlrRuntimeTrampolineGlibcRootfsProgram(
+            rootfsDir,
+            "/usr/bin/apt-config",
+            listOf("--version"),
+            timeoutMs = 5000,
+            pathRewrite = false,
+            extraGuestEnvironment = preloadPathFastPathEnvironment(rootfsDir),
+        )
+
     fun runAlrRuntimeTrampolineSyscallBench(rootfsDir: File, mode: String, count: Int): NativeCommandResult =
         runAlrRuntimeTrampolineGlibcRootfsProgram(
             rootfsDir,

@@ -9,7 +9,7 @@ PAYLOAD = ROOT / "app" / "src" / "main" / "assets" / "rootfs" / "payloads" / "ti
 def test_android_assets_include_rootfs_manifest_and_payload():
     assert MANIFEST.is_file()
     assert PAYLOAD.is_file()
-    assert PAYLOAD.stat().st_size == 34981888
+    assert PAYLOAD.stat().st_size == 34983424
 
 
 def test_android_asset_manifest_matches_host_manifest():
@@ -119,8 +119,11 @@ def test_tiny_rootfs_contains_path_preload_fast_path_shim():
         names = set(archive_names)
         assert "./usr/lib/androlinux/libalr_path_preload.so" in names
         assert archive_names.count("./usr/lib/androlinux/libalr_path_preload.so") == 1
+        assert "./lib/aarch64-linux-gnu/libdl.so.2" in names
         assert "./usr/share/androlinux/path-preload.txt" in names
         assert "./usr/share/androlinux/path-preload-link" in names
+        assert archive.getmember("./lib/aarch64-linux-gnu/libdl.so.2").issym()
+        assert archive.getmember("./lib/aarch64-linux-gnu/libdl.so.2").linkname == "libc.so.6"
         assert archive.getmember("./usr/share/androlinux/path-preload-link").issym()
         assert archive.extractfile("./usr/lib/androlinux/libalr_path_preload.so").read(4) == b"\x7fELF"
 

@@ -193,6 +193,25 @@ disabled. The next missing userland coverage observed during probing is
 directory iteration (`opendir`/`readdir`/`closedir`), which blocks some `apt`
 commands from running under preload-only path virtualization.
 
+Latest V60 preload apt-config evidence:
+
+```text
+build: 0.4.60-preload-aptconfig
+ALR APT-CONFIG PRELOAD EXECUTION: PASS
+alr apt-config --version preload handoff=ALR STATIC ENTRY HANDOFF: PASS
+alr apt-config --version preload path rewrite=alr handoff path rewrite count=0
+alr apt-config --version preload stdout=apt 2.8.3 (arm64)
+alr syscall preload hot path measured faster count=3/3
+alr syscall preload hot path perf evidence=PASS
+```
+
+The V60 result widens preload-only path virtualization with directory and
+file-stream entry points: `opendir`, `fopen`, and `fopen64`. This is enough for
+`apt-config --version` to run through the ALR trampoline with `LD_PRELOAD` and
+without the global ptrace path rewrite loop. The rootfs payload also carries a
+glibc-compatible `libdl.so.2 -> libc.so.6` symlink so the source-built preload
+shim can resolve `dlsym` on modern Debian/glibc rootfs layouts.
+
 Known issue:
 
 - V35 summary says `GUEST WAYLAND GUI GPU BRIDGE EXECUTION: FAIL` and `GUEST X11 GUI GPU BRIDGE EXECUTION: FAIL` because ACK writing happens after socket input is closed. Frames were received and rendered losslessly; this is a report/ACK lifecycle bug, not a GPU-path failure.

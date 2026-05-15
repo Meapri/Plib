@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 
+#include <dirent.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <stdarg.h>
@@ -9,6 +10,10 @@
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <unistd.h>
+
+#define ALR_RTLD_NEXT ((void*)-1L)
+
+extern void* dlsym(void* handle, const char* symbol);
 
 static const char* alr_rewrite_path(const char* path, char* buffer, size_t buffer_size) {
     const char* rootfs = getenv("ALR_ROOTFS");
@@ -51,6 +56,30 @@ static const char* alr_unrewrite_cwd(const char* cwd, char* buffer, size_t buffe
         return NULL;
     }
     return buffer;
+}
+
+static DIR* (*alr_real_opendir(void))(const char*) {
+    static DIR* (*real_opendir)(const char*) = NULL;
+    if (real_opendir == NULL) {
+        real_opendir = (DIR* (*)(const char*))dlsym(ALR_RTLD_NEXT, "opendir");
+    }
+    return real_opendir;
+}
+
+static FILE* (*alr_real_fopen(void))(const char*, const char*) {
+    static FILE* (*real_fopen)(const char*, const char*) = NULL;
+    if (real_fopen == NULL) {
+        real_fopen = (FILE* (*)(const char*, const char*))dlsym(ALR_RTLD_NEXT, "fopen");
+    }
+    return real_fopen;
+}
+
+static FILE* (*alr_real_fopen64(void))(const char*, const char*) {
+    static FILE* (*real_fopen64)(const char*, const char*) = NULL;
+    if (real_fopen64 == NULL) {
+        real_fopen64 = (FILE* (*)(const char*, const char*))dlsym(ALR_RTLD_NEXT, "fopen64");
+    }
+    return real_fopen64;
 }
 
 int open(const char* path, int flags, ...) {
@@ -235,4 +264,34 @@ char* getcwd(char* buffer, size_t size) {
     }
     memcpy(buffer, translated, needed);
     return buffer;
+}
+
+DIR* opendir(const char* path) {
+    char rewritten[4096];
+    DIR* (*real_opendir)(const char*) = alr_real_opendir();
+    if (real_opendir == NULL) {
+        errno = ENOSYS;
+        return NULL;
+    }
+    return real_opendir(alr_rewrite_path(path, rewritten, sizeof(rewritten)));
+}
+
+FILE* fopen(const char* path, const char* mode) {
+    char rewritten[4096];
+    FILE* (*real_fopen)(const char*, const char*) = alr_real_fopen();
+    if (real_fopen == NULL) {
+        errno = ENOSYS;
+        return NULL;
+    }
+    return real_fopen(alr_rewrite_path(path, rewritten, sizeof(rewritten)), mode);
+}
+
+FILE* fopen64(const char* path, const char* mode) {
+    char rewritten[4096];
+    FILE* (*real_fopen64)(const char*, const char*) = alr_real_fopen64();
+    if (real_fopen64 == NULL) {
+        errno = ENOSYS;
+        return NULL;
+    }
+    return real_fopen64(alr_rewrite_path(path, rewritten, sizeof(rewritten)), mode);
 }

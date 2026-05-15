@@ -274,6 +274,24 @@ The v59 result proves the preload filesystem layer is no longer bench-only:
 and without ALR's global ptrace path rewrite loop. Directory iteration remains
 the next required preload surface for broader `apt`/package-manager commands.
 
+Current V60 preload apt-config snapshot:
+
+```text
+build: 0.4.60-preload-aptconfig
+ALR APT-CONFIG PRELOAD EXECUTION: PASS
+alr apt-config --version preload handoff=ALR STATIC ENTRY HANDOFF: PASS
+alr apt-config --version preload path rewrite=alr handoff path rewrite count=0
+alr apt-config --version preload stdout=apt 2.8.3 (arm64)
+alr syscall preload hot path measured faster count=3/3
+alr syscall preload hot path perf evidence=PASS
+```
+
+The v60 result adds `opendir`, `fopen`, and `fopen64` coverage to the preload
+filesystem layer and proves that a real apt-family glibc command can execute
+with ptrace path rewriting disabled. The rootfs now includes a
+`libdl.so.2 -> libc.so.6` compatibility symlink required by the preload shim's
+source-built `dlsym` path on the packaged Debian userland.
+
 ### ALR Exec v3: Identity and Procfs
 
 Required behavior:

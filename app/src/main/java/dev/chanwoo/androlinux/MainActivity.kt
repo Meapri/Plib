@@ -22,7 +22,7 @@ class MainActivity : Activity() {
 
         val rootfsManifest = RootfsManifest(
             name = "debian-arm64",
-            version = "bookworm-slim-2026-05-gui-gpu-v58",
+            version = "bookworm-slim-2026-05-gui-gpu-v60",
             assets = listOf(
                 RootfsAsset(
                     path = "rootfs.tar.zst",
@@ -118,6 +118,7 @@ class MainActivity : Activity() {
         val alrAptGetVersionResult = nativeCommandRunner.runAlrRuntimeTrampolineAptGetVersion(rootfsStatus.rootfsDir)
         val alrAptCacheVersionResult = nativeCommandRunner.runAlrRuntimeTrampolineAptCacheVersion(rootfsStatus.rootfsDir)
         val alrAptConfigVersionResult = nativeCommandRunner.runAlrRuntimeTrampolineAptConfigVersion(rootfsStatus.rootfsDir)
+        val alrAptConfigPreloadVersionResult = nativeCommandRunner.runAlrRuntimeTrampolineAptConfigVersionPreload(rootfsStatus.rootfsDir)
         val alrSyscallStatBenchmarkResult = nativeCommandRunner.runAlrRuntimeTrampolineSyscallBench(
             rootfsStatus.rootfsDir,
             "stat",
@@ -372,6 +373,9 @@ class MainActivity : Activity() {
         val alrAptConfigVersionExecutionPassed = alrAptConfigVersionResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
             alrAptConfigVersionResult.stdout.alrHandoffStdoutText().contains("apt ") &&
             alrAptConfigVersionResult.stdout.alrHandoffStdoutText().contains("arm64")
+        val alrAptConfigPreloadVersionExecutionPassed = alrAptConfigPreloadVersionResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+            alrAptConfigPreloadVersionResult.stdout.alrHandoffStdoutText().contains("apt ") &&
+            alrAptConfigPreloadVersionResult.stdout.alrHandoffStdoutText().contains("arm64")
         val alrSyscallStatBenchmarkPassed = alrSyscallStatBenchmarkResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
             alrSyscallStatBenchmarkResult.stdout.alrHandoffStdoutText().contains("ALR SYSCALL BENCH: PASS")
         val alrSyscallOpenReadBenchmarkPassed = alrSyscallOpenReadBenchmarkResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
@@ -504,7 +508,7 @@ class MainActivity : Activity() {
             alrGuestX11GuiBridgeResult.error == null
         val hostGpuHardwareCandidate = hostGpuProbe.lineStartingWith("host gpu hardware candidate=") == "host gpu hardware candidate=true"
 
-        val executionSummary = "build: 0.4.59-preload-userland-dpkg" +
+        val executionSummary = "build: 0.4.60-preload-aptconfig" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -529,6 +533,7 @@ class MainActivity : Activity() {
             "\nALR APT-GET VERSION EXECUTION: ${if (alrAptGetVersionExecutionPassed) "PASS" else "FAIL"}" +
             "\nALR APT-CACHE VERSION EXECUTION: ${if (alrAptCacheVersionExecutionPassed) "PASS" else "FAIL"}" +
             "\nALR APT-CONFIG VERSION EXECUTION: ${if (alrAptConfigVersionExecutionPassed) "PASS" else "FAIL"}" +
+            "\nALR APT-CONFIG PRELOAD EXECUTION: ${if (alrAptConfigPreloadVersionExecutionPassed) "PASS" else "FAIL"}" +
             "\nALR SYSCALL STAT BENCH EXECUTION: ${if (alrSyscallStatBenchmarkPassed) "PASS" else "FAIL"}" +
             "\nALR SYSCALL OPENREAD BENCH EXECUTION: ${if (alrSyscallOpenReadBenchmarkPassed) "PASS" else "FAIL"}" +
             "\nALR SYSCALL FSMETA BENCH EXECUTION: ${if (alrSyscallFsMetaBenchmarkPassed) "PASS" else "FAIL"}" +
@@ -939,6 +944,10 @@ class MainActivity : Activity() {
             "\nalr apt-config --version handoff=${alrAptConfigVersionResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
             "\nalr apt-config --version path rewrite=${alrAptConfigVersionResult.stdout.lineStartingWith("alr handoff path rewrite count=")}" +
             "\nalr apt-config --version stdout=${alrAptConfigVersionResult.stdout.alrHandoffStdoutText()}" +
+            "\nalr apt-config --version preload handoff=${alrAptConfigPreloadVersionResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr apt-config --version preload path rewrite=${alrAptConfigPreloadVersionResult.stdout.lineStartingWith("alr handoff path rewrite count=")}" +
+            "\nalr apt-config --version preload stdout=${alrAptConfigPreloadVersionResult.stdout.alrHandoffStdoutText()}" +
+            "\nalr apt-config --version preload stderr=${alrAptConfigPreloadVersionResult.stdout.alrHandoffStderrText()}" +
             "\nalr dpkg -i local deb handoff=${alrDpkgInstallLocalResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
             "\nalr dpkg -i local deb identity virtualized=${alrDpkgInstallLocalResult.stdout.lineStartingWith("alr handoff identity syscall virtualized count=")}" +
             "\nalr dpkg -i local deb execve attempts=${alrDpkgInstallLocalResult.stdout.lineStartingWith("alr handoff execve attempt count=")}" +
@@ -1042,6 +1051,7 @@ class MainActivity : Activity() {
             resultBlock("alr apt-get --version", alrAptGetVersionResult) +
             resultBlock("alr apt-cache --version", alrAptCacheVersionResult) +
             resultBlock("alr apt-config --version", alrAptConfigVersionResult) +
+            resultBlock("alr apt-config --version preload", alrAptConfigPreloadVersionResult) +
             resultBlock("alr syscall stat benchmark", alrSyscallStatBenchmarkResult) +
             resultBlock("alr syscall openread benchmark", alrSyscallOpenReadBenchmarkResult) +
             resultBlock("alr syscall fsmeta benchmark", alrSyscallFsMetaBenchmarkResult) +

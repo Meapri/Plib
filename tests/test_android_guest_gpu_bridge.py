@@ -215,7 +215,9 @@ def test_guest_path_preload_is_source_built_fast_path_shim():
     assert "ALR_ROOTFS" in source
     assert "SYS_openat" in source
     assert "SYS_newfstatat" in source
-    assert "RTLD_NEXT" not in source
+    assert "#include <dlfcn.h>" not in source
+    assert "ALR_RTLD_NEXT" in source
+    assert "dlsym" in source
     assert "openat" in source
     assert "fstatat" in source
     assert "__xstat" in source
@@ -224,6 +226,8 @@ def test_guest_path_preload_is_source_built_fast_path_shim():
     assert "readlink" in source
     assert "chdir" in source
     assert "getcwd" in source
+    assert "opendir" in source
+    assert "fopen" in source
     assert "libalr_path_preload.so" in build_script
 
 
