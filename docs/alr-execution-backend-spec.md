@@ -1019,6 +1019,47 @@ host bridge for a Vulkan Surface clear. The host still executes the real
 Android Vulkan WSI work, but the request now originates behind the guest
 Vulkan ABI name instead of a standalone discovery-only client.
 
+Current V82 bounded binary Vulkan proxy bridge snapshot:
+
+```text
+build: 0.4.82-vulkan-binary-proxy-bridge
+versionCode=82
+versionName=0.4.82-vulkan-binary-proxy-bridge
+rootfs_version=bookworm-slim-2026-05-gui-gpu-v82
+rootfs sha256=0c5bfa6d15b09ebc074222f0f8a8f11be4de49ad2f5223e3155798e169aee6a3
+rootfs size bytes=36087296
+installed alr-package-vulkan-proxy-smoke bytes=6016
+installed libvulkan.so.1 bytes=5952
+ALR_VK_BINARY_BRIDGE_ACK status=PASS protocol=alr-vk-bin-v1
+ALR_VK_PROXY_BINARY_BRIDGE ok
+ANDROID HOST VULKAN SURFACE EXECUTION: PASS
+GUEST VULKAN SURFACE CLEAR REQUEST EXECUTION: PASS
+GUEST VULKAN PROXY SURFACE CLEAR EXECUTION: PASS
+surface vulkan clear request source=guest-request
+surface vulkan clear request tag=guest-vulkan-proxy-clear-0001
+surface vulkan clear request=ALR_VK_SURFACE_CLEAR_REQUEST ... protocol=binary-frame-v1
+surface vulkan device=Mali-G615 MC2
+surface vulkan api version=1.3.247
+surface vulkan graphics present queue=0
+surface vulkan present mode=mailbox
+surface vulkan swapchain image count=7
+surface vulkan clear command=ok color=0.33,0.22,0.88,1
+surface vulkan queue submit=ok
+surface vulkan present=ok
+surface vulkan hardware render=true
+surface vulkan render elapsed us=19296
+surface gl renderer=Mali-G615 MC2
+surface gles shim vs native average ratio pct=99
+```
+
+V82 replaces the proxy smoke's line-oriented clear request path with a bounded
+binary-framed request and response. The guest still emits a one-line hello for
+human diagnostics, then sends an `ALVB` frame containing millesimal clear color,
+tag, and source fields. The host replies with an `ALVR` frame that carries
+bounded discovery/device/feature/clear-accepted records. This is still a small
+proxy protocol, not full Vulkan command forwarding, but it removes the
+unbounded read-line request shape from the first Vulkan proxy path.
+
 Report:
 
 ```text

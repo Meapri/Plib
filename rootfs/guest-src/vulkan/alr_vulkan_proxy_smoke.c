@@ -59,12 +59,14 @@ int main(void) {
     }
     if (strstr(response, "ALR_VK_DEVICE_RECORD ") == 0 ||
         strstr(response, "ALR_VK_FEATURE_RECORD ") == 0 ||
+        strstr(response, "ALR_VK_BINARY_BRIDGE_ACK status=PASS") == 0 ||
         strstr(response, "ALR_VK_SURFACE_CLEAR_ACCEPTED status=PASS") == 0) {
         fprintf(stderr, "ALR_VK_PROXY_ERROR incomplete-response\n");
         dlclose(handle);
         return 6;
     }
 
+    printf("ALR_VK_PROXY_BINARY_BRIDGE ok\n");
     printf("ALR_VK_PROXY_DEVICE_RECORD ok\n");
     printf("ALR_VK_PROXY_FEATURE_RECORD ok\n");
     printf("ALR_VK_PROXY_SURFACE_CLEAR_REQUEST_ACCEPTED ok\n");

@@ -9,7 +9,9 @@ import android.view.SurfaceView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.InputStream
 import java.net.InetAddress
 import java.net.ServerSocket
 import java.net.SocketTimeoutException
@@ -22,7 +24,7 @@ class MainActivity : Activity() {
 
         val rootfsManifest = RootfsManifest(
             name = "debian-arm64",
-            version = "bookworm-slim-2026-05-gui-gpu-v81",
+            version = "bookworm-slim-2026-05-gui-gpu-v82",
             assets = listOf(
                 RootfsAsset(
                     path = "rootfs.tar.zst",
@@ -652,7 +654,11 @@ class MainActivity : Activity() {
                 rootfsInstalledVulkanProxyLibFile.isFile &&
                 alrInstalledPackageVulkanProxyBridgeResult.clearRequestLine.contains("source=libvulkan-proxy") &&
                 alrInstalledPackageVulkanProxyBridgeResult.clearAcceptedLine.startsWith("ALR_VK_SURFACE_CLEAR_ACCEPTED status=PASS") &&
+                alrInstalledPackageVulkanProxyBridgeResult.clearRequestLine.contains("protocol=binary-frame-v1") &&
+                alrInstalledPackageVulkanProxyBridgeResult.clearAcceptedLine.contains("protocol=binary-frame-v1") &&
+                alrInstalledPackageVulkanProxyBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("ALR_VK_BINARY_BRIDGE_ACK status=PASS") &&
                 alrInstalledPackageVulkanProxyBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("ALR_VK_PROXY_STEP vkEnumerateInstanceVersion ok") &&
+                alrInstalledPackageVulkanProxyBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("ALR_VK_PROXY_BINARY_BRIDGE ok") &&
                 alrInstalledPackageVulkanProxyBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("ALR_VK_PROXY_SURFACE_CLEAR_REQUEST_ACCEPTED ok") &&
                 alrInstalledPackageVulkanProxyBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("ALR_VK_PROXY_DONE ok") &&
                 alrInstalledPackageVulkanProxyBridgeResult.error == null
@@ -668,7 +674,7 @@ class MainActivity : Activity() {
                 "vulkan-discovery:${if (alrInstalledPackageVulkanDiscoveryPassed) "PASS" else "FAIL"}," +
                 "vulkan-proxy:${if (alrInstalledPackageVulkanProxyPassed) "PASS" else "FAIL"}"
 
-        val executionSummary = "build: 0.4.81-guest-vulkan-proxy-smoke" +
+        val executionSummary = "build: 0.4.82-vulkan-binary-proxy-bridge" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -1516,7 +1522,7 @@ class MainActivity : Activity() {
         nativeCommandRunner: NativeCommandRunner,
         rootfsDir: File,
     ): GuestVulkanDiscoveryBridgeResult =
-        runInstalledPackageVulkanBridge(rootfsDir) { port ->
+        runInstalledPackageVulkanBinaryBridge(rootfsDir) { port ->
             nativeCommandRunner.runAlrRuntimeTrampolineInstalledPackageVulkanProxySmoke(rootfsDir, port)
         }
 
@@ -1609,6 +1615,140 @@ class MainActivity : Activity() {
         acceptThread.join(3500)
         if (acceptThread.isAlive) {
             errors += "vulkan discovery accept thread still alive after join"
+            server.close()
+        }
+        return GuestVulkanDiscoveryBridgeResult(
+            host = host,
+            port = port,
+            rawLines = rawLines.toList(),
+            ackLine = ackLine,
+            deviceRecordLine = deviceRecordLine,
+            featureRecordLine = featureRecordLine,
+            clearRequestLine = clearRequestLine,
+            clearAcceptedLine = clearAcceptedLine,
+            ackLines = ackLines,
+            hostProbe = hostProbe,
+            error = errors.firstOrNull(),
+            clientResult = clientResult,
+        )
+    }
+
+    private fun runInstalledPackageVulkanBinaryBridge(
+        rootfsDir: File,
+        runClient: (Int) -> NativeCommandResult,
+    ): GuestVulkanDiscoveryBridgeResult {
+        val host = "127.0.0.1"
+        val server = ServerSocket(0, 1, InetAddress.getByName(host)).apply { soTimeout = 3000 }
+        val port = server.localPort
+        val rawLines = mutableListOf<String>()
+        val errors = mutableListOf<String>()
+        val hostProbe = nativeHostVulkanProbe()
+        val physicalDevices = hostProbe.lineStartingWith("vulkan physical device count=")
+            .substringAfter("=", "0")
+            .toIntOrNull()
+            ?: 0
+        val hardware = hostProbe.lineStartingWith("host vulkan hardware candidate=") == "host vulkan hardware candidate=true"
+        val createDeviceOk = hostProbe.lineStartingWith("vulkan create device=") == "vulkan create device=ok"
+        val deviceName = hostProbe.lineStartingWith("host vulkan device=")
+            .substringAfter("=", "unknown")
+            .replace(Regex("\\s+"), "_")
+        val apiVersion = hostProbe.lineStartingWith("host vulkan api version=")
+            .substringAfter("=", "unknown")
+        val deviceType = hostProbe.lineStartingWith("host vulkan device type=")
+            .substringAfter("=", "unknown")
+        val queueFamilyCount = hostProbe.lineStartingWith("host vulkan queue family count=")
+            .substringAfter("=", "0")
+        val graphicsQueueFamily = hostProbe.lineStartingWith("host vulkan graphics queue family=")
+            .substringAfter("=", "-1")
+        val maxImage2d = hostProbe.lineStartingWith("host vulkan max image dimension 2d=")
+            .substringAfter("=", "0")
+        val maxMemoryAllocationCount = hostProbe.lineStartingWith("host vulkan max memory allocation count=")
+            .substringAfter("=", "0")
+        val robustBufferAccess = hostProbe.lineStartingWith("host vulkan feature robust buffer access=")
+            .substringAfter("=", "unknown")
+        val geometryShader = hostProbe.lineStartingWith("host vulkan feature geometry shader=")
+            .substringAfter("=", "unknown")
+        val samplerAnisotropy = hostProbe.lineStartingWith("host vulkan feature sampler anisotropy=")
+            .substringAfter("=", "unknown")
+        val status = if (physicalDevices > 0 && hardware && createDeviceOk) "PASS" else "FAIL"
+        val ackLine = "ALR_VK_DISCOVERY_ACK status=$status physical_devices=$physicalDevices hardware=$hardware device=$deviceName"
+        val deviceRecordLine =
+            "ALR_VK_DEVICE_RECORD name=$deviceName api=$apiVersion type=$deviceType " +
+                "physical_devices=$physicalDevices queue_families=$queueFamilyCount graphics_queue=$graphicsQueueFamily"
+        val featureRecordLine =
+            "ALR_VK_FEATURE_RECORD robust_buffer_access=$robustBufferAccess geometry_shader=$geometryShader " +
+                "sampler_anisotropy=$samplerAnisotropy max_image_2d=$maxImage2d max_memory_allocations=$maxMemoryAllocationCount"
+        var clearRequestLine = "missing"
+        var clearAcceptedLine = "ALR_VK_SURFACE_CLEAR_ACCEPTED status=FAIL reason=no-request"
+        var ackLines = listOf(ackLine, deviceRecordLine, featureRecordLine, clearAcceptedLine)
+        val acceptThread = thread(name = "alr-vulkan-binary-bridge", start = true) {
+            try {
+                server.use { srv ->
+                    val socket = srv.accept()
+                    socket.use { accepted ->
+                        accepted.soTimeout = 1500
+                        val requestBytes = readAllBounded(accepted.getInputStream(), 512)
+                        val helloEnd = requestBytes.indexOfFirst { it == '\n'.code.toByte() }
+                        if (helloEnd >= 0) {
+                            rawLines += requestBytes.copyOfRange(0, helloEnd).toString(Charsets.UTF_8)
+                        }
+                        val frameOffset = helloEnd + 1
+                        if (frameOffset < requestBytes.size && requestBytes.size >= frameOffset + 12) {
+                            val magic = requestBytes.copyOfRange(frameOffset, frameOffset + 4).toString(Charsets.US_ASCII)
+                            val version = readU16Le(requestBytes, frameOffset + 4)
+                            val opcode = readU16Le(requestBytes, frameOffset + 6)
+                            val payloadLen = readU16Le(requestBytes, frameOffset + 8)
+                            val payloadOffset = frameOffset + 12
+                            rawLines += "ALR_VK_BINARY_BRIDGE_REQUEST magic=$magic version=$version opcode=$opcode payload_bytes=$payloadLen"
+                            if (magic == "ALVB" && version == 1 && opcode == 1 && payloadLen in 12..128 && requestBytes.size >= payloadOffset + payloadLen) {
+                                val red = readU16Le(requestBytes, payloadOffset)
+                                val green = readU16Le(requestBytes, payloadOffset + 2)
+                                val blue = readU16Le(requestBytes, payloadOffset + 4)
+                                val alpha = readU16Le(requestBytes, payloadOffset + 6)
+                                val tagLen = readU16Le(requestBytes, payloadOffset + 8)
+                                val sourceLen = readU16Le(requestBytes, payloadOffset + 10)
+                                val tagOffset = payloadOffset + 12
+                                val sourceOffset = tagOffset + tagLen
+                                if (tagLen in 1..64 && sourceLen in 1..64 && sourceOffset + sourceLen <= payloadOffset + payloadLen) {
+                                    val tag = requestBytes.copyOfRange(tagOffset, tagOffset + tagLen).toString(Charsets.UTF_8)
+                                    val source = requestBytes.copyOfRange(sourceOffset, sourceOffset + sourceLen).toString(Charsets.UTF_8)
+                                    clearRequestLine =
+                                        "ALR_VK_SURFACE_CLEAR_REQUEST version=1 red=${milliColor(red)} " +
+                                            "green=${milliColor(green)} blue=${milliColor(blue)} alpha=${milliColor(alpha)} " +
+                                            "tag=$tag source=$source protocol=binary-frame-v1"
+                                }
+                            }
+                        }
+                        clearAcceptedLine = if (
+                            clearRequestLine.startsWith("ALR_VK_SURFACE_CLEAR_REQUEST ") &&
+                            clearRequestLine.contains("source=libvulkan-proxy") &&
+                            clearRequestLine.contains("protocol=binary-frame-v1")
+                        ) {
+                            "ALR_VK_SURFACE_CLEAR_ACCEPTED status=PASS request=guest-wsi-clear-v1 protocol=binary-frame-v1"
+                        } else {
+                            "ALR_VK_SURFACE_CLEAR_ACCEPTED status=FAIL reason=invalid-binary-request"
+                        }
+                        val responseStatus = if (clearAcceptedLine.contains("status=PASS") && status == "PASS") 1 else 0
+                        val responseRecords = listOf(ackLine, deviceRecordLine, featureRecordLine, clearAcceptedLine)
+                        val payload = (responseRecords.joinToString("\n") + "\n").toByteArray(Charsets.UTF_8)
+                        val binaryAckLine =
+                            "ALR_VK_BINARY_BRIDGE_ACK status=${if (responseStatus == 1) "PASS" else "FAIL"} " +
+                                "protocol=alr-vk-bin-v1 payload_bytes=${payload.size} records=${responseRecords.size}"
+                        ackLines = listOf(binaryAckLine) + responseRecords
+                        accepted.getOutputStream().write(buildVulkanBinaryResponse(responseStatus, responseRecords.size, payload))
+                        accepted.getOutputStream().flush()
+                    }
+                }
+            } catch (error: SocketTimeoutException) {
+                errors += "timeout waiting for guest vulkan binary client"
+            } catch (error: Exception) {
+                errors += error.javaClass.simpleName + ": " + (error.message ?: "unknown")
+            }
+        }
+        val clientResult = runClient(port)
+        acceptThread.join(3500)
+        if (acceptThread.isAlive) {
+            errors += "vulkan binary accept thread still alive after join"
             server.close()
         }
         return GuestVulkanDiscoveryBridgeResult(
@@ -2336,6 +2476,7 @@ class MainActivity : Activity() {
         return "ANDROID HOST VULKAN SURFACE EXECUTION: ${if (passed) "PASS" else "FAIL"}" +
             "\nGUEST VULKAN SURFACE CLEAR REQUEST EXECUTION: ${if (passed) "PASS" else "FAIL"}" +
             "\nGUEST VULKAN PROXY SURFACE CLEAR EXECUTION: ${if (proxySurfacePassed) "PASS" else "FAIL"}" +
+            "\n${vulkanSurfaceReport.lineStartingWith("surface vulkan clear request=")}" +
             "\n${vulkanSurfaceReport.lineStartingWith("surface vulkan clear request source=")}" +
             "\n$clearRequestTag" +
             "\n${vulkanSurfaceReport.lineStartingWith("surface vulkan device=")}" +
@@ -2352,6 +2493,43 @@ class MainActivity : Activity() {
 
     private fun String.lineStartingWith(prefix: String): String =
         lineSequence().firstOrNull { it.startsWith(prefix) } ?: "missing"
+
+    private fun readAllBounded(input: InputStream, maxBytes: Int): ByteArray {
+        val output = ByteArrayOutputStream()
+        val buffer = ByteArray(256)
+        while (output.size() < maxBytes) {
+            val nextLimit = minOf(buffer.size, maxBytes - output.size())
+            val readCount = input.read(buffer, 0, nextLimit)
+            if (readCount <= 0) break
+            output.write(buffer, 0, readCount)
+        }
+        return output.toByteArray()
+    }
+
+    private fun readU16Le(bytes: ByteArray, offset: Int): Int =
+        (bytes[offset].toInt() and 0xff) or ((bytes[offset + 1].toInt() and 0xff) shl 8)
+
+    private fun writeU16Le(bytes: ByteArray, offset: Int, value: Int) {
+        bytes[offset] = (value and 0xff).toByte()
+        bytes[offset + 1] = ((value ushr 8) and 0xff).toByte()
+    }
+
+    private fun buildVulkanBinaryResponse(status: Int, recordCount: Int, payload: ByteArray): ByteArray {
+        val response = ByteArray(12 + payload.size)
+        "ALVR".toByteArray(Charsets.US_ASCII).copyInto(response, 0)
+        writeU16Le(response, 4, 1)
+        writeU16Le(response, 6, status)
+        writeU16Le(response, 8, payload.size)
+        writeU16Le(response, 10, recordCount)
+        payload.copyInto(response, 12)
+        return response
+    }
+
+    private fun milliColor(value: Int): String {
+        if (value % 1000 == 0) return "${value / 1000}.0"
+        if (value in 1..999) return "0.${value.toString().padStart(3, '0').trimEnd('0')}"
+        return (value / 1000.0f).toString()
+    }
 
     private fun String.hasGlesApiSteps(vararg names: String): Boolean =
         names.all { name -> contains("ALR_GLES_API_STEP $name ok") }

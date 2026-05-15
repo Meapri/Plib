@@ -277,7 +277,11 @@ def test_guest_vulkan_discovery_client_is_source_built_ipc_probe():
     assert "vkEnumerateInstanceVersion" in proxy_source
     assert "vkGetInstanceProcAddr" in proxy_source
     assert "alrVkProxyRequestSurfaceClear" in proxy_source
+    assert '"ALVB"' in proxy_source
+    assert '"ALVR"' in proxy_source
+    assert "ALR_VK_BINARY_BRIDGE_ACK" in proxy_source
     assert 'dlopen("libvulkan.so.1"' in proxy_smoke
+    assert "ALR_VK_PROXY_BINARY_BRIDGE ok" in proxy_smoke
     assert "ALR_VK_PROXY_SURFACE_CLEAR_REQUEST_ACCEPTED ok" in proxy_smoke
     assert "-target aarch64-linux-gnu" in build_script
     assert "alr-vulkan-discovery-client" in build_script

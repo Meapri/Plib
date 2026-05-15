@@ -9,7 +9,7 @@ PAYLOAD = ROOT / "app" / "src" / "main" / "assets" / "rootfs" / "payloads" / "ti
 def test_android_assets_include_rootfs_manifest_and_payload():
     assert MANIFEST.is_file()
     assert PAYLOAD.is_file()
-    assert PAYLOAD.stat().st_size == 35860480
+    assert PAYLOAD.stat().st_size == 36087296
 
 
 def test_android_asset_manifest_matches_host_manifest():
@@ -328,6 +328,9 @@ def test_tiny_rootfs_contains_local_deb_install_smoke_package():
         assert vulkan_proxy_smoke.startswith(b"\x7fELF")
         assert vulkan_proxy_lib.startswith(b"\x7fELF")
         assert b"ALR_VK_PROXY_SURFACE_CLEAR_REQUEST_ACCEPTED ok" in vulkan_proxy_smoke
+        assert b"ALR_VK_PROXY_BINARY_BRIDGE ok" in vulkan_proxy_smoke
+        assert b"libvulkan-proxy-binary" in vulkan_proxy_lib
+        assert b"ALR_VK_BINARY_BRIDGE_ACK" in vulkan_proxy_lib
         assert b"alr-guest-libvulkan-proxy-v1" in vulkan_proxy_lib
         assert archive.extractfile("./usr/bin/dpkg-deb").read(4) == b"\x7fELF"
         assert archive.extractfile("./bin/tar").read(4) == b"\x7fELF"

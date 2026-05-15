@@ -599,6 +599,20 @@ the rootfs and routes a bounded clear request to the Android host bridge. The
 host renders and presents through the native Android Vulkan swapchain, so this
 is still a proxy/ICD seed rather than full Vulkan command forwarding.
 
+Build `0.4.82-vulkan-binary-proxy-bridge` changes the proxy transport from
+line-oriented clear commands to a bounded binary frame:
+
+```text
+ALVB request: magic, version, opcode, payload bytes, flags, rgba millesimals, tag length, source length, tag, source
+ALVR response: magic, version, status, payload bytes, record count, bounded text records
+ALR_VK_BINARY_BRIDGE_ACK status=PASS protocol=alr-vk-bin-v1
+ALR_VK_PROXY_BINARY_BRIDGE ok
+surface vulkan clear request tag=guest-vulkan-proxy-clear-0001
+surface vulkan clear request=ALR_VK_SURFACE_CLEAR_REQUEST ... protocol=binary-frame-v1
+surface vulkan present=ok
+surface vulkan hardware render=true
+```
+
 ## Open Questions
 
 - Which transport should replace loopback TCP first: Unix socket, binary TCP, or shared memory?
