@@ -177,6 +177,9 @@ Report:
 surface frames submitted=<n>
 surface frames rendered=<n>
 surface frames dropped=0
+surface render elapsed us=891421
+surface average frame render us=15918
+surface gles shim average frame render us=26218
 surface gpu hardware render=true
 ```
 
@@ -476,6 +479,9 @@ GUEST GUI GPU SURFACE EXECUTION UPDATE: PASS
 surface gl renderer=Mali-G615 MC2
 surface frames rendered=16
 surface frames dropped=0
+surface render elapsed us=891421
+surface average frame render us=15918
+surface gles shim average frame render us=26218
 surface frame lossless=true
 surface gpu hardware render=true
 guest wayland/x11 gui gpu surface hardware render=true
@@ -492,7 +498,7 @@ GUEST EGL SWAP VIA ANDROID SURFACE: PASS
 GUEST GLES HARDWARE RENDER: PASS
 ```
 
-Current device evidence from build `0.4.47-gles-shim-surface-present`:
+Current device evidence from build `0.4.48-gles-shim-frame-workload`:
 
 ```text
 GUEST GLES SHIM SMOKE EXECUTION: PASS
@@ -501,6 +507,8 @@ GUEST EGL INIT VIA SHIM EXECUTION: PASS
 GUEST EGL CONTEXT VIA SHIM EXECUTION: PASS
 GUEST GLES CLEAR VIA SHIM EXECUTION: PASS
 GUEST EGL SWAP COMMAND VIA SHIM EXECUTION: PASS
+GUEST GLES SHIM FRAME WORKLOAD EXECUTION: PASS
+ALR GUEST GLES SHIM FRAME WORKLOAD EXECUTION: PASS
 GUEST EGL INIT VIA SHIM UPDATE: PASS
 GUEST EGL CONTEXT VIA SHIM UPDATE: PASS
 GUEST GLES CLEAR VIA SHIM UPDATE: PASS
@@ -515,10 +523,13 @@ ALR_GLES_API_STEP glViewport ok
 ALR_GLES_API_STEP glClearColor ok
 ALR_GLES_API_STEP glClear ok
 ALR_GLES_API_STEP eglSwapBuffers ok
-surface frames rendered=23
+surface frames rendered=56
 surface frames dropped=0
+surface render elapsed us=891421
+surface average frame render us=15918
+surface gles shim average frame render us=26218
 surface gpu hardware render=true
-surface gles shim frames rendered=1
+surface gles shim frames rendered=34
 guest egl swap via android surface=true
 guest gles hardware render=true
 ```

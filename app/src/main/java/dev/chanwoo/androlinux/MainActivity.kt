@@ -22,7 +22,7 @@ class MainActivity : Activity() {
 
         val rootfsManifest = RootfsManifest(
             name = "debian-arm64",
-            version = "bookworm-slim-2026-05-gui-gpu-v47",
+            version = "bookworm-slim-2026-05-gui-gpu-v48",
             assets = listOf(
                 RootfsAsset(
                     path = "rootfs.tar.zst",
@@ -97,12 +97,19 @@ class MainActivity : Activity() {
         val alrGuestGpuCommands = parseGuestGpuCommands(alrGuestGpuClientResult.stdout.alrHandoffStdoutText())
         val guestGpuIpcBridgeResult = runGuestGpuIpcBridge(nativeCommandRunner, rootfsStatus.rootfsDir)
         val alrGuestGpuIpcBridgeResult = runGuestGpuIpcBridge(nativeCommandRunner, rootfsStatus.rootfsDir, useAlr = true)
+        val glesShimBenchmarkFrameCount = 32
         val prootGuestGlesShimSmokeResult = nativeCommandRunner.runProotRootfsGuestGlesShimSmoke(rootfsStatus.rootfsDir)
         val alrGuestGlesShimSmokeResult = nativeCommandRunner.runAlrRuntimeTrampolineGuestGlesShimSmoke(rootfsStatus.rootfsDir)
+        val prootGuestGlesShimBenchmarkResult = nativeCommandRunner.runProotRootfsGuestGlesShimBenchmark(rootfsStatus.rootfsDir, glesShimBenchmarkFrameCount)
+        val alrGuestGlesShimBenchmarkResult = nativeCommandRunner.runAlrRuntimeTrampolineGuestGlesShimBenchmark(rootfsStatus.rootfsDir, glesShimBenchmarkFrameCount)
         val prootGuestGlesShimStdout = prootGuestGlesShimSmokeResult.stdout
         val alrGuestGlesShimStdout = alrGuestGlesShimSmokeResult.stdout.alrHandoffStdoutText()
-        val guestGlesShimCommand = parseGuestGlesShimCommand(prootGuestGlesShimSmokeResult.stdout)
-        val alrGuestGlesShimCommand = parseGuestGlesShimCommand(alrGuestGlesShimStdout)
+        val prootGuestGlesShimBenchmarkStdout = prootGuestGlesShimBenchmarkResult.stdout
+        val alrGuestGlesShimBenchmarkStdout = alrGuestGlesShimBenchmarkResult.stdout.alrHandoffStdoutText()
+        val guestGlesShimCommands = parseGuestGlesShimCommands(prootGuestGlesShimStdout)
+        val alrGuestGlesShimCommands = parseGuestGlesShimCommands(alrGuestGlesShimStdout)
+        val guestGlesShimBenchmarkCommands = parseGuestGlesShimCommands(prootGuestGlesShimBenchmarkStdout)
+        val alrGuestGlesShimBenchmarkCommands = parseGuestGlesShimCommands(alrGuestGlesShimBenchmarkStdout)
         val prootGuestWaylandGuiResult = nativeCommandRunner.runProotRootfsGuestGuiClient(rootfsStatus.rootfsDir, "WAYLAND")
         val prootGuestX11GuiResult = nativeCommandRunner.runProotRootfsGuestGuiClient(rootfsStatus.rootfsDir, "X11")
         val alrGuestWaylandGuiResult = nativeCommandRunner.runAlrRuntimeTrampolineGuestGuiClient(rootfsStatus.rootfsDir, "WAYLAND")
@@ -117,10 +124,8 @@ class MainActivity : Activity() {
             addAll(guestGuiSurfaceCommands)
             addAll(if (alrGuestGpuIpcBridgeResult.commands.isNotEmpty()) alrGuestGpuIpcBridgeResult.commands else guestGpuIpcBridgeResult.commands)
             addAll(if (alrGuestGpuCommands.isNotEmpty()) alrGuestGpuCommands else guestGpuCommands)
-            alrGuestGlesShimCommand?.let(::add)
-            if (alrGuestGlesShimCommand == null) {
-                guestGlesShimCommand?.let(::add)
-            }
+            addAll(if (alrGuestGlesShimBenchmarkCommands.isNotEmpty()) alrGuestGlesShimBenchmarkCommands else guestGlesShimBenchmarkCommands)
+            addAll(if (alrGuestGlesShimCommands.isNotEmpty()) alrGuestGlesShimCommands else guestGlesShimCommands)
             if (isEmpty()) {
                 add(GuestGpuCommand(0.05f, 0.18f, 0.45f, "host-default"))
             }
@@ -295,11 +300,17 @@ class MainActivity : Activity() {
         val guestGlesShimSmokePassed = prootGuestGlesShimSmokeResult.exitCode == 0 &&
             prootGuestGlesShimSmokeResult.stdout.contains("alr guest gles shim smoke ok") &&
             prootGuestGlesShimSmokeResult.stdout.contains("ALR_GLES_SHIM_LOAD ok") &&
-            guestGlesShimCommand != null
+            guestGlesShimCommands.isNotEmpty()
         val alrGuestGlesShimSmokePassed = alrGuestGlesShimSmokeResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
             alrGuestGlesShimStdout.contains("alr guest gles shim smoke ok") &&
             alrGuestGlesShimStdout.contains("ALR_GLES_SHIM_LOAD ok") &&
-            alrGuestGlesShimCommand != null
+            alrGuestGlesShimCommands.isNotEmpty()
+        val guestGlesShimBenchmarkPassed = prootGuestGlesShimBenchmarkResult.exitCode == 0 &&
+            prootGuestGlesShimBenchmarkStdout.contains("ALR_GLES_FRAME_WORKLOAD requested=$glesShimBenchmarkFrameCount submitted=$glesShimBenchmarkFrameCount") &&
+            guestGlesShimBenchmarkCommands.size == glesShimBenchmarkFrameCount
+        val alrGuestGlesShimBenchmarkPassed = alrGuestGlesShimBenchmarkResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+            alrGuestGlesShimBenchmarkStdout.contains("ALR_GLES_FRAME_WORKLOAD requested=$glesShimBenchmarkFrameCount submitted=$glesShimBenchmarkFrameCount") &&
+            alrGuestGlesShimBenchmarkCommands.size == glesShimBenchmarkFrameCount
         val guestGlesShimInitPassed = (guestGlesShimSmokePassed && prootGuestGlesShimStdout.hasGlesApiSteps("eglGetDisplay", "eglInitialize", "eglChooseConfig")) ||
             (alrGuestGlesShimSmokePassed && alrGuestGlesShimStdout.hasGlesApiSteps("eglGetDisplay", "eglInitialize", "eglChooseConfig"))
         val guestGlesShimContextPassed = (guestGlesShimSmokePassed && prootGuestGlesShimStdout.hasGlesApiSteps("eglCreateContext", "eglMakeCurrent")) ||
@@ -330,7 +341,7 @@ class MainActivity : Activity() {
             alrGuestX11GuiBridgeResult.error == null
         val hostGpuHardwareCandidate = hostGpuProbe.lineStartingWith("host gpu hardware candidate=") == "host gpu hardware candidate=true"
 
-        val executionSummary = "build: 0.4.47-gles-shim-surface-present" +
+        val executionSummary = "build: 0.4.48-gles-shim-frame-workload" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -365,6 +376,8 @@ class MainActivity : Activity() {
             "\nALR GUEST GPU IPC BRIDGE EXECUTION: ${if (alrGuestGpuIpcBridgePassed) "PASS" else "FAIL"}" +
             "\nGUEST GLES SHIM SMOKE EXECUTION: ${if (guestGlesShimSmokePassed) "PASS" else "FAIL"}" +
             "\nALR GUEST GLES SHIM SMOKE EXECUTION: ${if (alrGuestGlesShimSmokePassed) "PASS" else "FAIL"}" +
+            "\nGUEST GLES SHIM FRAME WORKLOAD EXECUTION: ${if (guestGlesShimBenchmarkPassed) "PASS" else "FAIL"}" +
+            "\nALR GUEST GLES SHIM FRAME WORKLOAD EXECUTION: ${if (alrGuestGlesShimBenchmarkPassed) "PASS" else "FAIL"}" +
             "\nGUEST EGL INIT VIA SHIM EXECUTION: ${if (guestGlesShimInitPassed) "PASS" else "FAIL"}" +
             "\nGUEST EGL CONTEXT VIA SHIM EXECUTION: ${if (guestGlesShimContextPassed) "PASS" else "FAIL"}" +
             "\nGUEST GLES CLEAR VIA SHIM EXECUTION: ${if (guestGlesShimClearPassed) "PASS" else "FAIL"}" +
@@ -462,11 +475,19 @@ class MainActivity : Activity() {
             "\nproot guest gles shim smoke exit=${prootGuestGlesShimSmokeResult.exitCode}" +
             "\nproot guest gles shim smoke stdout=${prootGuestGlesShimSmokeResult.stdout}" +
             "\nproot guest gles shim smoke stderr=${prootGuestGlesShimSmokeResult.stderr}" +
-            "\nguest gles shim command parsed=${guestGlesShimCommand != null}" +
+            "\nguest gles shim command parsed count=${guestGlesShimCommands.size}" +
+            "\nguest gles shim frame workload requested=$glesShimBenchmarkFrameCount" +
+            "\nguest gles shim frame workload elapsed ms=${prootGuestGlesShimBenchmarkResult.elapsedMs}" +
+            "\nguest gles shim frame workload commands=${guestGlesShimBenchmarkCommands.size}" +
+            "\nguest gles shim frame workload stdout=${prootGuestGlesShimBenchmarkResult.stdout}" +
             "\nalr guest gles shim smoke handoff=${alrGuestGlesShimSmokeResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
             "\nalr guest gles shim smoke path rewrite=${alrGuestGlesShimSmokeResult.stdout.lineStartingWith("alr handoff path rewrite count=")}" +
             "\nalr guest gles shim smoke stdout=${alrGuestGlesShimSmokeResult.stdout.alrHandoffStdoutText()}" +
-            "\nalr guest gles shim command parsed=${alrGuestGlesShimCommand != null}" +
+            "\nalr guest gles shim command parsed count=${alrGuestGlesShimCommands.size}" +
+            "\nalr guest gles shim frame workload elapsed ms=${alrGuestGlesShimBenchmarkResult.elapsedMs}" +
+            "\nalr guest gles shim frame workload commands=${alrGuestGlesShimBenchmarkCommands.size}" +
+            "\nalr guest gles shim frame workload handoff=${alrGuestGlesShimBenchmarkResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr guest gles shim frame workload stdout=${alrGuestGlesShimBenchmarkStdout}" +
             "\nproot guest wayland gui client exit=${prootGuestWaylandGuiResult.exitCode}" +
             "\nproot guest wayland gui client stdout=${prootGuestWaylandGuiResult.stdout}" +
             "\nproot guest x11 gui client exit=${prootGuestX11GuiResult.exitCode}" +
@@ -983,12 +1004,13 @@ class MainActivity : Activity() {
         return GuestGpuCommand(red, green, blue, parts[6], protocol, seq)
     }
 
-    private fun parseGuestGlesShimCommand(stdout: String): GuestGpuCommand? =
+    private fun parseGuestGlesShimCommands(stdout: String): List<GuestGpuCommand> =
         stdout.lineSequence()
-            .firstOrNull { it.startsWith("ALR_GLES_SHIM_COMMAND ALR_GPU_CLEAR ") }
-            ?.removePrefix("ALR_GLES_SHIM_COMMAND ")
-            ?.let { parseGuestGpuClearLine(it) }
-            ?.copy(protocol = "GLES", seq = 1)
+            .filter { it.startsWith("ALR_GLES_SHIM_COMMAND ALR_GPU_CLEAR ") }
+            .map { it.removePrefix("ALR_GLES_SHIM_COMMAND ") }
+            .mapNotNull { parseGuestGpuClearLine(it) }
+            .mapIndexed { index, command -> command.copy(protocol = "GLES", seq = index + 1) }
+            .toList()
 
     private fun parseGuestGpuClearLine(line: String): GuestGpuCommand? {
         val parts = line.trim().split(Regex("\\s+"))
@@ -1142,6 +1164,9 @@ class MainActivity : Activity() {
             "\n${surfaceReport.lineStartingWith("surface gl renderer=")}" +
             "\n${surfaceReport.lineStartingWith("surface frames rendered=")}" +
             "\n${surfaceReport.lineStartingWith("surface frames dropped=")}" +
+            "\n${surfaceReport.lineStartingWith("surface render elapsed us=")}" +
+            "\n${surfaceReport.lineStartingWith("surface average frame render us=")}" +
+            "\n${surfaceReport.lineStartingWith("surface gles shim average frame render us=")}" +
             "\n${surfaceReport.lineStartingWith("surface frame lossless=")}" +
             "\n${surfaceReport.lineStartingWith("surface gpu hardware render=")}" +
             "\n${surfaceReport.lineStartingWith("guest wayland/x11 gui gpu surface hardware render=")}" +

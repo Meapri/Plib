@@ -234,14 +234,17 @@ software renderer rejected=true
 surface frames submitted=<n>
 surface frames rendered=<n>
 surface frames dropped=0
+surface render elapsed us=891421
+surface average frame render us=15918
+surface gles shim average frame render us=26218
 ```
 
 Do not mark V51–V60 complete unless Android Surface/EGL hardware proof is present in the same evidence bundle as the guest proxy/shim result.
 
 ## Latest Device Evidence
 
-Build `0.4.47-gles-shim-surface-present` now feeds GUI, IPC, and GLES shim
-commands into the same Android Surface/EGL/GLES stream. ADB UI-tree evidence
+Build `0.4.48-gles-shim-frame-workload` now feeds GUI, IPC, and GLES shim
+commands into the same Android Surface/EGL/GLES stream, including a 32-frame GLES workload. ADB UI-tree evidence
 from device `R5KL20B6S3X`:
 
 ```text
@@ -251,6 +254,8 @@ GUEST EGL INIT VIA SHIM EXECUTION: PASS
 GUEST EGL CONTEXT VIA SHIM EXECUTION: PASS
 GUEST GLES CLEAR VIA SHIM EXECUTION: PASS
 GUEST EGL SWAP COMMAND VIA SHIM EXECUTION: PASS
+GUEST GLES SHIM FRAME WORKLOAD EXECUTION: PASS
+ALR GUEST GLES SHIM FRAME WORKLOAD EXECUTION: PASS
 GUEST EGL INIT VIA SHIM UPDATE: PASS
 GUEST EGL CONTEXT VIA SHIM UPDATE: PASS
 GUEST GLES CLEAR VIA SHIM UPDATE: PASS
@@ -265,14 +270,17 @@ ALR_GLES_API_STEP glViewport ok
 ALR_GLES_API_STEP glClearColor ok
 ALR_GLES_API_STEP glClear ok
 ALR_GLES_API_STEP eglSwapBuffers ok
-surface callback frames rendered=23
+surface callback frames rendered=56
 surface callback hardware render=true
 surface gl renderer=Mali-G615 MC2
-surface frames rendered=23
+surface frames rendered=56
 surface frames dropped=0
+surface render elapsed us=891421
+surface average frame render us=15918
+surface gles shim average frame render us=26218
 surface frame lossless=true
 surface gpu hardware render=true
-surface gles shim frames rendered=1
+surface gles shim frames rendered=34
 guest egl swap via android surface=true
 guest gles hardware render=true
 surface wayland frames rendered=8

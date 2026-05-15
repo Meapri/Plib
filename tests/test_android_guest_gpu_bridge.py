@@ -25,7 +25,9 @@ def test_rootfs_contains_guest_gpu_ipc_client_and_gles_shim():
         assert "multi-frame" in payload
         assert "gles-shim-smoke" in payload
         assert "gles-shim-api-subset" in payload
+        assert "gles-frame-workload" in payload
         assert "surface-present" in payload
+        assert "timing" in payload
         gui_payload = archive.extractfile("./usr/share/androlinux/gui-gpu-bridge.txt").read().decode()
         assert "Wayland/X11" in gui_payload
         assert "ALR_GUI_FRAME" in gui_payload
@@ -45,6 +47,8 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "ServerSocket(0, 1, InetAddress.getByName(host))" in text
     assert "GUEST GPU IPC BRIDGE EXECUTION" in text
     assert "GUEST GLES SHIM SMOKE EXECUTION" in text
+    assert "GUEST GLES SHIM FRAME WORKLOAD EXECUTION:" in text
+    assert "ALR GUEST GLES SHIM FRAME WORKLOAD EXECUTION:" in text
     assert "GUEST GPU MULTI-FRAME SURFACE EXECUTION" in text
     assert "guest gpu ipc received frames" in text
     assert "guest gpu ipc lossless" in text
@@ -71,6 +75,11 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "GUEST EGL SWAP VIA ANDROID SURFACE UPDATE:" in text
     assert "GUEST GLES HARDWARE RENDER UPDATE:" in text
     assert "surface gles shim frames rendered=" in text
+    assert "surface render elapsed us=" in text
+    assert "surface average frame render us=" in text
+    assert "surface gles shim average frame render us=" in text
+    assert "runProotRootfsGuestGlesShimBenchmark" in runner
+    assert "runAlrRuntimeTrampolineGuestGlesShimBenchmark" in runner
     assert "hasGlesApiSteps" in text
     assert "alrHandoffStdoutText" in text
 
@@ -98,6 +107,9 @@ def test_guest_gles_shim_is_source_built_api_subset():
     assert "ALR_GLES_API_STEP %s %s" in smoke_source
     assert '"eglGetDisplay"' in smoke_source
     assert '"eglSwapBuffers"' in smoke_source
+    assert "ALR_GLES_SHIM_FRAME_COUNT" in smoke_source
+    assert "ALR_GLES_FRAME_WORKLOAD requested=%d submitted=%d" in smoke_source
+    assert "ALR_GLES_COMPAT_SUBMIT" in smoke_source
     assert "ALR_GLES_SHIM_COMMAND ALR_GPU_CLEAR" in shim_source
     assert "-target aarch64-linux-gnu" in build_script
     assert "-Wl,-rpath,/usr/lib/androlinux" in build_script
@@ -132,6 +144,9 @@ def test_native_surface_renderer_accepts_multi_frame_stream_and_reports_bridge()
     assert "surface wayland frames rendered=" in text
     assert "surface x11 frames rendered=" in text
     assert "surface gles shim frames rendered=" in text
+    assert "surface render elapsed us=" in text
+    assert "surface average frame render us=" in text
+    assert "surface gles shim average frame render us=" in text
     assert "surface gui total frames rendered=" in text
     assert "surface frames rendered=" in text
     assert "surface frames dropped=" in text

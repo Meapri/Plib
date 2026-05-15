@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <chrono>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -197,6 +198,7 @@ std::vector<SurfaceFrameCommand> parse_surface_frames(const std::string& encoded
 
 std::string render_to_android_surface_frames(JNIEnv* env, jobject surface_obj, const std::string& encoded_frames) {
     const auto frames = parse_surface_frames(encoded_frames);
+    const auto render_started = std::chrono::steady_clock::now();
     std::ostringstream out;
     out << "host gpu surface renderer=android-surface-egl-gles";
     out << "\nsurface frame stream protocol=gui-compositor-clear-color-v4";
@@ -324,6 +326,9 @@ std::string render_to_android_surface_frames(JNIEnv* env, jobject surface_obj, c
         last_tag = frame.tag;
     }
     const int dropped = static_cast<int>(frames.size()) - rendered;
+    const auto render_elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now() - render_started
+    ).count();
     out << "\nsurface wayland frames rendered=" << wayland_rendered;
     out << "\nsurface x11 frames rendered=" << x11_rendered;
     out << "\nsurface gles shim frames rendered=" << gles_shim_rendered;
@@ -331,6 +336,10 @@ std::string render_to_android_surface_frames(JNIEnv* env, jobject surface_obj, c
     out << "\nsurface gui total frames rendered=" << (wayland_rendered + x11_rendered);
     out << "\nsurface frames rendered=" << rendered;
     out << "\nsurface frames dropped=" << dropped;
+    out << "\nsurface render elapsed us=" << render_elapsed_us;
+    out << "\nsurface render elapsed ms=" << (render_elapsed_us / 1000);
+    out << "\nsurface average frame render us=" << (rendered > 0 ? render_elapsed_us / rendered : 0);
+    out << "\nsurface gles shim average frame render us=" << (gles_shim_rendered > 0 ? render_elapsed_us / gles_shim_rendered : 0);
     out << "\nsurface frame lossless=" << (dropped == 0 ? "true" : "false");
     out << "\nsurface last guest command tag=" << (last_tag.empty() ? "missing" : last_tag);
     out << "\nsurface gl clear error=0x" << std::hex << last_gl_error << std::dec;

@@ -82,7 +82,24 @@ class NativeCommandRunner(
         )
     }
 
-    fun runAlrRuntimeTrampolineGuestGlesShimSmoke(rootfsDir: File): NativeCommandResult {
+    fun runAlrRuntimeTrampolineGuestGlesShimSmoke(rootfsDir: File): NativeCommandResult =
+        runAlrRuntimeTrampolineGuestGlesShim(rootfsDir)
+
+    fun runAlrRuntimeTrampolineGuestGlesShimBenchmark(rootfsDir: File, frameCount: Int): NativeCommandResult =
+        runAlrRuntimeTrampolineGuestGlesShim(
+            rootfsDir,
+            mapOf(
+                "ALR_GLES_SHIM_FRAME_COUNT" to frameCount.coerceIn(1, 120).toString(),
+                "ALR_GLES_COMPAT_SUBMIT" to "0",
+            ),
+            timeoutMs = 3000,
+        )
+
+    private fun runAlrRuntimeTrampolineGuestGlesShim(
+        rootfsDir: File,
+        extraGuestEnvironment: Map<String, String> = emptyMap(),
+        timeoutMs: Int = 1500,
+    ): NativeCommandResult {
         val libraryPath = glibcLibraryPath(rootfsDir) + ":" + File(rootfsDir, "usr/lib/androlinux").absolutePath
         return runAlrRuntimeTrampoline(
             rootfsDir,
@@ -95,7 +112,8 @@ class NativeCommandRunner(
                 libraryPath,
                 translateGuestPath(rootfsDir, "/usr/bin/alr-gles-shim-smoke"),
             ),
-            timeoutMs = 1500,
+            timeoutMs = timeoutMs,
+            extraGuestEnvironment = extraGuestEnvironment,
             pathRewrite = true,
             pathRewriteLimit = 16,
             pathRewriteIdleSyscallLimit = 16,
@@ -389,6 +407,18 @@ class NativeCommandRunner(
 
     fun runProotRootfsGuestGlesShimSmoke(rootfsDir: File): NativeCommandResult =
         runProotRootfsCommand(rootfsDir, "/usr/bin/alr-gles-shim-smoke", rootId = true, rawRootfs = true)
+
+    fun runProotRootfsGuestGlesShimBenchmark(rootfsDir: File, frameCount: Int): NativeCommandResult =
+        runProotRootfsCommand(
+            rootfsDir,
+            "/usr/bin/alr-gles-shim-smoke",
+            rootId = true,
+            rawRootfs = true,
+            extraEnvironment = mapOf(
+                "ALR_GLES_SHIM_FRAME_COUNT" to frameCount.coerceIn(1, 120).toString(),
+                "ALR_GLES_COMPAT_SUBMIT" to "0",
+            ),
+        )
 
     fun runProotRootfsGuestGuiClient(rootfsDir: File, protocol: String): NativeCommandResult =
         runProotRootfsCommand(

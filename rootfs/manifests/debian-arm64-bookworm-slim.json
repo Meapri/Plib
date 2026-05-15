@@ -1,12 +1,12 @@
 {
   "name": "debian-arm64",
-  "version": "bookworm-slim-2026-05-gui-gpu-v47",
-  "description": "Tiny PoC rootfs with source-built guest GLES/EGL shim API smoke, TCP loopback guest GPU bridge client, multi-frame clear-color stream, clean extraction schema, dpkg-split smoke, and apt/dpkg bundle.",
+  "version": "bookworm-slim-2026-05-gui-gpu-v48",
+  "description": "Tiny PoC rootfs with source-built guest GLES/EGL shim API smoke, multi-frame GLES workload, TCP loopback guest GPU bridge client, clean extraction schema, dpkg-split smoke, and apt/dpkg bundle.",
   "assets": [
     {
       "path": "tiny-rootfs.tar",
-      "sha256": "6570b3896bde902cb4551d014cc94bbe141e11f76ea0f0ffb10a48322356467c",
-      "size_bytes": 35334144
+      "sha256": "a84373ed22a47c0ed5c9a1cad735603fe845ba8035d3f9db627d1efe2fc9d441",
+      "size_bytes": 35334656
     }
   ],
   "unsupported_features": [
