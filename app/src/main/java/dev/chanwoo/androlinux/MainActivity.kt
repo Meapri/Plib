@@ -35,7 +35,9 @@ class MainActivity : Activity() {
             " extracted=${rootfsStatus.extracted}" +
             "\nrootfs staged archive: ${rootfsStatus.stagedArchive.absolutePath}" +
             "\nrootfs extracted dir: ${rootfsStatus.rootfsDir.absolutePath}" +
-            "\nrootfs marker=${rootfsStatus.markerPath.absolutePath}"
+            "\nrootfs marker=${rootfsStatus.markerPath.absolutePath}" +
+            "\n\nnext executable backend: android-native-test-command" +
+            "\npackaged command: ${applicationInfo.nativeLibraryDir}/libalr_test_command.so"
 
         val view = TextView(this).apply {
             text = report
