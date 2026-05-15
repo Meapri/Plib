@@ -264,6 +264,16 @@ class NativeCommandRunner(
             extraGuestEnvironment = preloadPathFastPathEnvironment(rootfsDir),
         )
 
+    fun runAlrRuntimeTrampolineAptCachePolicyPreload(rootfsDir: File): NativeCommandResult =
+        runAlrRuntimeTrampolineGlibcRootfsProgram(
+            rootfsDir,
+            "/usr/bin/apt-cache",
+            listOf("policy"),
+            timeoutMs = 5000,
+            pathRewrite = false,
+            extraGuestEnvironment = preloadPathFastPathEnvironment(rootfsDir),
+        )
+
     fun runAlrRuntimeTrampolineAptConfigVersion(rootfsDir: File): NativeCommandResult =
         runAlrRuntimeTrampolineGlibcRootfsProgram(rootfsDir, "/usr/bin/apt-config", listOf("--version"), timeoutMs = 5000)
 

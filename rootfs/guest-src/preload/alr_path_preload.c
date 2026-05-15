@@ -15,12 +15,48 @@
 
 extern void* dlsym(void* handle, const char* symbol);
 
+static char* (*alr_real_realpath(void))(const char*, char*);
+
+static int alr_has_path_prefix(const char* path, const char* prefix) {
+    if (path == NULL || prefix == NULL || prefix[0] == '\0') {
+        return 0;
+    }
+    const size_t prefix_len = strlen(prefix);
+    return strncmp(path, prefix, prefix_len) == 0 && (path[prefix_len] == '\0' || path[prefix_len] == '/');
+}
+
+static const char* alr_canonical_rootfs(void) {
+    static char canonical_rootfs[4096];
+    static int canonical_checked = 0;
+    if (canonical_checked) {
+        return canonical_rootfs[0] == '\0' ? NULL : canonical_rootfs;
+    }
+    canonical_checked = 1;
+
+    const char* rootfs = getenv("ALR_ROOTFS");
+    char* (*real_realpath)(const char*, char*) = alr_real_realpath();
+    if (rootfs == NULL || rootfs[0] == '\0' || real_realpath == NULL) {
+        return NULL;
+    }
+    char resolved[4096];
+    if (real_realpath(rootfs, resolved) == NULL) {
+        return NULL;
+    }
+    const int written = snprintf(canonical_rootfs, sizeof(canonical_rootfs), "%s", resolved);
+    if (written <= 0 || (size_t)written >= sizeof(canonical_rootfs)) {
+        canonical_rootfs[0] = '\0';
+        return NULL;
+    }
+    return canonical_rootfs;
+}
+
 static const char* alr_rewrite_path(const char* path, char* buffer, size_t buffer_size) {
     const char* rootfs = getenv("ALR_ROOTFS");
     if (path == NULL || path[0] != '/' || rootfs == NULL || rootfs[0] == '\0') {
         return path;
     }
-    if (strncmp(path, rootfs, strlen(rootfs)) == 0) {
+    const char* canonical_rootfs = alr_canonical_rootfs();
+    if (alr_has_path_prefix(path, rootfs) || alr_has_path_prefix(path, canonical_rootfs)) {
         return path;
     }
     if (strncmp(path, "/proc/", 6) == 0 || strncmp(path, "/dev/", 5) == 0) {
@@ -42,11 +78,19 @@ static const char* alr_unrewrite_cwd(const char* cwd, char* buffer, size_t buffe
     if (cwd == NULL || rootfs == NULL || rootfs[0] == '\0') {
         return cwd;
     }
-    const size_t rootfs_len = strlen(rootfs);
-    if (strncmp(cwd, rootfs, rootfs_len) != 0 || (cwd[rootfs_len] != '\0' && cwd[rootfs_len] != '/')) {
+    const char* matched_rootfs = NULL;
+    if (alr_has_path_prefix(cwd, rootfs)) {
+        matched_rootfs = rootfs;
+    } else {
+        const char* canonical_rootfs = alr_canonical_rootfs();
+        if (alr_has_path_prefix(cwd, canonical_rootfs)) {
+            matched_rootfs = canonical_rootfs;
+        }
+    }
+    if (matched_rootfs == NULL) {
         return cwd;
     }
-    const char* guest_cwd = cwd + rootfs_len;
+    const char* guest_cwd = cwd + strlen(matched_rootfs);
     if (guest_cwd[0] == '\0') {
         guest_cwd = "/";
     }
@@ -80,6 +124,30 @@ static FILE* (*alr_real_fopen64(void))(const char*, const char*) {
         real_fopen64 = (FILE* (*)(const char*, const char*))dlsym(ALR_RTLD_NEXT, "fopen64");
     }
     return real_fopen64;
+}
+
+static char* (*alr_real_realpath(void))(const char*, char*) {
+    static char* (*real_realpath)(const char*, char*) = NULL;
+    if (real_realpath == NULL) {
+        real_realpath = (char* (*)(const char*, char*))dlsym(ALR_RTLD_NEXT, "realpath");
+    }
+    return real_realpath;
+}
+
+static int (*alr_real_mkstemp(void))(char*) {
+    static int (*real_mkstemp)(char*) = NULL;
+    if (real_mkstemp == NULL) {
+        real_mkstemp = (int (*)(char*))dlsym(ALR_RTLD_NEXT, "mkstemp");
+    }
+    return real_mkstemp;
+}
+
+static int (*alr_real_mkstemp64(void))(char*) {
+    static int (*real_mkstemp64)(char*) = NULL;
+    if (real_mkstemp64 == NULL) {
+        real_mkstemp64 = (int (*)(char*))dlsym(ALR_RTLD_NEXT, "mkstemp64");
+    }
+    return real_mkstemp64;
 }
 
 int open(const char* path, int flags, ...) {
@@ -295,3 +363,134 @@ FILE* fopen64(const char* path, const char* mode) {
     }
     return real_fopen64(alr_rewrite_path(path, rewritten, sizeof(rewritten)), mode);
 }
+
+char* realpath(const char* path, char* resolved_path) {
+    char rewritten[4096];
+    char* (*real_realpath)(const char*, char*) = alr_real_realpath();
+    if (real_realpath == NULL) {
+        errno = ENOSYS;
+        return NULL;
+    }
+
+    char host_resolved[4096];
+    char* host_result = real_realpath(
+        alr_rewrite_path(path, rewritten, sizeof(rewritten)),
+        resolved_path == NULL ? NULL : host_resolved
+    );
+    if (host_result == NULL) {
+        return NULL;
+    }
+
+    char guest_resolved[4096];
+    const char* translated = alr_unrewrite_cwd(host_result, guest_resolved, sizeof(guest_resolved));
+    if (translated == NULL) {
+        if (resolved_path == NULL) {
+            free(host_result);
+        }
+        return NULL;
+    }
+    if (translated == host_result) {
+        if (resolved_path == NULL) {
+            return host_result;
+        }
+        const size_t needed = strlen(translated) + 1;
+        memcpy(resolved_path, translated, needed);
+        return resolved_path;
+    }
+
+    const size_t needed = strlen(translated) + 1;
+    if (resolved_path == NULL) {
+        char* guest_result = (char*)malloc(needed);
+        if (guest_result == NULL) {
+            free(host_result);
+            errno = ENOMEM;
+            return NULL;
+        }
+        memcpy(guest_result, translated, needed);
+        free(host_result);
+        return guest_result;
+    }
+
+    memcpy(resolved_path, translated, needed);
+    return resolved_path;
+}
+
+char* canonicalize_file_name(const char* path) {
+    return realpath(path, NULL);
+}
+
+static int alr_mkstemp_path(char* template_path, int (*real_mkstemp)(char*)) {
+    if (real_mkstemp == NULL) {
+        errno = ENOSYS;
+        return -1;
+    }
+    char rewritten[4096];
+    const char* target = alr_rewrite_path(template_path, rewritten, sizeof(rewritten));
+    char host_template[4096];
+    const int written = snprintf(host_template, sizeof(host_template), "%s", target);
+    if (written <= 0 || (size_t)written >= sizeof(host_template)) {
+        errno = ENAMETOOLONG;
+        return -1;
+    }
+
+    const int fd = real_mkstemp(host_template);
+    if (fd < 0) {
+        return fd;
+    }
+
+    char guest_template[4096];
+    const char* translated = alr_unrewrite_cwd(host_template, guest_template, sizeof(guest_template));
+    if (translated == NULL) {
+        close(fd);
+        return -1;
+    }
+    strcpy(template_path, translated);
+    return fd;
+}
+
+int mkstemp(char* template_path) {
+    return alr_mkstemp_path(template_path, alr_real_mkstemp());
+}
+
+int mkstemp64(char* template_path) {
+    return alr_mkstemp_path(template_path, alr_real_mkstemp64());
+}
+
+int rename(const char* old_path, const char* new_path) {
+    char rewritten_old[4096];
+    char rewritten_new[4096];
+    return (int)syscall(
+        SYS_renameat,
+        AT_FDCWD,
+        alr_rewrite_path(old_path, rewritten_old, sizeof(rewritten_old)),
+        AT_FDCWD,
+        alr_rewrite_path(new_path, rewritten_new, sizeof(rewritten_new))
+    );
+}
+
+int renameat(int old_dirfd, const char* old_path, int new_dirfd, const char* new_path) {
+    char rewritten_old[4096];
+    char rewritten_new[4096];
+    return (int)syscall(
+        SYS_renameat,
+        old_dirfd,
+        alr_rewrite_path(old_path, rewritten_old, sizeof(rewritten_old)),
+        new_dirfd,
+        alr_rewrite_path(new_path, rewritten_new, sizeof(rewritten_new))
+    );
+}
+
+#ifdef SYS_renameat2
+int renameat2(int old_dirfd, const char* old_path, int new_dirfd, const char* new_path, unsigned int flags) {
+    char rewritten_old[4096];
+    char rewritten_new[4096];
+    return (int)syscall(
+        SYS_renameat2,
+        old_dirfd,
+        alr_rewrite_path(old_path, rewritten_old, sizeof(rewritten_old)),
+        new_dirfd,
+        alr_rewrite_path(new_path, rewritten_new, sizeof(rewritten_new)),
+        flags
+    );
+}
+#endif

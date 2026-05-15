@@ -241,6 +241,28 @@ rewrite disabled. This keeps the package-manager smoke path moving toward
 proroot-class behavior while preserving the Android-native Surface/GLES GPU
 proof in the same device run.
 
+Latest V63 preload apt-cache policy evidence:
+
+```text
+build: 0.4.63-preload-apt-cache-policy
+ALR APT-CACHE POLICY PRELOAD EXECUTION: PASS
+alr apt-cache policy preload handoff=ALR STATIC ENTRY HANDOFF: PASS
+alr apt-cache policy preload path rewrite=alr handoff path rewrite count=0
+alr apt-cache policy preload stdout=Package files:
+ 100 /var/lib/dpkg/status
+     release a=now
+Pinned packages:
+alr syscall preload hot path measured faster count=3/3
+alr syscall preload hot path perf evidence=PASS
+```
+
+The V63 result moves from version banners into package-manager state/cache
+handling. `apt-cache policy` now succeeds under preload-only path virtualization
+after adding `realpath`/`canonicalize_file_name`, `mkstemp`/`mkstemp64`, and
+`rename`/`renameat`/`renameat2` coverage. This proves apt can canonicalize
+`/var/lib/dpkg/status`, create cache temp files under `/var/cache/apt`, and
+commit them without falling back to the global ptrace path rewrite loop.
+
 Known issue:
 
 - V35 summary says `GUEST WAYLAND GUI GPU BRIDGE EXECUTION: FAIL` and `GUEST X11 GUI GPU BRIDGE EXECUTION: FAIL` because ACK writing happens after socket input is closed. Frames were received and rendered losslessly; this is a report/ACK lifecycle bug, not a GPU-path failure.

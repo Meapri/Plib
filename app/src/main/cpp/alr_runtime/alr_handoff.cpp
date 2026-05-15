@@ -1758,6 +1758,16 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
                 }
                 waited = 0;
 #endif
+            } else if (!trace_syscalls && stop_signal == SIGCHLD) {
+                if (!continue_child_ptrace(waited, SIGCHLD) && result.error.empty()) {
+                    result.error = errno_message("ptrace continue SIGCHLD stop");
+                    kill_live_traced_processes();
+                    do {
+                        waited = ::waitpid(child, &status, 0);
+                    } while (waited < 0 && errno == EINTR);
+                    break;
+                }
+                waited = 0;
             } else {
                 capture_ptrace_fault(waited, stop_signal, result);
                 if (stop_signal == SIGSYS &&

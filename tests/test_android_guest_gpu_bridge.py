@@ -228,6 +228,10 @@ def test_guest_path_preload_is_source_built_fast_path_shim():
     assert "getcwd" in source
     assert "opendir" in source
     assert "fopen" in source
+    assert "realpath" in source
+    assert "canonicalize_file_name" in source
+    assert "mkstemp" in source
+    assert "renameat" in source
     assert "libalr_path_preload.so" in build_script
 
 

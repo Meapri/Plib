@@ -319,6 +319,26 @@ remaining work toward deeper package-manager operations such as list reads,
 cache policy, downloads, unpack/configure flows, and maintainer-script process
 trees.
 
+Current V63 preload apt-cache policy snapshot:
+
+```text
+build: 0.4.63-preload-apt-cache-policy
+ALR APT-CACHE POLICY PRELOAD EXECUTION: PASS
+alr apt-cache policy preload handoff=ALR STATIC ENTRY HANDOFF: PASS
+alr apt-cache policy preload path rewrite=alr handoff path rewrite count=0
+alr apt-cache policy preload stdout=Package files:
+ 100 /var/lib/dpkg/status
+     release a=now
+Pinned packages:
+alr syscall preload hot path measured faster count=3/3
+alr syscall preload hot path perf evidence=PASS
+```
+
+The v63 snapshot adds package-manager cache/state behavior to the preload path.
+The new hooks cover apt's `realpath` canonicalization of dpkg status files,
+`mkstemp` cache temp-file creation, and `rename` cache commit path while keeping
+the ALR global path-rewrite loop disabled.
+
 ### ALR Exec v3: Identity and Procfs
 
 Required behavior:

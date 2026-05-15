@@ -73,6 +73,7 @@ def test_trampoline_report_contract_exists():
     assert "PTRACE_O_TRACEVFORK" in handoff
     assert "PTRACE_O_TRACECLONE" in handoff
     assert "PTRACE_O_TRACEEXEC" in handoff
+    assert "ptrace continue SIGCHLD stop" in handoff
     assert "maybe_rewrite_execve_to_loader" in handoff
     assert "__NR_execveat" in handoff
     assert "__NR_linkat" in handoff
