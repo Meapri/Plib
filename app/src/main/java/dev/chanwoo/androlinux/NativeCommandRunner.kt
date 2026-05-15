@@ -66,6 +66,9 @@ class NativeCommandRunner(
     fun runProotRootfsDpkgQueryVersion(rootfsDir: File): NativeCommandResult =
         runProotRootfsCommand(rootfsDir, "/usr/bin/dpkg-query", listOf("--version"), rootId = true, rawRootfs = true)
 
+    fun runProotRootfsDpkgSplitVersion(rootfsDir: File): NativeCommandResult =
+        runProotRootfsCommand(rootfsDir, "/usr/bin/dpkg-split", listOf("--version"), rootId = true, rawRootfs = true)
+
     fun runProotRootfsAptVersion(rootfsDir: File): NativeCommandResult =
         runProotRootfsCommand(rootfsDir, "/usr/bin/apt", listOf("--version"), rootId = true, rawRootfs = true)
 

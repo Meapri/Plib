@@ -22,5 +22,5 @@ def test_main_activity_owns_surface_view_and_appends_native_surface_report():
     assert "SurfaceView" in text
     assert "SurfaceHolder.Callback" in text
     assert "nativeRenderGpuSurface" in text
-    assert "HOST GPU SURFACE EXECUTION: PENDING" in text
+    assert "HOST GPU SURFACE EXECUTION: PENDING_SURFACE_CALLBACK" in text
     assert "Android host GPU surface renderer" in text

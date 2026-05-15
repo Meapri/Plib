@@ -45,7 +45,9 @@ class RootfsInstaller(private val context: Context) {
         }
         val verified = verifyAsset(stagedArchive, asset)
         val extracted = if (verified) {
+            cleanRootfsDir(plan.rootfsDir)
             extractVerifiedTar(stagedArchive, plan.rootfsDir)
+            removeStaleHostDpkgConfig(plan.rootfsDir)
             writeInstallMarker(plan.markerPath)
             isExtracted(plan)
         } else {
@@ -74,6 +76,21 @@ class RootfsInstaller(private val context: Context) {
             }
         }
         return digest.digest().joinToString(separator = "") { byte -> "%02x".format(byte) } == asset.sha256.lowercase()
+    }
+
+    fun cleanRootfsDir(rootfsDir: File) {
+        val rootfsParent = rootfsDir.parentFile?.canonicalFile
+        if (rootfsDir.exists()) {
+            require(rootfsParent != null && rootfsDir.canonicalFile.parentFile == rootfsParent) {
+                "unsafe rootfs clean target: ${rootfsDir.absolutePath}"
+            }
+            rootfsDir.deleteRecursively()
+        }
+        rootfsDir.mkdirs()
+    }
+
+    fun removeStaleHostDpkgConfig(rootfsDir: File) {
+        File(rootfsDir, "etc/dpkg/dpkg.cfg.d/needrestart").delete()
     }
 
     fun extractVerifiedTar(archive: File, rootfsDir: File) {
