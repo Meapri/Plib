@@ -6,6 +6,7 @@
 
 #include "alr_runtime/alr_config.hpp"
 #include "alr_runtime/alr_exec.hpp"
+#include "alr_runtime/alr_launch.hpp"
 
 namespace alr {
 namespace {
@@ -113,10 +114,12 @@ RuntimeReport build_runtime_report(const RuntimeReportInput& input, const Execut
     const auto serialized_config = runtime::serialize_runtime_config(build_alr_runtime_config(input, alr_runtime));
     const auto parsed_config = runtime::parse_runtime_config(serialized_config.text);
     const auto exec_resolution = runtime::resolve_guest_executable(parsed_config, input.program);
+    const auto launch_attempt = runtime::attempt_guest_launch(parsed_config, input.program);
     out << "ALR CONFIG SERIALIZE: PASS\n";
     out << "ALR CONFIG PARSE: "
         << (parsed_config.program == input.program ? "PASS" : "FAIL") << "\n";
     out << exec_resolution.report << "\n";
+    out << launch_attempt.report << "\n";
     out << "alr runtime launcher path=" << alr_runtime.executable << "\n";
     out << "alr runtime hook path=" << alr_runtime.env.at("ALR_HOOK_PATH") << "\n";
     out << "alr runtime interposer path=" << alr_runtime.env.at("ALR_INTERPOSER_PATH") << "\n";
