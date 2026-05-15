@@ -419,6 +419,25 @@ glibc child program through PATH lookup, have ALR rewrite that child `execve`
 through the glibc loader, and return the child result through the script while
 still running inside the non-root Android app sandbox.
 
+Current V70 env child chain snapshot:
+
+```text
+build: 0.4.70-preload-env-child-chain
+ALR DPKG LOCAL INSTALL PRELOAD EXECUTION: PASS
+ALR SHELL DPKG ARCH PRELOAD EXECUTION: PASS
+ALR INSTALLED PACKAGE PRELOAD EXECUTION: PASS
+alr installed package preload execve attempts=alr handoff execve attempt count=6
+alr installed package preload execve loader rewrites=alr handoff execve loader rewrite count=3
+alr installed package preload traced processes=alr handoff traced process count=5
+alr installed package preload stdout=alr local deb package smoke ok\nALR_SMOKE_PACKAGE_SCRIPT=1\nALR_SMOKE_ARCH=arm64\nALR_SMOKE_ENV_ARCH=arm64
+```
+
+The v70 snapshot extends installed-package execution from a single nested child
+to an env-mediated child chain. The package script now invokes both direct
+`dpkg --print-architecture` and `/usr/bin/env dpkg --print-architecture`, proving
+that ALR/preload can preserve the runtime across script launch, PATH lookup,
+env dispatch, and the final glibc child exec.
+
 ### ALR Exec v3: Identity and Procfs
 
 Required behavior:

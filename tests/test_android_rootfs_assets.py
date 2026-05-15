@@ -306,6 +306,7 @@ def test_tiny_rootfs_contains_local_deb_install_smoke_package():
             script = data_archive.extractfile("./usr/local/bin/alr-package-smoke").read()
         assert b"ALR_SMOKE_PACKAGE_SCRIPT=1" in script
         assert b"ALR_SMOKE_ARCH=$(dpkg --print-architecture" in script
+        assert b"ALR_SMOKE_ENV_ARCH=$(/usr/bin/env dpkg --print-architecture" in script
         assert archive.extractfile("./usr/bin/dpkg-deb").read(4) == b"\x7fELF"
         assert archive.extractfile("./bin/tar").read(4) == b"\x7fELF"
         dpkg_deb = archive.extractfile("./usr/bin/dpkg-deb").read()

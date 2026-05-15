@@ -355,6 +355,27 @@ desktop app launchers and package-installed wrapper scripts than the earlier
 single-process smoke, because the installed script performs PATH lookup and a
 child `execve` for `/usr/bin/dpkg` before reporting success.
 
+Latest V70 env-mediated child chain evidence:
+
+```text
+build: 0.4.70-preload-env-child-chain
+ALR DPKG LOCAL INSTALL PRELOAD EXECUTION: PASS
+ALR SHELL DPKG ARCH PRELOAD EXECUTION: PASS
+ALR INSTALLED PACKAGE PRELOAD EXECUTION: PASS
+alr installed package preload execve attempts=alr handoff execve attempt count=6
+alr installed package preload execve loader rewrites=alr handoff execve loader rewrite count=3
+alr installed package preload traced processes=alr handoff traced process count=5
+alr installed package preload stdout=alr local deb package smoke ok\nALR_SMOKE_PACKAGE_SCRIPT=1\nALR_SMOKE_ARCH=arm64\nALR_SMOKE_ENV_ARCH=arm64
+surface gl renderer=Mali-G615 MC2
+surface gpu hardware render=true
+```
+
+The V70 result adds an env-mediated launch path to the installed package smoke.
+This exercises a launcher shape common in package-installed Linux tools:
+script entrypoint, direct child command, `/usr/bin/env` dispatch, and final
+target child command. ALR keeps the preload/rootfs context alive across the
+chain and rewrites the necessary child execs through the glibc loader.
+
 Known issue:
 
 - V35 summary says `GUEST WAYLAND GUI GPU BRIDGE EXECUTION: FAIL` and `GUEST X11 GUI GPU BRIDGE EXECUTION: FAIL` because ACK writing happens after socket input is closed. Frames were received and rendered losslessly; this is a report/ACK lifecycle bug, not a GPU-path failure.
