@@ -69,6 +69,15 @@ int main() {
             .rootfs_dir = "relative/rootfs",
             .cwd = "/",
             .program = "/bin/hello",
+            .env = {},
+            .binds = {},
+            .hook_path = "",
+            .interposer_path = "",
+            .bridge_path = "",
+            .fake_root = false,
+            .verbose = 0,
+            .trace_path = false,
+            .trace_exec = false,
         });
     } catch (const std::invalid_argument&) {
         rejected = true;

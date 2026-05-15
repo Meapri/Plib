@@ -5,6 +5,8 @@
 #include <stdexcept>
 #include <string>
 
+#include <unistd.h>
+
 #include "../app/src/main/cpp/alr_runtime/alr_exec.hpp"
 
 namespace {
@@ -23,7 +25,8 @@ void write_bytes(const std::filesystem::path& path, const std::string& bytes) {
 }  // namespace
 
 int main() {
-    const auto root = std::filesystem::temp_directory_path() / "alr-exec-resolution-rootfs";
+    const auto root = std::filesystem::temp_directory_path() /
+        ("alr-exec-resolution-rootfs-" + std::to_string(static_cast<long long>(::getpid())));
     std::filesystem::remove_all(root);
     std::filesystem::create_directories(root / "bin");
     std::filesystem::create_directories(root / "usr" / "bin");

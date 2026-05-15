@@ -43,6 +43,8 @@ def test_jni_report_includes_alr_runtime_launcher_plan_section():
     assert "exec_resolution.report" in plan
     assert "ALR LAUNCH ATTEMPT: " in launch_source
     assert "ALR LOW-OVERHEAD RUNTIME HELLO EXECUTION: " in launch_source
+    assert "ALR ELF LOAD PLAN: " in (ROOT / "app/src/main/cpp/alr_runtime/alr_elf.cpp").read_text()
+    assert "ALR ELF STATIC HELLO CANDIDATE: " in (ROOT / "app/src/main/cpp/alr_runtime/alr_elf.cpp").read_text()
     assert "launch_attempt.report" in plan
     assert "ALR RUNTIME DIRECT APP-DATA EXEC POLICY: PASS" in plan
 

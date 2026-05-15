@@ -10,6 +10,8 @@
 #include <string>
 #include <vector>
 
+#include "alr_runtime/alr_elf.hpp"
+
 namespace alr::runtime {
 namespace {
 
@@ -63,9 +65,24 @@ std::string hello_status_for_attempt(std::string_view requested_program, const L
 
 std::string build_report(std::string_view requested_program, const LaunchAttemptResult& result) {
     std::ostringstream out;
+    const std::string elf_report = result.resolution.resolved && result.resolution.kind == ExecutableKind::Elf
+        ? build_elf_load_plan(result.resolution.translation.host_path).report
+        : std::string{
+            "ALR ELF LOAD PLAN: SKIP\n"
+            "ALR ELF STATIC HELLO CANDIDATE: SKIP\n"
+            "alr elf class=none\n"
+            "alr elf machine=none\n"
+            "alr elf type=none\n"
+            "alr elf status=unsupported\n"
+            "alr elf entry=0x0\n"
+            "alr elf min vaddr=0x0\n"
+            "alr elf max vaddr=0x0\n"
+            "alr elf interp=none\n"
+            "alr elf load segments=0"};
     out << "ALR LAUNCH ATTEMPT: " << status_for_attempt(result);
     out << "\nALR LAUNCH MODE: " << (result.policy_blocked ? "policy-preflight" : "direct-host-exec");
     out << "\nALR LOW-OVERHEAD RUNTIME HELLO EXECUTION: " << hello_status_for_attempt(requested_program, result);
+    out << "\n" << elf_report;
     out << "\nalr launch exit=" << result.exit_code;
     out << "\nalr launch stdout=" << result.stdout_text;
     out << "\nalr launch stderr=" << result.stderr_text;
