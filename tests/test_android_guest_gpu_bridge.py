@@ -100,6 +100,7 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "runAlrRuntimeTrampolineInstalledPackageGlesProcaddrDemo" in runner
     assert "runAlrRuntimeTrampolineInstalledPackageGlesDemoIpc" in runner
     assert "runAlrRuntimeTrampolineInstalledPackageGlesDemoIpcUnix" in runner
+    assert "runAlrRuntimeTrampolineInstalledPackageGlesDemoIpcUnixBatch" in runner
     assert "alr installed package gles demo command parsed count" in text
     assert "alr installed package gles demo draw command count" in text
     assert "alr installed package gles procaddr command parsed count" in text
@@ -107,6 +108,7 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "installed package compatibility table=" in text
     assert "gles-procaddr:" in text
     assert "gles-unix-ack:${if (alrInstalledPackageGlesUnixIpcBridgePassed)" in text
+    assert "gles-unix-batch:${if (alrInstalledPackageGlesUnixBatchIpcBridgePassed)" in text
     assert "wayland:${if (alrInstalledPackageWaylandGuiBridgePassed)" in text
     assert "x11:${if (alrInstalledPackageX11GuiBridgePassed)" in text
     assert "vulkan-discovery:${if (alrInstalledPackageVulkanDiscoveryPassed)" in text
@@ -119,8 +121,12 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "alr installed package gles ipc lossless" in text
     assert "alr installed package gles unix ipc ack raw" in text
     assert "alr installed package gles unix ipc lossless" in text
+    assert "alr installed package gles unix batch ipc ack raw" in text
+    assert "alr installed package gles unix batch ipc lossless" in text
     assert "GLES BRIDGE UNIX TRANSPORT EXECUTION:" in text
+    assert "GLES BRIDGE UNIX BATCH TRANSPORT EXECUTION:" in text
     assert "gles bridge transport unix vs tcp ratio pct=" in text
+    assert "gles bridge transport unix batch vs unix ack ratio pct=" in text
     assert "alr installed package gpu ipc lossless" in text
     assert "alr installed package gpu ipc execve loader rewrites" in text
     assert "alr installed package gpu ipc client" in text
@@ -244,6 +250,9 @@ def test_guest_gles_shim_is_source_built_api_subset():
     assert "ALR_GPU_BRIDGE_SOCKET" in shim_source
     assert "AF_UNIX" in shim_source
     assert "ALR_GPU_BRIDGE_ACK" in shim_source
+    assert "ALR_GPU_BRIDGE_BATCH" in shim_source
+    assert "ALR_GPU_BATCH_BEGIN" in shim_source
+    assert "ALR_GLES_BATCH_ACK_SUMMARY requested=%d received=%d batches=%d" in shim_source
     assert "ALR_GLES_IPC_ACK_SUMMARY requested=%d received=%d" in shim_source
     assert "alr_bridge_send_command" in shim_source
     for public_symbol in [

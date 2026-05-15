@@ -35,10 +35,20 @@ static int g_swap_count = 0;
 static int g_bridge_fd = -2;
 static int g_bridge_hello_sent = 0;
 static int g_bridge_ack_enabled = -1;
+static int g_bridge_batch_enabled = -1;
+static int g_bridge_batch_announced = 0;
 static int g_bridge_ack_received = 0;
 static long long g_bridge_ack_total_us = 0;
 static long long g_bridge_ack_min_us = 0;
 static long long g_bridge_ack_max_us = 0;
+static char g_bridge_batch_buffer[65536];
+static size_t g_bridge_batch_used = 0;
+static int g_bridge_batch_command_count = 0;
+static int g_bridge_batch_ack_received = 0;
+static int g_bridge_batch_received_total = 0;
+static long long g_bridge_batch_total_us = 0;
+static long long g_bridge_batch_min_us = 0;
+static long long g_bridge_batch_max_us = 0;
 
 void* eglGetDisplay(void* native_display);
 int eglInitialize(void* display, int* major, int* minor);
@@ -175,6 +185,19 @@ static int alr_bridge_ack_requested(void) {
     return g_bridge_ack_enabled;
 }
 
+static int alr_bridge_batch_requested(void) {
+    if (g_bridge_batch_enabled >= 0) return g_bridge_batch_enabled;
+    const char* value = getenv("ALR_GPU_BRIDGE_BATCH");
+    g_bridge_batch_enabled = (value != 0 && strcmp(value, "1") == 0) ? 1 : 0;
+    return g_bridge_batch_enabled;
+}
+
+static const char* alr_bridge_transport_name(void) {
+    const char* socket_name = getenv("ALR_GPU_BRIDGE_SOCKET");
+    if (socket_name != 0 && socket_name[0] != 0) return "unix-abstract";
+    return "tcp-loopback";
+}
+
 static long long alr_monotonic_us(void) {
     struct timespec now;
     if (clock_gettime(CLOCK_MONOTONIC, &now) != 0) return 0;
@@ -287,18 +310,120 @@ static void alr_bridge_update_ack_timing(long long elapsed_us) {
     if (elapsed_us > g_bridge_ack_max_us) g_bridge_ack_max_us = elapsed_us;
 }
 
+static void alr_bridge_update_batch_timing(long long elapsed_us) {
+    ++g_bridge_batch_ack_received;
+    g_bridge_batch_total_us += elapsed_us;
+    if (g_bridge_batch_ack_received == 1 || elapsed_us < g_bridge_batch_min_us) g_bridge_batch_min_us = elapsed_us;
+    if (elapsed_us > g_bridge_batch_max_us) g_bridge_batch_max_us = elapsed_us;
+}
+
+static int alr_bridge_parse_received_field(const char* line, int fallback) {
+    const char* found = strstr(line == 0 ? "" : line, "received=");
+    if (found == 0) return fallback;
+    int value = atoi(found + 9);
+    return value >= 0 ? value : fallback;
+}
+
 static void alr_bridge_send_hello(void) {
     if (g_bridge_hello_sent) return;
     if (alr_bridge_connect() < 0) return;
-    char line[96];
-    snprintf(line, sizeof(line), "ALR_GPU_IPC_HELLO gles-shim-v1 frames=%d\n", alr_bridge_expected_frames());
+    char line[160];
+    if (alr_bridge_batch_requested()) {
+        snprintf(
+            line,
+            sizeof(line),
+            "ALR_GPU_IPC_HELLO gles-shim-v2 frames=%d batch=1 transport=%s\n",
+            alr_bridge_expected_frames(),
+            alr_bridge_transport_name()
+        );
+        if (!g_bridge_batch_announced) {
+            printf("ALR_GLES_BATCH_MODE enabled transport=%s\n", alr_bridge_transport_name());
+            fflush(stdout);
+            g_bridge_batch_announced = 1;
+        }
+    } else {
+        snprintf(line, sizeof(line), "ALR_GPU_IPC_HELLO gles-shim-v1 frames=%d\n", alr_bridge_expected_frames());
+    }
     alr_bridge_write(line);
     g_bridge_hello_sent = 1;
+}
+
+static int alr_bridge_send_batch_if_needed(void) {
+    if (!alr_bridge_batch_requested() || g_bridge_batch_command_count <= 0) return 1;
+    char line[160];
+    snprintf(
+        line,
+        sizeof(line),
+        "ALR_GPU_BATCH_BEGIN frames=%d commands=%d transport=%s\n",
+        g_bridge_batch_command_count,
+        g_bridge_batch_command_count,
+        alr_bridge_transport_name()
+    );
+    long long start_us = alr_monotonic_us();
+    if (!alr_bridge_write(line)) return 0;
+    if (!alr_bridge_write(g_bridge_batch_buffer)) return 0;
+    snprintf(
+        line,
+        sizeof(line),
+        "ALR_GPU_BATCH_END frames=%d commands=%d transport=%s\n",
+        g_bridge_batch_command_count,
+        g_bridge_batch_command_count,
+        alr_bridge_transport_name()
+    );
+    if (!alr_bridge_write(line)) return 0;
+    if (alr_bridge_ack_requested()) {
+        char ack_line[192];
+        if (!alr_bridge_read_ack_line(ack_line, sizeof(ack_line))) {
+            printf("ALR_GLES_BATCH_ACK timeout frames=%d\n", g_bridge_batch_command_count);
+            fflush(stdout);
+            return 0;
+        }
+        long long elapsed_us = alr_monotonic_us() - start_us;
+        if (elapsed_us < 0) elapsed_us = 0;
+        alr_bridge_update_batch_timing(elapsed_us);
+        ack_line[strcspn(ack_line, "\r\n")] = 0;
+        int received = alr_bridge_parse_received_field(ack_line, g_bridge_batch_command_count);
+        g_bridge_batch_received_total += received;
+        printf(
+            "ALR_GLES_BATCH_ACK batch=%d requested=%d received=%d rtt_us=%lld %s\n",
+            g_bridge_batch_ack_received,
+            g_bridge_batch_command_count,
+            received,
+            elapsed_us,
+            ack_line
+        );
+        fflush(stdout);
+    }
+    g_bridge_batch_used = 0;
+    g_bridge_batch_command_count = 0;
+    g_bridge_batch_buffer[0] = 0;
+    return 1;
+}
+
+static int alr_bridge_append_batch_command(const char* command) {
+    if (command == 0) return 0;
+    size_t length = strlen(command);
+    if (length + 1 >= sizeof(g_bridge_batch_buffer)) return 0;
+    if (g_bridge_batch_used + length + 1 >= sizeof(g_bridge_batch_buffer)) {
+        if (!alr_bridge_send_batch_if_needed()) return 0;
+    }
+    memcpy(g_bridge_batch_buffer + g_bridge_batch_used, command, length);
+    g_bridge_batch_used += length;
+    g_bridge_batch_buffer[g_bridge_batch_used] = 0;
+    ++g_bridge_batch_command_count;
+    return 1;
 }
 
 static void alr_bridge_send_command(const char* command) {
     if (alr_bridge_connect() < 0) return;
     alr_bridge_send_hello();
+    if (alr_bridge_batch_requested()) {
+        if (!alr_bridge_append_batch_command(command)) {
+            printf("ALR_GLES_BATCH_APPEND_FAIL frame=%d\n", g_swap_count);
+            fflush(stdout);
+        }
+        return;
+    }
     long long start_us = alr_monotonic_us();
     if (!alr_bridge_write(command) || !alr_bridge_ack_requested()) return;
     char ack_line[128];
@@ -317,8 +442,23 @@ static void alr_bridge_send_command(const char* command) {
 
 static void alr_bridge_close(void) {
     if (g_bridge_fd >= 0) {
+        alr_bridge_send_batch_if_needed();
         if (g_bridge_hello_sent) alr_bridge_write("ALR_GPU_IPC_END\n");
         close(g_bridge_fd);
+    }
+    if (alr_bridge_batch_requested() && g_bridge_batch_ack_received > 0) {
+        long long avg_us = g_bridge_batch_total_us / g_bridge_batch_ack_received;
+        printf(
+            "ALR_GLES_BATCH_ACK_SUMMARY requested=%d received=%d batches=%d avg_us=%lld min_us=%lld max_us=%lld transport=%s\n",
+            alr_bridge_expected_frames(),
+            g_bridge_batch_received_total,
+            g_bridge_batch_ack_received,
+            avg_us,
+            g_bridge_batch_min_us,
+            g_bridge_batch_max_us,
+            alr_bridge_transport_name()
+        );
+        fflush(stdout);
     }
     if (alr_bridge_ack_requested() && g_bridge_ack_received > 0) {
         long long avg_us = g_bridge_ack_total_us / g_bridge_ack_received;
@@ -335,10 +475,20 @@ static void alr_bridge_close(void) {
     g_bridge_fd = -2;
     g_bridge_hello_sent = 0;
     g_bridge_ack_enabled = -1;
+    g_bridge_batch_enabled = -1;
+    g_bridge_batch_announced = 0;
     g_bridge_ack_received = 0;
     g_bridge_ack_total_us = 0;
     g_bridge_ack_min_us = 0;
     g_bridge_ack_max_us = 0;
+    g_bridge_batch_buffer[0] = 0;
+    g_bridge_batch_used = 0;
+    g_bridge_batch_command_count = 0;
+    g_bridge_batch_ack_received = 0;
+    g_bridge_batch_received_total = 0;
+    g_bridge_batch_total_us = 0;
+    g_bridge_batch_min_us = 0;
+    g_bridge_batch_max_us = 0;
 }
 
 int alr_gl_draw_arrays(unsigned int mode, int first, int count) {

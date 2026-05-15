@@ -1340,9 +1340,45 @@ vulkan bridge transport unix vs tcp ratio pct=100
 surface gles shim vs native average ratio pct=101
 ```
 
+Latest V87 GLES Unix-domain batch bridge evidence:
+
+```text
+build: 0.4.87-gles-unix-batch-bridge
+versionCode=87
+versionName=0.4.87-gles-unix-batch-bridge
+rootfs_version=bookworm-slim-2026-05-gui-gpu-v87
+rootfs sha256=9ddee16a49e5abe8d714eb8e8ba4b4c31e10f3d578d0f7bbd07d31c87cbd35b9
+rootfs size bytes=36136960
+installed libalr_gles_shim.so bytes=19296
+installed libEGL.so bytes=19280
+installed libGLESv2.so bytes=19280
+installed alr-package-gles-demo bytes=8264
+GLES BRIDGE UNIX TRANSPORT EXECUTION: PASS
+GLES BRIDGE UNIX BATCH TRANSPORT EXECUTION: PASS
+GUEST VULKAN UNIX SOCKET LOADER INFO SURFACE CLEAR EXECUTION: PASS
+VULKAN BRIDGE UNIX TRANSPORT EXECUTION: PASS
+surface vulkan clear request=ALR_VK_SURFACE_CLEAR_REQUEST version=1 red=0.33 green=0.22 blue=0.88 alpha=1.0 tag=guest-vulkan-proxy-clear-0001 source=libvulkan-proxy protocol=binary-frame-v1 transport=unix-abstract
+surface vulkan present=ok
+surface vulkan hardware render=true
+gles bridge transport tcp loader elapsed ms=6849
+gles bridge transport unix loader elapsed ms=15708
+gles bridge transport unix batch loader elapsed ms=908
+gles bridge transport unix batch vs tcp ratio pct=13
+gles bridge transport unix batch vs unix ack ratio pct=5
+gles bridge transport unix batch faster than unix ack=true
+vulkan bridge transport unix vs tcp ratio pct=100
+surface gles shim vs native average ratio pct=100
+```
+
+V87 is the first GLES bridge step that clearly reduces synchronization overhead
+instead of only moving transport shape. It preserves the TCP and per-frame Unix
+ACK paths as baselines, while proving a single-ACK 60-frame GLES batch can still
+feed the Android-native Surface renderer and coexist with the Vulkan Unix loader
+path.
+
 Next implementation batch:
 
-1. Add a batched GLES command transport over the Unix control path so 60 frame commands can be sent and ACKed as one bounded frame.
-2. Move the Wayland/X11 GUI IPC smoke bridges from loopback TCP to the same Unix-domain control path, keeping TCP only as fallback.
+1. Move the Wayland/X11 GUI IPC smoke bridges from loopback TCP to the same Unix-domain control path, keeping TCP only as fallback.
+2. Add a shared-memory or ashmem/AHardwareBuffer-backed payload path so batch control frames do not have to carry large image or vertex payloads inline.
 3. Replace the loader-info smoke with the real Khronos Vulkan loader or a stricter ABI-compatible loader subset.
 4. Add a small real toolkit fixture target, likely a tiny GTK/Qt-independent Wayland protocol smoke before pulling in a larger GUI stack.

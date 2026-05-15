@@ -1,9 +1,10 @@
 package dev.chanwoo.androlinux
 
 import java.io.File
+import java.io.InputStream
 import java.util.concurrent.TimeUnit
 
-private const val COMMAND_TIMEOUT_SECONDS = 15L
+private const val COMMAND_TIMEOUT_SECONDS = 30L
 
 data class NativeCommandResult(
     val command: File,
@@ -577,6 +578,22 @@ class NativeCommandRunner(
             binaryPath = "/usr/local/bin/alr-package-gles-demo",
         )
 
+    fun runAlrRuntimeTrampolineInstalledPackageGlesDemoIpcUnixBatch(rootfsDir: File, frameCount: Int, socketName: String): NativeCommandResult =
+        runAlrRuntimeTrampolineGuestGlesShim(
+            rootfsDir,
+            mapOf(
+                "ALR_GLES_DEMO_FRAME_COUNT" to frameCount.coerceIn(1, 240).toString(),
+                "ALR_GPU_BRIDGE_HOST" to "127.0.0.1",
+                "ALR_GPU_BRIDGE_PORT" to "0",
+                "ALR_GPU_BRIDGE_SOCKET" to "@$socketName",
+                "ALR_GPU_BRIDGE_TRANSPORT" to "unix-abstract-gles-batch",
+                "ALR_GPU_BRIDGE_ACK" to "1",
+                "ALR_GPU_BRIDGE_BATCH" to "1",
+            ),
+            timeoutMs = 12000,
+            binaryPath = "/usr/local/bin/alr-package-gles-demo",
+        )
+
     private fun glibcLibraryPath(rootfsDir: File): String =
         listOf(
             File(rootfsDir, "lib/aarch64-linux-gnu").absolutePath,
@@ -964,8 +981,8 @@ class NativeCommandRunner(
             -124
         }
         val elapsedMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedNs)
-        val stdout = process.inputStream.bufferedReader().use { it.readText() }.trim()
-        val stderr = process.errorStream.bufferedReader().use { it.readText() }.trim()
+        val stdout = process.inputStream.readTextOrClosed("stdout").trim()
+        val stderr = process.errorStream.readTextOrClosed("stderr").trim()
         return NativeCommandResult(
             command = command,
             environment = environment.toSortedMap(),
@@ -975,4 +992,11 @@ class NativeCommandRunner(
             elapsedMs = elapsedMs,
         )
     }
+
+    private fun InputStream.readTextOrClosed(label: String): String =
+        runCatching {
+            bufferedReader().use { it.readText() }
+        }.getOrElse { error ->
+            "ALR_COMMAND_STREAM_CLOSED stream=$label error=${error.javaClass.simpleName}: ${error.message ?: "unknown"}"
+        }
 }

@@ -25,7 +25,7 @@ class MainActivity : Activity() {
 
         val rootfsManifest = RootfsManifest(
             name = "debian-arm64",
-            version = "bookworm-slim-2026-05-gui-gpu-v86",
+            version = "bookworm-slim-2026-05-gui-gpu-v87",
             assets = listOf(
                 RootfsAsset(
                     path = "rootfs.tar.zst",
@@ -189,6 +189,7 @@ class MainActivity : Activity() {
         val alrInstalledPackageGlesDemoResult = nativeCommandRunner.runAlrRuntimeTrampolineInstalledPackageGlesDemo(rootfsStatus.rootfsDir, glesDemoFrameCount)
         val alrInstalledPackageGlesIpcBridgeResult = runInstalledPackageGlesIpcBridge(nativeCommandRunner, rootfsStatus.rootfsDir, glesDemoFrameCount)
         val alrInstalledPackageGlesUnixIpcBridgeResult = runInstalledPackageGlesUnixIpcBridge(nativeCommandRunner, rootfsStatus.rootfsDir, glesDemoFrameCount)
+        val alrInstalledPackageGlesUnixBatchIpcBridgeResult = runInstalledPackageGlesUnixBatchIpcBridge(nativeCommandRunner, rootfsStatus.rootfsDir, glesDemoFrameCount)
         val prootGuestGlesProcaddrDemoResult = nativeCommandRunner.runProotRootfsGuestGlesProcaddrDemo(rootfsStatus.rootfsDir, glesProcDemoFrameCount)
         val alrGuestGlesProcaddrDemoResult = nativeCommandRunner.runAlrRuntimeTrampolineGuestGlesProcaddrDemo(rootfsStatus.rootfsDir, glesProcDemoFrameCount)
         val alrInstalledPackageGlesProcaddrDemoResult = nativeCommandRunner.runAlrRuntimeTrampolineInstalledPackageGlesProcaddrDemo(rootfsStatus.rootfsDir, glesProcDemoFrameCount)
@@ -246,6 +247,7 @@ class MainActivity : Activity() {
         val surfaceGpuCommands = buildList {
             addAll(guestGuiSurfaceCommands)
             addAll(alrInstalledPackageGpuIpcBridgeResult.commands)
+            addAll(alrInstalledPackageGlesUnixBatchIpcBridgeResult.commands)
             addAll(alrInstalledPackageGlesUnixIpcBridgeResult.commands)
             addAll(alrInstalledPackageGlesIpcBridgeResult.commands)
             addAll(alrInstalledPackageGlesDemoCommands)
@@ -570,6 +572,18 @@ class MainActivity : Activity() {
                 alrInstalledPackageGlesUnixIpcBridgeResult.commands.size == alrInstalledPackageGlesUnixIpcBridgeResult.expectedFrames &&
                 alrInstalledPackageGlesUnixIpcBridgeResult.ackLines.size == glesDemoFrameCount &&
                 alrInstalledPackageGlesUnixIpcBridgeResult.error == null
+        val alrInstalledPackageGlesUnixBatchIpcBridgePassed =
+            alrInstalledPackageGlesUnixBatchIpcBridgeResult.clientResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+                alrInstalledPackageGlesUnixBatchIpcBridgeResult.clientResult.stdout.alrHandoffStdoutText()
+                    .contains("ALR_GLES_DEMO_WORKLOAD requested=$glesDemoFrameCount submitted=$glesDemoFrameCount") &&
+                alrInstalledPackageGlesUnixBatchIpcBridgeResult.clientResult.stdout.alrHandoffStdoutText()
+                    .contains("ALR_GLES_BATCH_ACK_SUMMARY requested=$glesDemoFrameCount received=$glesDemoFrameCount batches=1") &&
+                alrInstalledPackageGlesUnixBatchIpcBridgeResult.clientResult.stdout.alrHandoffStdoutText()
+                    .contains("transport=unix-abstract") &&
+                alrInstalledPackageGlesUnixBatchIpcBridgeResult.commands.count { it.protocol == "GLES_DRAW" } == glesDemoFrameCount &&
+                alrInstalledPackageGlesUnixBatchIpcBridgeResult.commands.size == alrInstalledPackageGlesUnixBatchIpcBridgeResult.expectedFrames &&
+                alrInstalledPackageGlesUnixBatchIpcBridgeResult.ackLines.size == 1 &&
+                alrInstalledPackageGlesUnixBatchIpcBridgeResult.error == null
         val guestGlesProcaddrDemoPassed = prootGuestGlesProcaddrDemoResult.exitCode == 0 &&
             prootGuestGlesProcaddrDemoStdout.contains("ALR_GLES_PROC_DEMO_KIND eglGetProcAddress-es2-subset") &&
             prootGuestGlesProcaddrDemoStdout.contains("ALR_GLES_PROC_DEMO_WORKLOAD requested=$glesProcDemoFrameCount submitted=$glesProcDemoFrameCount") &&
@@ -745,6 +759,7 @@ class MainActivity : Activity() {
                 "gles-demo:${if (alrInstalledPackageGlesDemoPassed) "PASS" else "FAIL"}," +
                 "gles-tcp-ack:${if (alrInstalledPackageGlesIpcBridgePassed) "PASS" else "FAIL"}," +
                 "gles-unix-ack:${if (alrInstalledPackageGlesUnixIpcBridgePassed) "PASS" else "FAIL"}," +
+                "gles-unix-batch:${if (alrInstalledPackageGlesUnixBatchIpcBridgePassed) "PASS" else "FAIL"}," +
                 "gles-procaddr:${if (alrInstalledPackageGlesProcaddrDemoPassed) "PASS" else "FAIL"}," +
                 "wayland:${if (alrInstalledPackageWaylandGuiBridgePassed) "PASS" else "FAIL"}," +
                 "x11:${if (alrInstalledPackageX11GuiBridgePassed) "PASS" else "FAIL"}," +
@@ -754,7 +769,7 @@ class MainActivity : Activity() {
                 "vulkan-loader:${if (alrInstalledPackageVulkanLoaderInfoPassed) "PASS" else "FAIL"}," +
                 "vulkan-loader-unix:${if (alrInstalledPackageVulkanUnixLoaderInfoPassed) "PASS" else "FAIL"}"
 
-        val executionSummary = "build: 0.4.86-gles-unix-bridge" +
+        val executionSummary = "build: 0.4.87-gles-unix-batch-bridge" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -1011,10 +1026,23 @@ class MainActivity : Activity() {
             "\nalr installed package gles unix ipc error=${alrInstalledPackageGlesUnixIpcBridgeResult.error ?: "none"}" +
             "\nalr installed package gles unix ipc handoff=${alrInstalledPackageGlesUnixIpcBridgeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
             "\nalr installed package gles unix ipc stdout=${alrInstalledPackageGlesUnixIpcBridgeResult.clientResult.stdout.alrHandoffStdoutText()}" +
+            "\nalr installed package gles unix batch ipc received frames=${alrInstalledPackageGlesUnixBatchIpcBridgeResult.commands.size}" +
+            "\nalr installed package gles unix batch ipc draw frames=${alrInstalledPackageGlesUnixBatchIpcBridgeResult.commands.count { it.protocol == "GLES_DRAW" }}" +
+            "\nalr installed package gles unix batch ipc ack frames=${alrInstalledPackageGlesUnixBatchIpcBridgeResult.ackLines.size}" +
+            "\nalr installed package gles unix batch ipc lossless=${alrInstalledPackageGlesUnixBatchIpcBridgeResult.expectedFrames > 0 && alrInstalledPackageGlesUnixBatchIpcBridgeResult.expectedFrames == alrInstalledPackageGlesUnixBatchIpcBridgeResult.commands.size}" +
+            "\nalr installed package gles unix batch ipc raw=${alrInstalledPackageGlesUnixBatchIpcBridgeResult.rawLines.joinToString("|")}" +
+            "\nalr installed package gles unix batch ipc ack raw=${alrInstalledPackageGlesUnixBatchIpcBridgeResult.ackLines.joinToString("|")}" +
+            "\nalr installed package gles unix batch ipc error=${alrInstalledPackageGlesUnixBatchIpcBridgeResult.error ?: "none"}" +
+            "\nalr installed package gles unix batch ipc handoff=${alrInstalledPackageGlesUnixBatchIpcBridgeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr installed package gles unix batch ipc stdout=${alrInstalledPackageGlesUnixBatchIpcBridgeResult.clientResult.stdout.alrHandoffStdoutText()}" +
             "\ngles bridge transport tcp loader elapsed ms=${alrInstalledPackageGlesIpcBridgeResult.clientResult.elapsedMs}" +
             "\ngles bridge transport unix loader elapsed ms=${alrInstalledPackageGlesUnixIpcBridgeResult.clientResult.elapsedMs}" +
+            "\ngles bridge transport unix batch loader elapsed ms=${alrInstalledPackageGlesUnixBatchIpcBridgeResult.clientResult.elapsedMs}" +
             "\ngles bridge transport unix vs tcp ratio pct=${elapsedRatioPct(alrInstalledPackageGlesUnixIpcBridgeResult.clientResult, alrInstalledPackageGlesIpcBridgeResult.clientResult)}" +
             "\ngles bridge transport unix faster than tcp=${isFaster(alrInstalledPackageGlesUnixIpcBridgeResult.clientResult, alrInstalledPackageGlesIpcBridgeResult.clientResult)}" +
+            "\ngles bridge transport unix batch vs tcp ratio pct=${elapsedRatioPct(alrInstalledPackageGlesUnixBatchIpcBridgeResult.clientResult, alrInstalledPackageGlesIpcBridgeResult.clientResult)}" +
+            "\ngles bridge transport unix batch vs unix ack ratio pct=${elapsedRatioPct(alrInstalledPackageGlesUnixBatchIpcBridgeResult.clientResult, alrInstalledPackageGlesUnixIpcBridgeResult.clientResult)}" +
+            "\ngles bridge transport unix batch faster than unix ack=${isFaster(alrInstalledPackageGlesUnixBatchIpcBridgeResult.clientResult, alrInstalledPackageGlesUnixIpcBridgeResult.clientResult)}" +
             "\nalr installed package gles procaddr handoff=${alrInstalledPackageGlesProcaddrDemoResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
             "\nalr installed package gles procaddr stdout=${alrInstalledPackageGlesProcaddrDemoStdout}" +
             "\nalr installed package gles procaddr command parsed count=${alrInstalledPackageGlesProcaddrDemoCommands.size}" +
@@ -1519,6 +1547,7 @@ class MainActivity : Activity() {
             resultBlock("alr installed package gles demo", alrInstalledPackageGlesDemoResult) +
             resultBlock("alr installed package gles ipc demo", alrInstalledPackageGlesIpcBridgeResult.clientResult) +
             resultBlock("alr installed package gles unix ipc demo", alrInstalledPackageGlesUnixIpcBridgeResult.clientResult) +
+            resultBlock("alr installed package gles unix batch ipc demo", alrInstalledPackageGlesUnixBatchIpcBridgeResult.clientResult) +
             resultBlock("alr installed package gles procaddr demo", alrInstalledPackageGlesProcaddrDemoResult) +
             resultBlock("proot guest gles procaddr demo", prootGuestGlesProcaddrDemoResult) +
             resultBlock("alr guest gles procaddr demo", alrGuestGlesProcaddrDemoResult) +
@@ -1584,7 +1613,9 @@ class MainActivity : Activity() {
                     val glesTransportUpdate = glesBridgeTransportUpdate(
                         alrInstalledPackageGlesIpcBridgeResult.clientResult,
                         alrInstalledPackageGlesUnixIpcBridgeResult.clientResult,
+                        alrInstalledPackageGlesUnixBatchIpcBridgeResult.clientResult,
                         alrInstalledPackageGlesUnixIpcBridgePassed,
+                        alrInstalledPackageGlesUnixBatchIpcBridgePassed,
                     )
                     surfaceStatusView.text =
                         "Linux guest GPU Surface renderer callback complete\n$executionUpdate\n$glesTransportUpdate\n$vulkanExecutionUpdate\n$vulkanTransportUpdate"
@@ -2295,6 +2326,100 @@ class MainActivity : Activity() {
         )
     }
 
+    private fun runInstalledPackageGlesUnixBatchIpcBridge(
+        nativeCommandRunner: NativeCommandRunner,
+        rootfsDir: File,
+        frameCount: Int,
+    ): GuestGpuIpcBridgeResult {
+        val socketName = "alr-gles-batch-${System.nanoTime()}"
+        val server = LocalServerSocket(socketName)
+        val rawLines = mutableListOf("ALR_GPU_UNIX_BATCH_BRIDGE_SOCKET name=@$socketName")
+        val ackLines = mutableListOf<String>()
+        val errors = mutableListOf<String>()
+        val acceptThread = thread(name = "alr-installed-package-gles-unix-batch-ipc-bridge", start = true) {
+            try {
+                server.use { srv ->
+                    val accepted = srv.accept()
+                    accepted.use { socket ->
+                        socket.setSoTimeout(12000)
+                        val writer = socket.getOutputStream().bufferedWriter()
+                        val reader = socket.getInputStream().bufferedReader()
+                        var expectedBatchFrames = frameCount
+                        var batchCommandCount = 0
+                        while (true) {
+                            val line = reader.readLine() ?: break
+                            rawLines += line
+                            when {
+                                line.startsWith("ALR_GPU_IPC_HELLO ") -> {
+                                    expectedBatchFrames = line.substringAfter("frames=", expectedBatchFrames.toString())
+                                        .substringBefore(" ")
+                                        .toIntOrNull()
+                                        ?: expectedBatchFrames
+                                }
+                                line.startsWith("ALR_GPU_BATCH_BEGIN ") -> {
+                                    expectedBatchFrames = line.substringAfter("frames=", expectedBatchFrames.toString())
+                                        .substringBefore(" ")
+                                        .toIntOrNull()
+                                        ?: expectedBatchFrames
+                                    batchCommandCount = 0
+                                }
+                                line.startsWith("ALR_GPU_CLEAR ") || line.startsWith("ALR_GPU_DRAW_TRIANGLE ") -> {
+                                    batchCommandCount += 1
+                                }
+                                line.startsWith("ALR_GPU_BATCH_END ") -> {
+                                    val declaredCommands = line.substringAfter("commands=", batchCommandCount.toString())
+                                        .substringBefore(" ")
+                                        .toIntOrNull()
+                                        ?: batchCommandCount
+                                    val expected = if (declaredCommands > 0) declaredCommands else expectedBatchFrames
+                                    val lossless = batchCommandCount == expected
+                                    val ack = "ALR_GPU_BATCH_ACK received=$batchCommandCount expected=$expected lossless=$lossless transport=unix-abstract"
+                                    ackLines += ack
+                                    writer.write(ack)
+                                    writer.newLine()
+                                    writer.flush()
+                                }
+                            }
+                            if (line == "ALR_GPU_IPC_END") break
+                        }
+                    }
+                }
+            } catch (error: SocketTimeoutException) {
+                errors += "timeout waiting for installed package gles unix batch ipc client"
+            } catch (error: Exception) {
+                errors += error.javaClass.simpleName + ": " + (error.message ?: "unknown")
+            }
+        }
+        val clientResult = nativeCommandRunner.runAlrRuntimeTrampolineInstalledPackageGlesDemoIpcUnixBatch(rootfsDir, frameCount, socketName)
+        acceptThread.join(12500)
+        if (acceptThread.isAlive) {
+            errors += "gles unix batch accept thread still alive after join"
+            server.close()
+        }
+        val commands = rawLines
+            .mapNotNull { parseGuestGpuCommandLine(it) }
+            .mapIndexed { index, command -> command.copy(seq = index + 1) }
+        val expectedFrames = rawLines.firstOrNull { it.startsWith("ALR_GPU_BATCH_BEGIN ") }
+            ?.substringAfter("frames=", "0")
+            ?.substringBefore(" ")
+            ?.toIntOrNull()
+            ?: rawLines.firstOrNull { it.startsWith("ALR_GPU_IPC_HELLO ") }
+                ?.substringAfter("frames=", "0")
+                ?.substringBefore(" ")
+                ?.toIntOrNull()
+            ?: commands.size
+        return GuestGpuIpcBridgeResult(
+            host = "unix-abstract-batch",
+            port = 0,
+            expectedFrames = expectedFrames,
+            commands = commands,
+            rawLines = rawLines.toList(),
+            error = errors.firstOrNull(),
+            clientResult = clientResult,
+            ackLines = ackLines.toList(),
+        )
+    }
+
 
     private fun runGuestGuiBridge(
         nativeCommandRunner: NativeCommandRunner,
@@ -2874,13 +2999,20 @@ class MainActivity : Activity() {
     private fun glesBridgeTransportUpdate(
         tcpGlesResult: NativeCommandResult,
         unixGlesResult: NativeCommandResult,
+        unixBatchGlesResult: NativeCommandResult,
         unixGlesPassed: Boolean,
+        unixBatchGlesPassed: Boolean,
     ): String =
         "GLES BRIDGE UNIX TRANSPORT EXECUTION: ${if (unixGlesPassed) "PASS" else "FAIL"}" +
+            "\nGLES BRIDGE UNIX BATCH TRANSPORT EXECUTION: ${if (unixBatchGlesPassed) "PASS" else "FAIL"}" +
             "\ngles bridge transport tcp loader elapsed ms=${tcpGlesResult.elapsedMs}" +
             "\ngles bridge transport unix loader elapsed ms=${unixGlesResult.elapsedMs}" +
+            "\ngles bridge transport unix batch loader elapsed ms=${unixBatchGlesResult.elapsedMs}" +
             "\ngles bridge transport unix vs tcp ratio pct=${elapsedRatioPct(unixGlesResult, tcpGlesResult)}" +
-            "\ngles bridge transport unix faster than tcp=${isFaster(unixGlesResult, tcpGlesResult)}"
+            "\ngles bridge transport unix faster than tcp=${isFaster(unixGlesResult, tcpGlesResult)}" +
+            "\ngles bridge transport unix batch vs tcp ratio pct=${elapsedRatioPct(unixBatchGlesResult, tcpGlesResult)}" +
+            "\ngles bridge transport unix batch vs unix ack ratio pct=${elapsedRatioPct(unixBatchGlesResult, unixGlesResult)}" +
+            "\ngles bridge transport unix batch faster than unix ack=${isFaster(unixBatchGlesResult, unixGlesResult)}"
 
     private fun String.lineStartingWith(prefix: String): String =
         lineSequence().firstOrNull { it.startsWith(prefix) } ?: "missing"

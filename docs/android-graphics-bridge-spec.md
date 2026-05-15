@@ -684,6 +684,33 @@ This confirms transport compatibility, not a final optimization result. The
 per-frame ACK workload is still too chatty, so the next graphics bridge step is
 batching commands across the Unix control path rather than tuning socket setup.
 
+Build `0.4.87-gles-unix-batch-bridge` adds that GLES batch path. The guest shim
+keeps the same GLES command text shape, but `ALR_GPU_BRIDGE_BATCH=1` delays
+delivery until close and sends one bounded batch frame over the abstract
+Unix-domain socket. Android parses the batch as the same command stream and
+replies once with `ALR_GPU_BATCH_ACK`:
+
+```text
+GLES BRIDGE UNIX TRANSPORT EXECUTION: PASS
+GLES BRIDGE UNIX BATCH TRANSPORT EXECUTION: PASS
+gles bridge transport tcp loader elapsed ms=6849
+gles bridge transport unix loader elapsed ms=15708
+gles bridge transport unix batch loader elapsed ms=908
+gles bridge transport unix vs tcp ratio pct=229
+gles bridge transport unix faster than tcp=false
+gles bridge transport unix batch vs tcp ratio pct=13
+gles bridge transport unix batch vs unix ack ratio pct=5
+gles bridge transport unix batch faster than unix ack=true
+surface gles shim vs native average ratio pct=100
+surface vulkan present=ok
+surface vulkan hardware render=true
+```
+
+This is still a smoke-level bridge, not a Mesa-grade GL driver, but it proves the
+right direction for Plib's graphics path: keep Android-native rendering on the
+host side and aggressively reduce guest/host synchronization points before
+adding larger Linux GUI stacks.
+
 ## Open Questions
 
 - Which bridge should move to shared memory first after the Unix socket control path: GLES frames, Vulkan command batches, or GUI protocol frames?
