@@ -3,8 +3,10 @@
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <stddef.h>
 #include <sys/socket.h>
 #include <sys/select.h>
+#include <sys/un.h>
 #include <time.h>
 
 #define ALR_GL_COLOR_BUFFER_BIT 0x00004000u
@@ -179,9 +181,46 @@ static long long alr_monotonic_us(void) {
     return ((long long)now.tv_sec * 1000000LL) + ((long long)now.tv_nsec / 1000LL);
 }
 
+static int alr_bridge_connect_unix(const char* socket_name) {
+    if (socket_name == 0 || socket_name[0] == 0) return -1;
+    int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (fd < 0) return -1;
+    struct sockaddr_un address;
+    memset(&address, 0, sizeof(address));
+    address.sun_family = AF_UNIX;
+    size_t name_len = strlen(socket_name);
+    socklen_t address_len = 0;
+    if (socket_name[0] == '@') {
+        if (name_len - 1 >= sizeof(address.sun_path)) {
+            close(fd);
+            return -1;
+        }
+        address.sun_path[0] = '\0';
+        memcpy(address.sun_path + 1, socket_name + 1, name_len - 1);
+        address_len = (socklen_t)(offsetof(struct sockaddr_un, sun_path) + name_len);
+    } else {
+        if (name_len >= sizeof(address.sun_path)) {
+            close(fd);
+            return -1;
+        }
+        memcpy(address.sun_path, socket_name, name_len + 1);
+        address_len = (socklen_t)(offsetof(struct sockaddr_un, sun_path) + name_len + 1);
+    }
+    if (connect(fd, (struct sockaddr*)&address, address_len) != 0) {
+        close(fd);
+        return -1;
+    }
+    return fd;
+}
+
 static int alr_bridge_connect(void) {
     if (g_bridge_fd != -2) return g_bridge_fd;
     g_bridge_fd = -1;
+    const char* socket_name = getenv("ALR_GPU_BRIDGE_SOCKET");
+    if (socket_name != 0 && socket_name[0] != 0) {
+        g_bridge_fd = alr_bridge_connect_unix(socket_name);
+        return g_bridge_fd;
+    }
     const char* host = getenv("ALR_GPU_BRIDGE_HOST");
     const char* port_value = getenv("ALR_GPU_BRIDGE_PORT");
     if (host == 0 || host[0] == 0 || port_value == 0 || port_value[0] == 0) return -1;

@@ -25,7 +25,7 @@ class MainActivity : Activity() {
 
         val rootfsManifest = RootfsManifest(
             name = "debian-arm64",
-            version = "bookworm-slim-2026-05-gui-gpu-v85",
+            version = "bookworm-slim-2026-05-gui-gpu-v86",
             assets = listOf(
                 RootfsAsset(
                     path = "rootfs.tar.zst",
@@ -188,6 +188,7 @@ class MainActivity : Activity() {
         val alrGuestGlesDemoGearsResult = nativeCommandRunner.runAlrRuntimeTrampolineGuestGlesDemoGears(rootfsStatus.rootfsDir, glesDemoFrameCount)
         val alrInstalledPackageGlesDemoResult = nativeCommandRunner.runAlrRuntimeTrampolineInstalledPackageGlesDemo(rootfsStatus.rootfsDir, glesDemoFrameCount)
         val alrInstalledPackageGlesIpcBridgeResult = runInstalledPackageGlesIpcBridge(nativeCommandRunner, rootfsStatus.rootfsDir, glesDemoFrameCount)
+        val alrInstalledPackageGlesUnixIpcBridgeResult = runInstalledPackageGlesUnixIpcBridge(nativeCommandRunner, rootfsStatus.rootfsDir, glesDemoFrameCount)
         val prootGuestGlesProcaddrDemoResult = nativeCommandRunner.runProotRootfsGuestGlesProcaddrDemo(rootfsStatus.rootfsDir, glesProcDemoFrameCount)
         val alrGuestGlesProcaddrDemoResult = nativeCommandRunner.runAlrRuntimeTrampolineGuestGlesProcaddrDemo(rootfsStatus.rootfsDir, glesProcDemoFrameCount)
         val alrInstalledPackageGlesProcaddrDemoResult = nativeCommandRunner.runAlrRuntimeTrampolineInstalledPackageGlesProcaddrDemo(rootfsStatus.rootfsDir, glesProcDemoFrameCount)
@@ -245,6 +246,7 @@ class MainActivity : Activity() {
         val surfaceGpuCommands = buildList {
             addAll(guestGuiSurfaceCommands)
             addAll(alrInstalledPackageGpuIpcBridgeResult.commands)
+            addAll(alrInstalledPackageGlesUnixIpcBridgeResult.commands)
             addAll(alrInstalledPackageGlesIpcBridgeResult.commands)
             addAll(alrInstalledPackageGlesDemoCommands)
             addAll(alrInstalledPackageGlesProcaddrDemoCommands)
@@ -556,6 +558,18 @@ class MainActivity : Activity() {
                 alrInstalledPackageGlesIpcBridgeResult.commands.size == alrInstalledPackageGlesIpcBridgeResult.expectedFrames &&
                 alrInstalledPackageGlesIpcBridgeResult.ackLines.size == glesDemoFrameCount &&
                 alrInstalledPackageGlesIpcBridgeResult.error == null
+        val alrInstalledPackageGlesUnixIpcBridgePassed =
+            alrInstalledPackageGlesUnixIpcBridgeResult.clientResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+                alrInstalledPackageGlesUnixIpcBridgeResult.clientResult.stdout.alrHandoffStdoutText()
+                    .contains("ALR_GLES_DEMO_WORKLOAD requested=$glesDemoFrameCount submitted=$glesDemoFrameCount") &&
+                alrInstalledPackageGlesUnixIpcBridgeResult.clientResult.stdout.alrHandoffStdoutText()
+                    .contains("ALR_GLES_IPC_ACK_SUMMARY requested=$glesDemoFrameCount received=$glesDemoFrameCount") &&
+                alrInstalledPackageGlesUnixIpcBridgeResult.clientResult.stdout.alrHandoffStdoutText()
+                    .contains("transport=unix-abstract") &&
+                alrInstalledPackageGlesUnixIpcBridgeResult.commands.count { it.protocol == "GLES_DRAW" } == glesDemoFrameCount &&
+                alrInstalledPackageGlesUnixIpcBridgeResult.commands.size == alrInstalledPackageGlesUnixIpcBridgeResult.expectedFrames &&
+                alrInstalledPackageGlesUnixIpcBridgeResult.ackLines.size == glesDemoFrameCount &&
+                alrInstalledPackageGlesUnixIpcBridgeResult.error == null
         val guestGlesProcaddrDemoPassed = prootGuestGlesProcaddrDemoResult.exitCode == 0 &&
             prootGuestGlesProcaddrDemoStdout.contains("ALR_GLES_PROC_DEMO_KIND eglGetProcAddress-es2-subset") &&
             prootGuestGlesProcaddrDemoStdout.contains("ALR_GLES_PROC_DEMO_WORKLOAD requested=$glesProcDemoFrameCount submitted=$glesProcDemoFrameCount") &&
@@ -730,6 +744,7 @@ class MainActivity : Activity() {
                 "gpu-clear-ipc:${if (alrInstalledPackageGpuIpcBridgePassed) "PASS" else "FAIL"}," +
                 "gles-demo:${if (alrInstalledPackageGlesDemoPassed) "PASS" else "FAIL"}," +
                 "gles-tcp-ack:${if (alrInstalledPackageGlesIpcBridgePassed) "PASS" else "FAIL"}," +
+                "gles-unix-ack:${if (alrInstalledPackageGlesUnixIpcBridgePassed) "PASS" else "FAIL"}," +
                 "gles-procaddr:${if (alrInstalledPackageGlesProcaddrDemoPassed) "PASS" else "FAIL"}," +
                 "wayland:${if (alrInstalledPackageWaylandGuiBridgePassed) "PASS" else "FAIL"}," +
                 "x11:${if (alrInstalledPackageX11GuiBridgePassed) "PASS" else "FAIL"}," +
@@ -739,7 +754,7 @@ class MainActivity : Activity() {
                 "vulkan-loader:${if (alrInstalledPackageVulkanLoaderInfoPassed) "PASS" else "FAIL"}," +
                 "vulkan-loader-unix:${if (alrInstalledPackageVulkanUnixLoaderInfoPassed) "PASS" else "FAIL"}"
 
-        val executionSummary = "build: 0.4.85-vulkan-unix-loader-bridge" +
+        val executionSummary = "build: 0.4.86-gles-unix-bridge" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -987,6 +1002,19 @@ class MainActivity : Activity() {
             "\nalr installed package gles ipc error=${alrInstalledPackageGlesIpcBridgeResult.error ?: "none"}" +
             "\nalr installed package gles ipc handoff=${alrInstalledPackageGlesIpcBridgeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
             "\nalr installed package gles ipc stdout=${alrInstalledPackageGlesIpcBridgeResult.clientResult.stdout.alrHandoffStdoutText()}" +
+            "\nalr installed package gles unix ipc received frames=${alrInstalledPackageGlesUnixIpcBridgeResult.commands.size}" +
+            "\nalr installed package gles unix ipc draw frames=${alrInstalledPackageGlesUnixIpcBridgeResult.commands.count { it.protocol == "GLES_DRAW" }}" +
+            "\nalr installed package gles unix ipc ack frames=${alrInstalledPackageGlesUnixIpcBridgeResult.ackLines.size}" +
+            "\nalr installed package gles unix ipc lossless=${alrInstalledPackageGlesUnixIpcBridgeResult.expectedFrames > 0 && alrInstalledPackageGlesUnixIpcBridgeResult.expectedFrames == alrInstalledPackageGlesUnixIpcBridgeResult.commands.size}" +
+            "\nalr installed package gles unix ipc raw=${alrInstalledPackageGlesUnixIpcBridgeResult.rawLines.joinToString("|")}" +
+            "\nalr installed package gles unix ipc ack raw=${alrInstalledPackageGlesUnixIpcBridgeResult.ackLines.joinToString("|")}" +
+            "\nalr installed package gles unix ipc error=${alrInstalledPackageGlesUnixIpcBridgeResult.error ?: "none"}" +
+            "\nalr installed package gles unix ipc handoff=${alrInstalledPackageGlesUnixIpcBridgeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr installed package gles unix ipc stdout=${alrInstalledPackageGlesUnixIpcBridgeResult.clientResult.stdout.alrHandoffStdoutText()}" +
+            "\ngles bridge transport tcp loader elapsed ms=${alrInstalledPackageGlesIpcBridgeResult.clientResult.elapsedMs}" +
+            "\ngles bridge transport unix loader elapsed ms=${alrInstalledPackageGlesUnixIpcBridgeResult.clientResult.elapsedMs}" +
+            "\ngles bridge transport unix vs tcp ratio pct=${elapsedRatioPct(alrInstalledPackageGlesUnixIpcBridgeResult.clientResult, alrInstalledPackageGlesIpcBridgeResult.clientResult)}" +
+            "\ngles bridge transport unix faster than tcp=${isFaster(alrInstalledPackageGlesUnixIpcBridgeResult.clientResult, alrInstalledPackageGlesIpcBridgeResult.clientResult)}" +
             "\nalr installed package gles procaddr handoff=${alrInstalledPackageGlesProcaddrDemoResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
             "\nalr installed package gles procaddr stdout=${alrInstalledPackageGlesProcaddrDemoStdout}" +
             "\nalr installed package gles procaddr command parsed count=${alrInstalledPackageGlesProcaddrDemoCommands.size}" +
@@ -1490,6 +1518,7 @@ class MainActivity : Activity() {
             resultBlock("alr guest gles demo gears", alrGuestGlesDemoGearsResult) +
             resultBlock("alr installed package gles demo", alrInstalledPackageGlesDemoResult) +
             resultBlock("alr installed package gles ipc demo", alrInstalledPackageGlesIpcBridgeResult.clientResult) +
+            resultBlock("alr installed package gles unix ipc demo", alrInstalledPackageGlesUnixIpcBridgeResult.clientResult) +
             resultBlock("alr installed package gles procaddr demo", alrInstalledPackageGlesProcaddrDemoResult) +
             resultBlock("proot guest gles procaddr demo", prootGuestGlesProcaddrDemoResult) +
             resultBlock("alr guest gles procaddr demo", alrGuestGlesProcaddrDemoResult) +
@@ -1552,11 +1581,16 @@ class MainActivity : Activity() {
                         alrInstalledPackageVulkanUnixLoaderInfoBridgeResult.clientResult,
                         alrInstalledPackageVulkanUnixLoaderInfoPassed,
                     )
+                    val glesTransportUpdate = glesBridgeTransportUpdate(
+                        alrInstalledPackageGlesIpcBridgeResult.clientResult,
+                        alrInstalledPackageGlesUnixIpcBridgeResult.clientResult,
+                        alrInstalledPackageGlesUnixIpcBridgePassed,
+                    )
                     surfaceStatusView.text =
-                        "Linux guest GPU Surface renderer callback complete\n$executionUpdate\n$vulkanExecutionUpdate\n$vulkanTransportUpdate"
+                        "Linux guest GPU Surface renderer callback complete\n$executionUpdate\n$glesTransportUpdate\n$vulkanExecutionUpdate\n$vulkanTransportUpdate"
                     view.append(
                         "\n\n--- Linux guest Wayland/X11 GUI GPU surface renderer ---\n" +
-                            "$executionUpdate\n$surfaceReport" +
+                            "$executionUpdate\n$glesTransportUpdate\n$surfaceReport" +
                             "\n\n--- Android host Vulkan Surface clear renderer ---\n" +
                             "$vulkanExecutionUpdate\n$vulkanTransportUpdate\n$vulkanSurfaceReport",
                     )
@@ -2198,6 +2232,69 @@ class MainActivity : Activity() {
         )
     }
 
+    private fun runInstalledPackageGlesUnixIpcBridge(
+        nativeCommandRunner: NativeCommandRunner,
+        rootfsDir: File,
+        frameCount: Int,
+    ): GuestGpuIpcBridgeResult {
+        val socketName = "alr-gles-${System.nanoTime()}"
+        val server = LocalServerSocket(socketName)
+        val rawLines = mutableListOf("ALR_GPU_UNIX_BRIDGE_SOCKET name=@$socketName")
+        val ackLines = mutableListOf<String>()
+        val errors = mutableListOf<String>()
+        val acceptThread = thread(name = "alr-installed-package-gles-unix-ipc-bridge", start = true) {
+            try {
+                server.use { srv ->
+                    val accepted = srv.accept()
+                    accepted.use { socket ->
+                        socket.setSoTimeout(12000)
+                        val writer = socket.getOutputStream().bufferedWriter()
+                        socket.getInputStream().bufferedReader().useLines { lines ->
+                            lines.forEach { line ->
+                                rawLines += line
+                                if (line.startsWith("ALR_GPU_CLEAR ") || line.startsWith("ALR_GPU_DRAW_TRIANGLE ")) {
+                                    val ack = "ALR_GPU_IPC_ACK seq=${ackLines.size + 1} transport=unix-abstract"
+                                    ackLines += ack
+                                    writer.write(ack)
+                                    writer.newLine()
+                                    writer.flush()
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (error: SocketTimeoutException) {
+                errors += "timeout waiting for installed package gles unix ipc client"
+            } catch (error: Exception) {
+                errors += error.javaClass.simpleName + ": " + (error.message ?: "unknown")
+            }
+        }
+        val clientResult = nativeCommandRunner.runAlrRuntimeTrampolineInstalledPackageGlesDemoIpcUnix(rootfsDir, frameCount, socketName)
+        acceptThread.join(12500)
+        if (acceptThread.isAlive) {
+            errors += "gles unix accept thread still alive after join"
+            server.close()
+        }
+        val commands = rawLines
+            .mapNotNull { parseGuestGpuCommandLine(it) }
+            .mapIndexed { index, command -> command.copy(seq = index + 1) }
+        val expectedFrames = rawLines.firstOrNull { it.startsWith("ALR_GPU_IPC_HELLO ") }
+            ?.substringAfter("frames=", "0")
+            ?.substringBefore(" ")
+            ?.toIntOrNull()
+            ?: commands.size
+        return GuestGpuIpcBridgeResult(
+            host = "unix-abstract",
+            port = 0,
+            expectedFrames = expectedFrames,
+            commands = commands,
+            rawLines = rawLines.toList(),
+            error = errors.firstOrNull(),
+            clientResult = clientResult,
+            ackLines = ackLines.toList(),
+        )
+    }
+
 
     private fun runGuestGuiBridge(
         nativeCommandRunner: NativeCommandRunner,
@@ -2773,6 +2870,17 @@ class MainActivity : Activity() {
             "\nvulkan bridge transport unix loader elapsed ms=${unixLoaderInfoResult.elapsedMs}" +
             "\nvulkan bridge transport unix vs tcp ratio pct=${elapsedRatioPct(unixLoaderInfoResult, tcpLoaderInfoResult)}" +
             "\nvulkan bridge transport unix faster than tcp=${isFaster(unixLoaderInfoResult, tcpLoaderInfoResult)}"
+
+    private fun glesBridgeTransportUpdate(
+        tcpGlesResult: NativeCommandResult,
+        unixGlesResult: NativeCommandResult,
+        unixGlesPassed: Boolean,
+    ): String =
+        "GLES BRIDGE UNIX TRANSPORT EXECUTION: ${if (unixGlesPassed) "PASS" else "FAIL"}" +
+            "\ngles bridge transport tcp loader elapsed ms=${tcpGlesResult.elapsedMs}" +
+            "\ngles bridge transport unix loader elapsed ms=${unixGlesResult.elapsedMs}" +
+            "\ngles bridge transport unix vs tcp ratio pct=${elapsedRatioPct(unixGlesResult, tcpGlesResult)}" +
+            "\ngles bridge transport unix faster than tcp=${isFaster(unixGlesResult, tcpGlesResult)}"
 
     private fun String.lineStartingWith(prefix: String): String =
         lineSequence().firstOrNull { it.startsWith(prefix) } ?: "missing"

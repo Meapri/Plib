@@ -9,7 +9,7 @@ PAYLOAD = ROOT / "app" / "src" / "main" / "assets" / "rootfs" / "payloads" / "ti
 def test_android_assets_include_rootfs_manifest_and_payload():
     assert MANIFEST.is_file()
     assert PAYLOAD.is_file()
-    assert PAYLOAD.stat().st_size == 36116480
+    assert PAYLOAD.stat().st_size == 36126720
 
 
 def test_android_asset_manifest_matches_host_manifest():
@@ -313,6 +313,7 @@ def test_tiny_rootfs_contains_local_deb_install_smoke_package():
             vulkan_proxy_smoke = data_archive.extractfile("./usr/local/bin/alr-package-vulkan-proxy-smoke").read()
             vulkan_icd_smoke = data_archive.extractfile("./usr/local/bin/alr-package-vulkan-icd-manifest-smoke").read()
             vulkan_loader_info = data_archive.extractfile("./usr/local/bin/alr-package-vulkan-loader-info").read()
+            gles_shim_lib = data_archive.extractfile("./usr/lib/androlinux/libalr_gles_shim.so").read()
             vulkan_proxy_lib = data_archive.extractfile("./usr/lib/androlinux/libvulkan.so.1").read()
             vulkan_icd_manifest = data_archive.extractfile("./usr/share/vulkan/icd.d/alr_vulkan_icd.aarch64.json").read()
         assert b"ALR_SMOKE_PACKAGE_SCRIPT=1" in script
@@ -344,6 +345,7 @@ def test_tiny_rootfs_contains_local_deb_install_smoke_package():
         assert b"ALR_VK_BINARY_BRIDGE_ACK" in vulkan_proxy_lib
         assert b"alr-guest-libvulkan-proxy-v1" in vulkan_proxy_lib
         assert b"ALR_VK_BRIDGE_SOCKET" in vulkan_proxy_lib
+        assert b"ALR_GPU_BRIDGE_SOCKET" in gles_shim_lib
         assert archive.extractfile("./usr/bin/dpkg-deb").read(4) == b"\x7fELF"
         assert archive.extractfile("./bin/tar").read(4) == b"\x7fELF"
         dpkg_deb = archive.extractfile("./usr/bin/dpkg-deb").read()

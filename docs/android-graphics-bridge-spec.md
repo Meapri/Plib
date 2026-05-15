@@ -665,6 +665,25 @@ vulkan bridge transport unix vs tcp ratio pct=66
 vulkan bridge transport unix faster than tcp=true
 ```
 
+Build `0.4.86-gles-unix-bridge` gives the GLES shim the same transport shape:
+`ALR_GPU_BRIDGE_SOCKET=@...` selects an abstract Unix-domain socket, while the
+existing TCP host/port path remains the fallback. Android now executes both TCP
+and Unix installed-package GLES ACK smokes and feeds the Unix command stream
+into the Surface renderer:
+
+```text
+GLES BRIDGE UNIX TRANSPORT EXECUTION: PASS
+gles bridge transport tcp loader elapsed ms=7555
+gles bridge transport unix loader elapsed ms=12768
+gles bridge transport unix vs tcp ratio pct=169
+gles bridge transport unix faster than tcp=false
+surface gles shim vs native average ratio pct=101
+```
+
+This confirms transport compatibility, not a final optimization result. The
+per-frame ACK workload is still too chatty, so the next graphics bridge step is
+batching commands across the Unix control path rather than tuning socket setup.
+
 ## Open Questions
 
 - Which bridge should move to shared memory first after the Unix socket control path: GLES frames, Vulkan command batches, or GUI protocol frames?

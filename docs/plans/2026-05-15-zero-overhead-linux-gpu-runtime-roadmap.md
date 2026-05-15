@@ -1313,9 +1313,36 @@ vulkan bridge transport unix faster than tcp=true
 surface gles shim vs native average ratio pct=100
 ```
 
+Latest V86 GLES Unix-domain bridge evidence:
+
+```text
+build: 0.4.86-gles-unix-bridge
+versionCode=86
+versionName=0.4.86-gles-unix-bridge
+rootfs_version=bookworm-slim-2026-05-gui-gpu-v86
+rootfs sha256=4fa773507f52dd94a8ec22f36fba98e28ce6b0f0b399bdae5c99a213de001fbe
+rootfs size bytes=36126720
+installed libalr_gles_shim.so bytes=16464
+installed libEGL.so bytes=16448
+installed libGLESv2.so bytes=16448
+installed alr-package-gles-demo bytes=8264
+GLES BRIDGE UNIX TRANSPORT EXECUTION: PASS
+GUEST VULKAN UNIX SOCKET LOADER INFO SURFACE CLEAR EXECUTION: PASS
+VULKAN BRIDGE UNIX TRANSPORT EXECUTION: PASS
+surface vulkan clear request=ALR_VK_SURFACE_CLEAR_REQUEST version=1 red=0.33 green=0.22 blue=0.88 alpha=1.0 tag=guest-vulkan-proxy-clear-0001 source=libvulkan-proxy protocol=binary-frame-v1 transport=unix-abstract
+surface vulkan present=ok
+surface vulkan hardware render=true
+gles bridge transport tcp loader elapsed ms=7555
+gles bridge transport unix loader elapsed ms=12768
+gles bridge transport unix vs tcp ratio pct=169
+gles bridge transport unix faster than tcp=false
+vulkan bridge transport unix vs tcp ratio pct=100
+surface gles shim vs native average ratio pct=101
+```
+
 Next implementation batch:
 
-1. Move the GLES and GUI IPC smoke bridges from loopback TCP to the same Unix-domain control path, keeping TCP only as fallback.
-2. Replace the loader-info smoke with the real Khronos Vulkan loader or a stricter ABI-compatible loader subset.
-3. Add a batched Vulkan/GLES command transport so per-frame command submission does not pay one round trip per tiny command.
+1. Add a batched GLES command transport over the Unix control path so 60 frame commands can be sent and ACKed as one bounded frame.
+2. Move the Wayland/X11 GUI IPC smoke bridges from loopback TCP to the same Unix-domain control path, keeping TCP only as fallback.
+3. Replace the loader-info smoke with the real Khronos Vulkan loader or a stricter ABI-compatible loader subset.
 4. Add a small real toolkit fixture target, likely a tiny GTK/Qt-independent Wayland protocol smoke before pulling in a larger GUI stack.
