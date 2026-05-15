@@ -4,6 +4,7 @@
 #include <signal.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
+#include <sys/syscall.h>
 #if defined(__ANDROID__) && defined(__aarch64__)
 #include <asm/ptrace.h>
 #include <asm/unistd.h>
@@ -16,11 +17,23 @@
 #include <time.h>
 #include <unistd.h>
 
+#include <algorithm>
+#include <array>
 #include <cerrno>
 #include <cstring>
+#include <map>
+#include <set>
 #include <string>
 #include <sstream>
 #include <vector>
+
+#ifndef MFD_EXEC
+#define MFD_EXEC 0x0004U
+#endif
+
+#ifndef AT_EMPTY_PATH
+#define AT_EMPTY_PATH 0x1000
+#endif
 
 namespace {
 
@@ -83,6 +96,9 @@ std::string build_report(const alr::runtime::StaticEntryHandoffResult& result) {
     out << "\nalr handoff fault pc=" << hex_value(result.fault_pc);
     out << "\nalr handoff fault syscall=" << result.fault_syscall;
     out << "\nalr handoff syscall emulated count=" << result.syscall_emulated_count;
+    out << "\nalr handoff identity syscall virtualized count=" << result.identity_syscall_virtualized_count;
+    out << "\nalr handoff execve loader rewrite count=" << result.execve_loader_rewrite_count;
+    out << "\nalr handoff traced process count=" << result.traced_process_count;
     out << "\nalr handoff path rewrite enabled=" << (result.path_rewrite_enabled ? "true" : "false");
     out << "\nalr handoff path rewrite limit=" << result.path_rewrite_limit;
     out << "\nalr handoff path rewrite idle syscall limit=" << result.path_rewrite_idle_syscall_limit;
@@ -238,6 +254,20 @@ bool set_child_ptrace_options(pid_t child, long options) {
     return ::ptrace(PTRACE_SETOPTIONS, child, nullptr, reinterpret_cast<void*>(static_cast<std::uintptr_t>(options))) == 0;
 }
 
+bool read_child_bytes(pid_t child, std::uintptr_t address, void* out, std::size_t size) {
+    iovec local {};
+    local.iov_base = out;
+    local.iov_len = size;
+    iovec remote {};
+    remote.iov_base = reinterpret_cast<void*>(address);
+    remote.iov_len = size;
+    return ::process_vm_readv(child, &local, 1, &remote, 1, 0) == static_cast<ssize_t>(size);
+}
+
+bool read_child_u64(pid_t child, std::uintptr_t address, std::uint64_t& out) {
+    return read_child_bytes(child, address, &out, sizeof(out));
+}
+
 std::string read_child_cstring(pid_t child, std::uintptr_t address, std::size_t max_size = 4096) {
     std::string value;
     value.reserve(128);
@@ -265,14 +295,18 @@ std::string read_child_cstring(pid_t child, std::uintptr_t address, std::size_t 
     return "";
 }
 
-bool write_child_bytes(pid_t child, std::uintptr_t address, const std::string& value) {
+bool write_child_data(pid_t child, std::uintptr_t address, const void* data, std::size_t size) {
     iovec local {};
-    local.iov_base = const_cast<char*>(value.data());
-    local.iov_len = value.size();
+    local.iov_base = const_cast<void*>(data);
+    local.iov_len = size;
     iovec remote {};
     remote.iov_base = reinterpret_cast<void*>(address);
-    remote.iov_len = value.size();
-    return ::process_vm_writev(child, &local, 1, &remote, 1, 0) == static_cast<ssize_t>(value.size());
+    remote.iov_len = size;
+    return ::process_vm_writev(child, &local, 1, &remote, 1, 0) == static_cast<ssize_t>(size);
+}
+
+bool write_child_bytes(pid_t child, std::uintptr_t address, const std::string& value) {
+    return write_child_data(child, address, value.data(), value.size());
 }
 
 std::string join_rootfs_path(const std::string& rootfs_path, const std::string& guest_path) {
@@ -285,6 +319,155 @@ std::string join_rootfs_path(const std::string& rootfs_path, const std::string& 
 bool path_exists(const std::string& path) {
     struct stat st {};
     return !path.empty() && ::stat(path.c_str(), &st) == 0;
+}
+
+bool write_all_fd(int fd, const char* data, std::size_t size) {
+    std::size_t written = 0;
+    while (written < size) {
+        const ssize_t count = ::write(fd, data + written, size - written);
+        if (count < 0 && errno == EINTR) {
+            continue;
+        }
+        if (count <= 0) {
+            return false;
+        }
+        written += static_cast<std::size_t>(count);
+    }
+    return true;
+}
+
+int create_loader_exec_memfd(const std::string& loader_host_path) {
+#if defined(__NR_memfd_create)
+    int fd = static_cast<int>(::syscall(__NR_memfd_create, "alr-ld-linux-aarch64", MFD_EXEC));
+    if (fd < 0 && errno == EINVAL) {
+        fd = static_cast<int>(::syscall(__NR_memfd_create, "alr-ld-linux-aarch64", 0));
+    }
+    if (fd < 0) {
+        return -1;
+    }
+    const int source = ::open(loader_host_path.c_str(), O_RDONLY | O_CLOEXEC);
+    if (source < 0) {
+        ::close(fd);
+        return -1;
+    }
+    std::array<char, 16384> buffer {};
+    bool ok = true;
+    for (;;) {
+        const ssize_t count = ::read(source, buffer.data(), buffer.size());
+        if (count < 0 && errno == EINTR) {
+            continue;
+        }
+        if (count < 0) {
+            ok = false;
+            break;
+        }
+        if (count == 0) {
+            break;
+        }
+        if (!write_all_fd(fd, buffer.data(), static_cast<std::size_t>(count))) {
+            ok = false;
+            break;
+        }
+    }
+    ::close(source);
+    if (!ok || ::lseek(fd, 0, SEEK_SET) < 0) {
+        ::close(fd);
+        return -1;
+    }
+    (void)::fchmod(fd, 0700);
+    return fd;
+#else
+    (void)loader_host_path;
+    return -1;
+#endif
+}
+
+bool parent_path_exists(const std::string& path) {
+    if (path.empty()) {
+        return false;
+    }
+    const auto slash = path.find_last_of('/');
+    if (slash == std::string::npos) {
+        return false;
+    }
+    const std::string parent = slash == 0 ? "/" : path.substr(0, slash);
+    struct stat st {};
+    return ::stat(parent.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
+}
+
+bool guest_path_rewritable(const std::string& guest_path) {
+    return guest_path.size() >= 2 &&
+        guest_path.front() == '/' &&
+        guest_path.rfind("/data/", 0) != 0 &&
+        guest_path.rfind("/proc/", 0) != 0 &&
+        guest_path.rfind("/sys/", 0) != 0;
+}
+
+std::uintptr_t align_up(std::uintptr_t value, std::uintptr_t alignment) {
+    return (value + alignment - 1) & ~(alignment - 1);
+}
+
+std::string rootfs_library_path(const std::string& rootfs_path) {
+    return rootfs_path + "/lib/aarch64-linux-gnu:" +
+        rootfs_path + "/usr/lib/aarch64-linux-gnu:" +
+        rootfs_path + "/lib:" +
+        rootfs_path + "/usr/lib:" +
+        rootfs_path + "/usr/lib/androlinux";
+}
+
+bool resolve_guest_exec_path(
+    const std::string& rootfs_path,
+    const std::string& requested_path,
+    std::string& guest_path,
+    std::string& host_path) {
+    if (guest_path_rewritable(requested_path)) {
+        guest_path = requested_path;
+        host_path = join_rootfs_path(rootfs_path, guest_path);
+        return path_exists(host_path);
+    }
+    if (requested_path.empty() || requested_path.find('/') != std::string::npos) {
+        return false;
+    }
+    const std::array<const char*, 6> search_dirs {
+        "/usr/local/sbin",
+        "/usr/local/bin",
+        "/usr/sbin",
+        "/usr/bin",
+        "/sbin",
+        "/bin",
+    };
+    for (const char* dir : search_dirs) {
+        const std::string candidate_guest = std::string(dir) + "/" + requested_path;
+        const std::string candidate_host = join_rootfs_path(rootfs_path, candidate_guest);
+        if (path_exists(candidate_host)) {
+            guest_path = candidate_guest;
+            host_path = candidate_host;
+            return true;
+        }
+    }
+    return false;
+}
+
+std::vector<std::string> read_child_argv_tail(
+    pid_t child,
+    std::uintptr_t argv_address,
+    std::size_t max_args = 48) {
+    std::vector<std::string> args;
+    if (argv_address == 0) {
+        return args;
+    }
+    for (std::size_t index = 1; index < max_args; ++index) {
+        std::uint64_t arg_ptr = 0;
+        if (!read_child_u64(child, argv_address + index * sizeof(std::uint64_t), arg_ptr) || arg_ptr == 0) {
+            break;
+        }
+        std::string arg = read_child_cstring(child, static_cast<std::uintptr_t>(arg_ptr), 8192);
+        if (arg.empty()) {
+            break;
+        }
+        args.push_back(arg);
+    }
+    return args;
 }
 
 int path_arg_index_for_syscall(std::uint64_t syscall_number) {
@@ -317,6 +500,18 @@ int path_arg_index_for_syscall(std::uint64_t syscall_number) {
         case __NR_renameat:
             return 1;
 #endif
+#if defined(__NR_renameat2)
+        case __NR_renameat2:
+            return 1;
+#endif
+#if defined(__NR_linkat)
+        case __NR_linkat:
+            return 1;
+#endif
+#if defined(__NR_symlinkat)
+        case __NR_symlinkat:
+            return 2;
+#endif
 #if defined(__NR_statx)
         case __NR_statx:
             return 1;
@@ -334,16 +529,138 @@ int path_arg_index_for_syscall(std::uint64_t syscall_number) {
     }
 }
 
-bool maybe_rewrite_syscall_path(
+int second_path_arg_index_for_syscall(std::uint64_t syscall_number) {
+    switch (syscall_number) {
+#if defined(__NR_renameat)
+        case __NR_renameat:
+            return 3;
+#endif
+#if defined(__NR_renameat2)
+        case __NR_renameat2:
+            return 3;
+#endif
+#if defined(__NR_linkat)
+        case __NR_linkat:
+            return 3;
+#endif
+        default:
+            return -1;
+    }
+}
+
+bool syscall_path_can_target_missing(const user_pt_regs& regs, int path_arg_index) {
+    switch (regs.regs[8]) {
+#if defined(__NR_openat)
+        case __NR_openat:
+            return path_arg_index == 1 && (regs.regs[2] & O_CREAT) != 0;
+#endif
+#if defined(__NR_mkdirat)
+        case __NR_mkdirat:
+            return path_arg_index == 1;
+#endif
+#if defined(__NR_renameat)
+        case __NR_renameat:
+            return path_arg_index == 3;
+#endif
+#if defined(__NR_renameat2)
+        case __NR_renameat2:
+            return path_arg_index == 3;
+#endif
+#if defined(__NR_linkat)
+        case __NR_linkat:
+            return path_arg_index == 3;
+#endif
+#if defined(__NR_symlinkat)
+        case __NR_symlinkat:
+            return path_arg_index == 2;
+#endif
+        default:
+            return false;
+    }
+}
+
+bool syscall_returns_guest_root_identity(std::uint64_t syscall_number) {
+    switch (syscall_number) {
+#if defined(__NR_getuid)
+        case __NR_getuid:
+#endif
+#if defined(__NR_geteuid)
+        case __NR_geteuid:
+#endif
+#if defined(__NR_getgid)
+        case __NR_getgid:
+#endif
+#if defined(__NR_getegid)
+        case __NR_getegid:
+#endif
+            return true;
+        default:
+            return false;
+    }
+}
+
+bool syscall_sets_guest_root_identity(std::uint64_t syscall_number) {
+    switch (syscall_number) {
+#if defined(__NR_setregid)
+        case __NR_setregid:
+#endif
+#if defined(__NR_setgid)
+        case __NR_setgid:
+#endif
+#if defined(__NR_setreuid)
+        case __NR_setreuid:
+#endif
+#if defined(__NR_setuid)
+        case __NR_setuid:
+#endif
+#if defined(__NR_setresuid)
+        case __NR_setresuid:
+#endif
+#if defined(__NR_setresgid)
+        case __NR_setresgid:
+#endif
+#if defined(__NR_setfsuid)
+        case __NR_setfsuid:
+#endif
+#if defined(__NR_setfsgid)
+        case __NR_setfsgid:
+#endif
+            return true;
+        default:
+            return false;
+    }
+}
+
+bool virtualize_guest_identity_syscall_exit(
+    pid_t child,
+    std::uint64_t syscall_number,
+    alr::runtime::StaticEntryHandoffResult& result) {
+    if (!syscall_returns_guest_root_identity(syscall_number) &&
+        !syscall_sets_guest_root_identity(syscall_number)) {
+        return false;
+    }
+    user_pt_regs regs {};
+    if (!get_child_registers(child, regs)) {
+        return false;
+    }
+    regs.regs[0] = 0;
+    if (!set_child_registers(child, regs)) {
+        return false;
+    }
+    ++result.identity_syscall_virtualized_count;
+    return true;
+}
+
+bool rewrite_syscall_path_arg(
     pid_t child,
     const alr::runtime::StaticEntryTransferContext& context,
     const alr::runtime::StaticEntryHandoffOptions& options,
     user_pt_regs& regs,
-    alr::runtime::StaticEntryHandoffResult& result) {
+    alr::runtime::StaticEntryHandoffResult& result,
+    int path_arg_index) {
     if (!result.path_rewrite_enabled || context.stack.mapped_base == 0 || context.stack.mapped_size < 32768) {
         return false;
     }
-    const int path_arg_index = path_arg_index_for_syscall(regs.regs[8]);
     if (path_arg_index < 0) {
         return false;
     }
@@ -352,16 +669,20 @@ bool maybe_rewrite_syscall_path(
         return false;
     }
     const std::string guest_path = read_child_cstring(child, guest_path_address);
-    if (guest_path.size() < 2 || guest_path.front() != '/' || guest_path.rfind("/data/", 0) == 0 ||
-        guest_path.rfind("/proc/", 0) == 0 || guest_path.rfind("/sys/", 0) == 0) {
+    if (!guest_path_rewritable(guest_path)) {
         return false;
     }
     const std::string host_path = join_rootfs_path(options.rootfs_path, guest_path);
-    if (!path_exists(host_path) || host_path.size() + 1 > 4096) {
+    const bool target_exists = path_exists(host_path);
+    const bool missing_target_allowed =
+        !target_exists &&
+        syscall_path_can_target_missing(regs, path_arg_index) &&
+        parent_path_exists(host_path);
+    if ((!target_exists && !missing_target_allowed) || host_path.size() + 1 > 4096) {
         return false;
     }
     const std::uintptr_t scratch_base = context.stack.mapped_base + 4096;
-    const std::uintptr_t scratch = scratch_base + (result.path_rewrite_count % 4) * 4096;
+    const std::uintptr_t scratch = scratch_base + (result.path_rewrite_count % 16) * 4096;
     if (scratch + host_path.size() + 1 >= context.stack.mapped_base + context.stack.mapped_size) {
         return false;
     }
@@ -374,6 +695,155 @@ bool maybe_rewrite_syscall_path(
     result.last_host_path = host_path;
     ++result.path_rewrite_count;
     return true;
+}
+
+bool maybe_rewrite_syscall_path(
+    pid_t child,
+    const alr::runtime::StaticEntryTransferContext& context,
+    const alr::runtime::StaticEntryHandoffOptions& options,
+    user_pt_regs& regs,
+    alr::runtime::StaticEntryHandoffResult& result) {
+    const int first_path_arg_index = path_arg_index_for_syscall(regs.regs[8]);
+    const int second_path_arg_index = second_path_arg_index_for_syscall(regs.regs[8]);
+    const bool first_rewritten = rewrite_syscall_path_arg(
+        child,
+        context,
+        options,
+        regs,
+        result,
+        first_path_arg_index);
+    const bool second_rewritten = rewrite_syscall_path_arg(
+        child,
+        context,
+        options,
+        regs,
+        result,
+        second_path_arg_index);
+    return first_rewritten || second_rewritten;
+}
+
+bool maybe_rewrite_execve_to_loader(
+    pid_t child,
+    const alr::runtime::StaticEntryTransferContext& context,
+    const alr::runtime::StaticEntryHandoffOptions& options,
+    const std::string& loader_exec_path,
+    int loader_exec_fd,
+    user_pt_regs& regs,
+    alr::runtime::StaticEntryHandoffResult& result) {
+#if defined(__NR_execve)
+    if (!result.path_rewrite_enabled ||
+        regs.regs[8] != __NR_execve ||
+        context.stack.mapped_base == 0 ||
+        context.stack.mapped_size < 128 * 1024) {
+        return false;
+    }
+    const std::uintptr_t guest_path_address = static_cast<std::uintptr_t>(regs.regs[0]);
+    const std::uintptr_t argv_address = static_cast<std::uintptr_t>(regs.regs[1]);
+    const std::uint64_t envp_address = regs.regs[2];
+    if (guest_path_address == 0 || argv_address == 0) {
+        return false;
+    }
+    const std::string requested_path = read_child_cstring(child, guest_path_address);
+    std::string guest_path;
+    std::string host_path;
+    if (!resolve_guest_exec_path(options.rootfs_path, requested_path, guest_path, host_path)) {
+        return false;
+    }
+    const std::string loader_host_path = join_rootfs_path(options.rootfs_path, "/lib/ld-linux-aarch64.so.1");
+    const std::string exec_loader_path = loader_exec_path.empty() ? loader_host_path : loader_exec_path;
+    if (!path_exists(host_path) ||
+        !path_exists(loader_host_path) ||
+        exec_loader_path.empty() ||
+        (loader_exec_fd < 0 && !path_exists(exec_loader_path))) {
+        return false;
+    }
+
+    std::vector<std::string> argv;
+    argv.reserve(8);
+    argv.push_back(loader_exec_fd >= 0 ? loader_host_path : exec_loader_path);
+    argv.emplace_back("--argv0");
+    argv.push_back(guest_path);
+    argv.emplace_back("--library-path");
+    argv.push_back(rootfs_library_path(options.rootfs_path));
+    argv.push_back(host_path);
+    const auto original_tail = read_child_argv_tail(child, argv_address);
+    for (const auto& arg : original_tail) {
+        if (guest_path == "/usr/bin/tar" && arg.rfind("--warning=", 0) == 0) {
+            continue;
+        }
+        if (guest_path_rewritable(arg)) {
+            const std::string translated_arg = join_rootfs_path(options.rootfs_path, arg);
+            if (path_exists(translated_arg) || parent_path_exists(translated_arg)) {
+                argv.push_back(translated_arg);
+                continue;
+            }
+        }
+        argv.push_back(arg);
+    }
+
+    const std::uintptr_t scratch_start = context.stack.mapped_base + 96 * 1024;
+    const std::uintptr_t scratch_end = context.stack.mapped_base + static_cast<std::uintptr_t>(context.stack.mapped_size);
+    std::uintptr_t cursor = scratch_start + (result.execve_loader_rewrite_count % 2) * 64 * 1024;
+    if (cursor + 64 * 1024 >= scratch_end) {
+        cursor = scratch_start;
+    }
+    std::array<std::uint64_t, 64> child_argv {};
+    if (argv.size() + 1 > child_argv.size()) {
+        argv.resize(child_argv.size() - 1);
+    }
+    for (std::size_t index = 0; index < argv.size(); ++index) {
+        if (argv[index].size() + 1 > 8192 || cursor + argv[index].size() + 1 >= scratch_end) {
+            return false;
+        }
+        child_argv[index] = cursor;
+        if (!write_child_bytes(child, cursor, argv[index] + '\0')) {
+            return false;
+        }
+        cursor = align_up(cursor + argv[index].size() + 1, 8);
+    }
+    const std::uintptr_t argv_vector_address = cursor;
+    const std::size_t argv_vector_size = (argv.size() + 1) * sizeof(std::uint64_t);
+    if (argv_vector_address + argv_vector_size >= scratch_end) {
+        return false;
+    }
+    if (!write_child_data(child, argv_vector_address, child_argv.data(), argv_vector_size)) {
+        return false;
+    }
+
+#if defined(__NR_execveat)
+    if (loader_exec_fd >= 0) {
+        const std::uintptr_t empty_path_address = argv_vector_address + argv_vector_size;
+        if (empty_path_address + 1 >= scratch_end || !write_child_bytes(child, empty_path_address, std::string("\0", 1))) {
+            return false;
+        }
+        regs.regs[8] = __NR_execveat;
+        regs.regs[0] = static_cast<std::uint64_t>(loader_exec_fd);
+        regs.regs[1] = empty_path_address;
+        regs.regs[2] = argv_vector_address;
+        regs.regs[3] = envp_address;
+        regs.regs[4] = AT_EMPTY_PATH;
+    } else {
+        regs.regs[0] = child_argv[0];
+        regs.regs[1] = argv_vector_address;
+    }
+#else
+    regs.regs[0] = child_argv[0];
+    regs.regs[1] = argv_vector_address;
+#endif
+    result.last_guest_path = guest_path;
+    result.last_host_path = host_path;
+    ++result.execve_loader_rewrite_count;
+    return true;
+#else
+    (void)child;
+    (void)context;
+    (void)options;
+    (void)loader_exec_path;
+    (void)loader_exec_fd;
+    (void)regs;
+    (void)result;
+    return false;
+#endif
 }
 
 void capture_ptrace_fault(pid_t child, int signal_number, alr::runtime::StaticEntryHandoffResult& result) {
@@ -508,9 +978,24 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
     timespec handoff_started {};
     (void)::clock_gettime(CLOCK_MONOTONIC, &handoff_started);
 
+    int loader_exec_fd = -1;
+    std::string loader_exec_path = options.exec_loader_path;
+#if defined(__ANDROID__) && defined(__aarch64__)
+    if (result.path_rewrite_enabled && loader_exec_path.empty()) {
+        const std::string loader_host_path = join_rootfs_path(options.rootfs_path, "/lib/ld-linux-aarch64.so.1");
+        loader_exec_fd = create_loader_exec_memfd(loader_host_path);
+        if (loader_exec_fd >= 0) {
+            loader_exec_path = "/proc/self/fd/" + std::to_string(loader_exec_fd);
+        }
+    }
+#endif
+
     const pid_t child = ::fork();
     if (child < 0) {
         result.error = errno_message("fork static entry handoff");
+        if (loader_exec_fd >= 0) {
+            ::close(loader_exec_fd);
+        }
         ::close(stdout_pipe[0]);
         ::close(stdout_pipe[1]);
         ::close(stderr_pipe[0]);
@@ -541,23 +1026,56 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
     bool ptrace_entry_stop_seen = false;
     bool ptrace_fault_stop_seen = false;
 #if defined(__ANDROID__) && defined(__aarch64__)
-    bool entering_syscall = true;
+    struct TraceState {
+        bool entering_syscall = true;
+        bool stop_tracing_after_syscall_exit = false;
+        std::uint32_t syscalls_since_last_rewrite = 0;
+        std::uint64_t pending_syscall_number = 0;
+    };
+    std::map<pid_t, TraceState> trace_states;
+    std::set<pid_t> live_traced_processes;
 #endif
-    bool trace_syscalls = result.path_rewrite_enabled;
+    bool trace_syscalls = result.path_rewrite_enabled || options.virtual_root_identity;
 #if defined(__ANDROID__) && defined(__aarch64__)
-    bool stop_tracing_after_syscall_exit = false;
-    std::uint32_t syscalls_since_last_rewrite = 0;
+    if (trace_syscalls) {
+        trace_states.emplace(child, TraceState{});
+        live_traced_processes.insert(child);
+        result.traced_process_count = 1;
+    }
+    const long ptrace_options =
+        PTRACE_O_TRACESYSGOOD |
+        PTRACE_O_TRACEFORK |
+        PTRACE_O_TRACEVFORK |
+        PTRACE_O_TRACECLONE |
+        PTRACE_O_TRACEEXEC;
+    auto kill_live_traced_processes = [&]() {
+        if (!trace_syscalls) {
+            (void)::kill(child, SIGKILL);
+            return;
+        }
+        for (const pid_t pid : live_traced_processes) {
+            (void)::kill(pid, SIGKILL);
+        }
+    };
+#else
+    auto kill_live_traced_processes = [&]() {
+        (void)::kill(child, SIGKILL);
+    };
 #endif
     do {
-        waited = ::waitpid(child, &status, WNOHANG);
+        int wait_options = WNOHANG;
+#if defined(__ANDROID__) && defined(__aarch64__) && defined(__WALL)
+        if (trace_syscalls) {
+            wait_options |= __WALL;
+        }
+#endif
+        waited = ::waitpid(trace_syscalls ? -1 : child, &status, wait_options);
         if (waited == 0) {
             append_available_pipe_text(stdout_pipe[0], result.stdout_text);
             append_available_pipe_text(stderr_pipe[0], result.stderr_text);
             if (waited_ms >= result.timeout_ms) {
                 result.timed_out = true;
-                if (::kill(child, SIGKILL) != 0 && result.error.empty()) {
-                    result.error = errno_message("kill timed-out static entry handoff");
-                }
+                kill_live_traced_processes();
                 do {
                     waited = ::waitpid(child, &status, 0);
                 } while (waited < 0 && errno == EINTR);
@@ -565,18 +1083,18 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
             }
             ::usleep(1000);
             waited_ms += 1;
-        } else if (waited == child && WIFSTOPPED(status)) {
+        } else if (waited > 0 && WIFSTOPPED(status)) {
             append_available_pipe_text(stdout_pipe[0], result.stdout_text);
             append_available_pipe_text(stderr_pipe[0], result.stderr_text);
             const int stop_signal = WSTOPSIG(status);
-            if (stop_signal == SIGSTOP && !ptrace_entry_stop_seen) {
+            if (waited == child && stop_signal == SIGSTOP && !ptrace_entry_stop_seen) {
                 ptrace_entry_stop_seen = true;
 #if defined(__ANDROID__) && defined(__aarch64__)
                 if (trace_syscalls &&
-                    !set_child_ptrace_options(child, PTRACE_O_TRACESYSGOOD) &&
+                    !set_child_ptrace_options(child, ptrace_options) &&
                     result.error.empty()) {
                     result.error = errno_message("ptrace setoptions static entry handoff");
-                    (void)::kill(child, SIGKILL);
+                    kill_live_traced_processes();
                     do {
                         waited = ::waitpid(child, &status, 0);
                     } while (waited < 0 && errno == EINTR);
@@ -588,7 +1106,7 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
                     continue_child_ptrace(child);
                 if (!continued && result.error.empty()) {
                     result.error = errno_message("ptrace continue static entry handoff");
-                    (void)::kill(child, SIGKILL);
+                    kill_live_traced_processes();
                     do {
                         waited = ::waitpid(child, &status, 0);
                     } while (waited < 0 && errno == EINTR);
@@ -596,42 +1114,110 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
                 }
                 waited = 0;
 #if defined(__ANDROID__) && defined(__aarch64__)
+            } else if (trace_syscalls && stop_signal == SIGSTOP) {
+                trace_states.try_emplace(waited, TraceState{});
+                if (live_traced_processes.insert(waited).second) {
+                    ++result.traced_process_count;
+                }
+                (void)set_child_ptrace_options(waited, ptrace_options);
+                if (!continue_child_syscall(waited) && result.error.empty()) {
+                    result.error = errno_message("ptrace continue traced child stop");
+                    kill_live_traced_processes();
+                    do {
+                        waited = ::waitpid(child, &status, 0);
+                    } while (waited < 0 && errno == EINTR);
+                    break;
+                }
+                waited = 0;
+            } else if (trace_syscalls && stop_signal == SIGTRAP && (status >> 16) != 0) {
+                const int ptrace_event = status >> 16;
+                if (ptrace_event == PTRACE_EVENT_FORK ||
+                    ptrace_event == PTRACE_EVENT_VFORK ||
+                    ptrace_event == PTRACE_EVENT_CLONE) {
+                    unsigned long event_message = 0;
+                    if (::ptrace(PTRACE_GETEVENTMSG, waited, nullptr, &event_message) == 0 &&
+                        event_message != 0) {
+                        const pid_t new_pid = static_cast<pid_t>(event_message);
+                        trace_states.try_emplace(new_pid, TraceState{});
+                        if (live_traced_processes.insert(new_pid).second) {
+                            ++result.traced_process_count;
+                        }
+                        (void)set_child_ptrace_options(new_pid, ptrace_options);
+                        (void)continue_child_syscall(new_pid);
+                    }
+                } else if (ptrace_event == PTRACE_EVENT_EXEC) {
+                    auto& trace_state = trace_states[waited];
+                    trace_state.entering_syscall = true;
+                    trace_state.pending_syscall_number = 0;
+                }
+                if (!continue_child_syscall(waited) && result.error.empty()) {
+                    result.error = errno_message("ptrace continue trace event");
+                    kill_live_traced_processes();
+                    do {
+                        waited = ::waitpid(child, &status, 0);
+                    } while (waited < 0 && errno == EINTR);
+                    break;
+                }
+                waited = 0;
             } else if (trace_syscalls && stop_signal == (SIGTRAP | 0x80)) {
-                const bool was_entering_syscall = entering_syscall;
+                auto& trace_state = trace_states[waited];
+                const bool was_entering_syscall = trace_state.entering_syscall;
                 if (was_entering_syscall) {
                     user_pt_regs regs {};
                     const std::uint32_t rewrite_count_before = result.path_rewrite_count;
+                    const std::uint32_t execve_rewrite_count_before = result.execve_loader_rewrite_count;
+                    trace_state.pending_syscall_number = 0;
                     ++result.path_rewrite_syscall_count;
-                    if (get_child_registers(child, regs) &&
-                        maybe_rewrite_syscall_path(child, context, options, regs, result)) {
-                        (void)set_child_registers(child, regs);
+                    if (get_child_registers(waited, regs)) {
+                        trace_state.pending_syscall_number = regs.regs[8];
+                        if (maybe_rewrite_execve_to_loader(waited, context, options, loader_exec_path, loader_exec_fd, regs, result) ||
+                            maybe_rewrite_syscall_path(waited, context, options, regs, result)) {
+                            (void)set_child_registers(waited, regs);
+                        }
                     }
-                    if (result.path_rewrite_count > rewrite_count_before) {
-                        syscalls_since_last_rewrite = 0;
+                    if (result.path_rewrite_count > rewrite_count_before ||
+                        result.execve_loader_rewrite_count > execve_rewrite_count_before) {
+                        trace_state.syscalls_since_last_rewrite = 0;
                         if (result.path_rewrite_limit > 0 &&
                             result.path_rewrite_count >= result.path_rewrite_limit) {
-                            stop_tracing_after_syscall_exit = true;
+                            trace_state.stop_tracing_after_syscall_exit = true;
                         }
                     } else if (result.path_rewrite_count > 0) {
-                        ++syscalls_since_last_rewrite;
+                        ++trace_state.syscalls_since_last_rewrite;
                         if (result.path_rewrite_idle_syscall_limit > 0 &&
-                            syscalls_since_last_rewrite >= result.path_rewrite_idle_syscall_limit) {
-                            stop_tracing_after_syscall_exit = true;
+                            trace_state.syscalls_since_last_rewrite >= result.path_rewrite_idle_syscall_limit) {
+                            trace_state.stop_tracing_after_syscall_exit = true;
                         }
                     }
+                } else if (options.virtual_root_identity && trace_state.pending_syscall_number != 0) {
+                    (void)virtualize_guest_identity_syscall_exit(waited, trace_state.pending_syscall_number, result);
                 }
-                entering_syscall = !entering_syscall;
-                const bool stop_now = !was_entering_syscall && stop_tracing_after_syscall_exit;
-                if (stop_now) {
+                trace_state.entering_syscall = !trace_state.entering_syscall;
+                const bool stop_now =
+                    !was_entering_syscall &&
+                    trace_state.stop_tracing_after_syscall_exit &&
+                    !options.virtual_root_identity;
+                if (stop_now && waited == child) {
                     trace_syscalls = false;
-                    stop_tracing_after_syscall_exit = false;
+                    trace_state.stop_tracing_after_syscall_exit = false;
                 }
                 const bool continued = stop_now ?
-                    continue_child_ptrace(child) :
-                    continue_child_syscall(child);
+                    continue_child_ptrace(waited) :
+                    continue_child_syscall(waited);
                 if (!continued && result.error.empty()) {
                     result.error = errno_message("ptrace syscall continue static entry handoff");
-                    (void)::kill(child, SIGKILL);
+                    kill_live_traced_processes();
+                    do {
+                        waited = ::waitpid(child, &status, 0);
+                    } while (waited < 0 && errno == EINTR);
+                    break;
+                }
+                waited = 0;
+            } else if (trace_syscalls && (stop_signal == SIGCHLD || stop_signal == SIGTRAP)) {
+                if (!continue_child_syscall(waited, stop_signal == SIGCHLD ? SIGCHLD : 0) &&
+                    result.error.empty()) {
+                    result.error = errno_message("ptrace continue signal stop");
+                    kill_live_traced_processes();
                     do {
                         waited = ::waitpid(child, &status, 0);
                     } while (waited < 0 && errno == EINTR);
@@ -640,16 +1226,16 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
                 waited = 0;
 #endif
             } else {
-                capture_ptrace_fault(child, stop_signal, result);
+                capture_ptrace_fault(waited, stop_signal, result);
                 if (stop_signal == SIGSYS &&
                     result.syscall_emulated_count < 64 &&
-                    emulate_android_seccomp_syscall(child, result)) {
+                    emulate_android_seccomp_syscall(waited, result)) {
                     const bool continued = trace_syscalls ?
-                        continue_child_syscall(child) :
-                        continue_child_ptrace(child);
+                        continue_child_syscall(waited) :
+                        continue_child_ptrace(waited);
                     if (!continued && result.error.empty()) {
                         result.error = errno_message("ptrace continue emulated static entry syscall");
-                        (void)::kill(child, SIGKILL);
+                        kill_live_traced_processes();
                         do {
                             waited = ::waitpid(child, &status, 0);
                         } while (waited < 0 && errno == EINTR);
@@ -661,16 +1247,28 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
                 ptrace_fault_stop_seen = true;
                 result.child_signaled = true;
                 result.signal_number = stop_signal;
-                (void)::kill(child, SIGKILL);
+                kill_live_traced_processes();
                 do {
                     waited = ::waitpid(child, &status, 0);
                 } while (waited < 0 && errno == EINTR);
                 break;
             }
+        } else if (waited > 0) {
+#if defined(__ANDROID__) && defined(__aarch64__)
+            live_traced_processes.erase(waited);
+            trace_states.erase(waited);
+#endif
+            if (waited == child) {
+                break;
+            }
+            waited = 0;
         }
     } while (waited == 0 || (waited < 0 && errno == EINTR));
     if (waited < 0) {
         result.error = errno_message("waitpid static entry handoff");
+        if (loader_exec_fd >= 0) {
+            ::close(loader_exec_fd);
+        }
         ::close(stdout_pipe[0]);
         ::close(stderr_pipe[0]);
         result.report = build_report(result);
@@ -681,6 +1279,9 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
     result.elapsed_ms = monotonic_elapsed_ms(handoff_started);
     ::close(stdout_pipe[0]);
     ::close(stderr_pipe[0]);
+    if (loader_exec_fd >= 0) {
+        ::close(loader_exec_fd);
+    }
     if (ptrace_fault_stop_seen) {
         result.child_exited = false;
     } else if (WIFEXITED(status)) {
@@ -714,6 +1315,9 @@ std::string build_static_entry_handoff_skip_report() {
         "alr handoff fault pc=0x0\n"
         "alr handoff fault syscall=0\n"
         "alr handoff syscall emulated count=0\n"
+        "alr handoff identity syscall virtualized count=0\n"
+        "alr handoff execve loader rewrite count=0\n"
+        "alr handoff traced process count=0\n"
         "alr handoff path rewrite enabled=false\n"
         "alr handoff path rewrite limit=0\n"
         "alr handoff path rewrite idle syscall limit=0\n"

@@ -49,6 +49,8 @@ def test_trampoline_report_contract_exists():
     assert "ALR_TRAMPOLINE_PATH_REWRITE" in main
     assert "ALR_TRAMPOLINE_PATH_REWRITE_LIMIT" in main
     assert "ALR_TRAMPOLINE_PATH_REWRITE_IDLE_SYSCALL_LIMIT" in main
+    assert "ALR_TRAMPOLINE_VIRTUAL_ROOT_IDENTITY" in main
+    assert "ALR_TRAMPOLINE_EXEC_LOADER_PATH" in main
     assert "env_extra_guest_env" in main
     assert "maybe_run_static_entry_handoff" in main
     assert "ALR STATIC ENTRY HANDOFF BENCHMARK:" in main
@@ -67,6 +69,13 @@ def test_trampoline_report_contract_exists():
     assert "alr handoff syscall emulated count=" in handoff
     assert "PTRACE_SYSCALL" in handoff
     assert "process_vm_writev" in handoff
+    assert "PTRACE_O_TRACEFORK" in handoff
+    assert "PTRACE_O_TRACEVFORK" in handoff
+    assert "PTRACE_O_TRACECLONE" in handoff
+    assert "PTRACE_O_TRACEEXEC" in handoff
+    assert "maybe_rewrite_execve_to_loader" in handoff
+    assert "alr handoff execve loader rewrite count=" in handoff
+    assert "alr handoff traced process count=" in handoff
     assert "alr handoff path rewrite count=" in handoff
     assert "alr handoff path rewrite limit=" in handoff
     assert "alr handoff path rewrite idle syscall limit=" in handoff

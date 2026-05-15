@@ -156,6 +156,8 @@ int main(int argc, char** argv) {
     std::cout << "alr trampoline path rewrite=" << (env_enabled("ALR_TRAMPOLINE_PATH_REWRITE") ? "true" : "false") << "\n";
     std::cout << "alr trampoline path rewrite limit=" << env_int_or_default("ALR_TRAMPOLINE_PATH_REWRITE_LIMIT", 0) << "\n";
     std::cout << "alr trampoline path rewrite idle syscall limit=" << env_int_or_default("ALR_TRAMPOLINE_PATH_REWRITE_IDLE_SYSCALL_LIMIT", 0) << "\n";
+    std::cout << "alr trampoline virtual root identity=" << (env_enabled("ALR_TRAMPOLINE_VIRTUAL_ROOT_IDENTITY") ? "true" : "false") << "\n";
+    std::cout << "alr trampoline exec loader path=" << env_or_none("ALR_TRAMPOLINE_EXEC_LOADER_PATH") << "\n";
     const int repeat_count = env_int_clamped("ALR_TRAMPOLINE_REPEAT_COUNT", 1, 1, 50);
     std::cout << "alr trampoline repeat count=" << repeat_count << "\n";
     const char* target_host = std::getenv("ALR_TRAMPOLINE_TARGET_HOST_PATH");
@@ -188,7 +190,9 @@ int main(int argc, char** argv) {
             .path_rewrite_enabled = env_enabled("ALR_TRAMPOLINE_PATH_REWRITE"),
             .path_rewrite_limit = static_cast<std::uint32_t>(env_int_or_default("ALR_TRAMPOLINE_PATH_REWRITE_LIMIT", 0)),
             .path_rewrite_idle_syscall_limit = static_cast<std::uint32_t>(env_int_or_default("ALR_TRAMPOLINE_PATH_REWRITE_IDLE_SYSCALL_LIMIT", 0)),
+            .virtual_root_identity = env_enabled("ALR_TRAMPOLINE_VIRTUAL_ROOT_IDENTITY"),
             .rootfs_path = rootfs_env == "none" ? "" : std::string(rootfs_env),
+            .exec_loader_path = std::string(env_or_none("ALR_TRAMPOLINE_EXEC_LOADER_PATH")) == "none" ? "" : std::string(env_or_none("ALR_TRAMPOLINE_EXEC_LOADER_PATH")),
         };
         const auto handoff_summary = run_handoff_benchmark(
             transfer_context,

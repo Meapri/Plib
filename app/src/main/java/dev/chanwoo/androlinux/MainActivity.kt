@@ -77,6 +77,7 @@ class MainActivity : Activity() {
         val alrAptGetVersionResult = nativeCommandRunner.runAlrRuntimeTrampolineAptGetVersion(rootfsStatus.rootfsDir)
         val alrAptCacheVersionResult = nativeCommandRunner.runAlrRuntimeTrampolineAptCacheVersion(rootfsStatus.rootfsDir)
         val alrAptConfigVersionResult = nativeCommandRunner.runAlrRuntimeTrampolineAptConfigVersion(rootfsStatus.rootfsDir)
+        val alrDpkgInstallLocalResult = nativeCommandRunner.runAlrRuntimeTrampolineDpkgInstallLocalSmoke(rootfsStatus.rootfsDir)
         val prootDpkgInstallLocalResult = nativeCommandRunner.runProotRootfsDpkgInstallLocalSmoke(rootfsStatus.rootfsDir)
         val prootInstalledPackageSmokeResult = nativeCommandRunner.runProotRootfsInstalledPackageSmoke(rootfsStatus.rootfsDir)
         val prootGuestGpuClientResult = nativeCommandRunner.runProotRootfsGuestGpuClient(rootfsStatus.rootfsDir)
@@ -244,6 +245,14 @@ class MainActivity : Activity() {
         val alrAptConfigVersionExecutionPassed = alrAptConfigVersionResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
             alrAptConfigVersionResult.stdout.alrHandoffStdoutText().contains("apt ") &&
             alrAptConfigVersionResult.stdout.alrHandoffStdoutText().contains("arm64")
+        val alrDpkgInstallLocalGuestOutput =
+            alrDpkgInstallLocalResult.stdout.alrHandoffStdoutText() + "\n" +
+                alrDpkgInstallLocalResult.stdout.alrHandoffStderrText()
+        val alrDpkgLocalInstallExecutionPassed = alrDpkgInstallLocalResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+            !alrDpkgInstallLocalGuestOutput.contains("dpkg: error") &&
+            (alrDpkgInstallLocalGuestOutput.contains("Setting up alr-smoke") ||
+                alrDpkgInstallLocalGuestOutput.contains("alr-smoke (1.0)") ||
+                alrDpkgInstallLocalGuestOutput.contains("Selecting previously unselected package alr-smoke"))
         val dpkgLocalInstallExecutionPassed = prootDpkgInstallLocalResult.exitCode == 0 &&
             !prootDpkgInstallLocalResult.stderr.contains("dpkg: error") &&
             (prootDpkgInstallLocalResult.stdout.contains("Setting up alr-smoke") ||
@@ -323,6 +332,7 @@ class MainActivity : Activity() {
             "\nALR APT-GET VERSION EXECUTION: ${if (alrAptGetVersionExecutionPassed) "PASS" else "FAIL"}" +
             "\nALR APT-CACHE VERSION EXECUTION: ${if (alrAptCacheVersionExecutionPassed) "PASS" else "FAIL"}" +
             "\nALR APT-CONFIG VERSION EXECUTION: ${if (alrAptConfigVersionExecutionPassed) "PASS" else "FAIL"}" +
+            "\nALR DPKG LOCAL INSTALL EXECUTION: ${if (alrDpkgLocalInstallExecutionPassed) "PASS" else "FAIL"}" +
             "\nDPKG LOCAL INSTALL EXECUTION: ${if (dpkgLocalInstallExecutionPassed) "PASS" else "FAIL"}" +
             "\nINSTALLED PACKAGE EXECUTION: ${if (installedPackageExecutionPassed) "PASS" else "FAIL"}" +
             "\nHOST GPU EGL/GLES EXECUTION: ${if (hostGpuHardwareCandidate) "PASS" else "FAIL"}" +
@@ -596,6 +606,13 @@ class MainActivity : Activity() {
             "\nalr apt-config --version handoff=${alrAptConfigVersionResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
             "\nalr apt-config --version path rewrite=${alrAptConfigVersionResult.stdout.lineStartingWith("alr handoff path rewrite count=")}" +
             "\nalr apt-config --version stdout=${alrAptConfigVersionResult.stdout.alrHandoffStdoutText()}" +
+            "\nalr dpkg -i local deb handoff=${alrDpkgInstallLocalResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr dpkg -i local deb identity virtualized=${alrDpkgInstallLocalResult.stdout.lineStartingWith("alr handoff identity syscall virtualized count=")}" +
+            "\nalr dpkg -i local deb execve loader rewrites=${alrDpkgInstallLocalResult.stdout.lineStartingWith("alr handoff execve loader rewrite count=")}" +
+            "\nalr dpkg -i local deb traced processes=${alrDpkgInstallLocalResult.stdout.lineStartingWith("alr handoff traced process count=")}" +
+            "\nalr dpkg -i local deb path rewrite=${alrDpkgInstallLocalResult.stdout.lineStartingWith("alr handoff path rewrite count=")}" +
+            "\nalr dpkg -i local deb stdout=${alrDpkgInstallLocalResult.stdout.alrHandoffStdoutText()}" +
+            "\nalr dpkg -i local deb stderr=${alrDpkgInstallLocalResult.stdout.alrHandoffStderrText()}" +
             "\nproot dpkg -i local deb exit=${prootDpkgInstallLocalResult.exitCode}" +
             "\nproot dpkg -i local deb stdout=${prootDpkgInstallLocalResult.stdout}" +
             "\nproot dpkg -i local deb stderr=${prootDpkgInstallLocalResult.stderr}" +
@@ -679,6 +696,7 @@ class MainActivity : Activity() {
             resultBlock("alr apt-get --version", alrAptGetVersionResult) +
             resultBlock("alr apt-cache --version", alrAptCacheVersionResult) +
             resultBlock("alr apt-config --version", alrAptConfigVersionResult) +
+            resultBlock("alr dpkg -i local deb", alrDpkgInstallLocalResult) +
             resultBlock("proot dpkg -i local deb", prootDpkgInstallLocalResult) +
             resultBlock("proot installed package smoke", prootInstalledPackageSmokeResult) +
             resultBlock("proot guest gpu client", prootGuestGpuClientResult) +
@@ -955,6 +973,12 @@ class MainActivity : Activity() {
     private fun String.alrHandoffStdoutText(): String =
         lineStartingWith("alr handoff stdout=")
             .removePrefix("alr handoff stdout=")
+            .replace("\\n", "\n")
+            .replace("\\r", "\r")
+
+    private fun String.alrHandoffStderrText(): String =
+        lineStartingWith("alr handoff stderr=")
+            .removePrefix("alr handoff stderr=")
             .replace("\\n", "\n")
             .replace("\\r", "\r")
 

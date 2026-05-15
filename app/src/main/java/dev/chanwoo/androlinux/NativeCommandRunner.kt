@@ -3,7 +3,7 @@ package dev.chanwoo.androlinux
 import java.io.File
 import java.util.concurrent.TimeUnit
 
-private const val COMMAND_TIMEOUT_SECONDS = 5L
+private const val COMMAND_TIMEOUT_SECONDS = 15L
 
 data class NativeCommandResult(
     val command: File,
@@ -97,7 +97,7 @@ class NativeCommandRunner(
             ),
             timeoutMs = 1500,
             pathRewrite = true,
-            pathRewriteLimit = 1,
+            pathRewriteLimit = 16,
             pathRewriteIdleSyscallLimit = 16,
         )
     }
@@ -173,6 +173,17 @@ class NativeCommandRunner(
     fun runAlrRuntimeTrampolineAptConfigVersion(rootfsDir: File): NativeCommandResult =
         runAlrRuntimeTrampolineGlibcRootfsProgram(rootfsDir, "/usr/bin/apt-config", listOf("--version"), timeoutMs = 5000)
 
+    fun runAlrRuntimeTrampolineDpkgInstallLocalSmoke(rootfsDir: File): NativeCommandResult =
+        runAlrRuntimeTrampolineGlibcRootfsProgram(
+            rootfsDir,
+            "/usr/bin/dpkg",
+            listOf("-i", "/var/cache/apt/archives/alr-smoke_1.0_arm64.deb"),
+            timeoutMs = 8000,
+            virtualRootIdentity = true,
+            pathRewriteLimit = 1024,
+            pathRewriteIdleSyscallLimit = 256,
+        )
+
     private fun glibcLibraryPath(rootfsDir: File): String =
         listOf(
             File(rootfsDir, "lib/aarch64-linux-gnu").absolutePath,
@@ -192,6 +203,9 @@ class NativeCommandRunner(
         program: String,
         arguments: List<String>,
         timeoutMs: Int = 5000,
+        virtualRootIdentity: Boolean = false,
+        pathRewriteLimit: Int = 128,
+        pathRewriteIdleSyscallLimit: Int = 32,
     ): NativeCommandResult {
         val libraryPath = glibcLibraryPath(rootfsDir)
         return runAlrRuntimeTrampoline(
@@ -207,8 +221,9 @@ class NativeCommandRunner(
             ) + arguments,
             timeoutMs = timeoutMs,
             pathRewrite = true,
-            pathRewriteLimit = 128,
-            pathRewriteIdleSyscallLimit = 32,
+            pathRewriteLimit = pathRewriteLimit,
+            pathRewriteIdleSyscallLimit = pathRewriteIdleSyscallLimit,
+            virtualRootIdentity = virtualRootIdentity,
         )
     }
 
@@ -223,6 +238,7 @@ class NativeCommandRunner(
         pathRewrite: Boolean = false,
         pathRewriteLimit: Int = 0,
         pathRewriteIdleSyscallLimit: Int = 0,
+        virtualRootIdentity: Boolean = false,
     ): NativeCommandResult {
         require(program.startsWith("/")) { "ALR trampoline program must be an absolute guest path" }
         require(!program.split('/').any { it == ".." }) { "ALR trampoline program must not contain .." }
@@ -257,6 +273,8 @@ class NativeCommandRunner(
                 "ALR_TRAMPOLINE_PATH_REWRITE" to if (pathRewrite) "1" else "0",
                 "ALR_TRAMPOLINE_PATH_REWRITE_LIMIT" to pathRewriteLimit.coerceAtLeast(0).toString(),
                 "ALR_TRAMPOLINE_PATH_REWRITE_IDLE_SYSCALL_LIMIT" to pathRewriteIdleSyscallLimit.coerceAtLeast(0).toString(),
+                "ALR_TRAMPOLINE_VIRTUAL_ROOT_IDENTITY" to if (virtualRootIdentity) "1" else "0",
+                "ALR_TRAMPOLINE_EXEC_LOADER_PATH" to File(nativeLibraryDir, "libalr_glibc_loader.so").absolutePath,
                 "LD_LIBRARY_PATH" to nativeLibraryDir.absolutePath,
                 "PATH" to "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
             ) + extraArgEnv,

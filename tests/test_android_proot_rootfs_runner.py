@@ -213,7 +213,7 @@ def test_main_activity_reports_apt_base_bundle_smoke_results():
     assert "runAlrRuntimeTrampolineAptGetVersion" in runner
     assert "runAlrRuntimeTrampolineAptCacheVersion" in runner
     assert "runAlrRuntimeTrampolineAptConfigVersion" in runner
-    assert "pathRewriteIdleSyscallLimit = 32" in runner
+    assert "pathRewriteIdleSyscallLimit: Int = 32" in runner
     assert "rootfs /usr/bin/apt exists=" in text
     assert "rootfs /usr/bin/apt-get exists=" in text
     assert "rootfs libapt-pkg exists=" in text
@@ -230,11 +230,20 @@ def test_main_activity_reports_apt_base_bundle_smoke_results():
 
 def test_main_activity_reports_local_deb_install_smoke_results():
     text = MAIN.read_text()
+    runner = RUNNER.read_text()
     assert "DPKG LOCAL INSTALL EXECUTION:" in text
+    assert "ALR DPKG LOCAL INSTALL EXECUTION:" in text
     assert "INSTALLED PACKAGE EXECUTION:" in text
+    assert "runAlrRuntimeTrampolineDpkgInstallLocalSmoke" in runner
+    assert "libalr_glibc_loader.so" in runner
     assert "rootfs local deb exists=" in text
     assert "rootfs /usr/bin/dpkg-deb exists=" in text
     assert "rootfs installed alr smoke exists=" in text
+    assert "alr dpkg -i local deb handoff=" in text
+    assert "alr dpkg -i local deb identity virtualized=" in text
+    assert "alr dpkg -i local deb execve loader rewrites=" in text
+    assert "alr dpkg -i local deb traced processes=" in text
+    assert "alr dpkg -i local deb path rewrite=" in text
     assert "proot dpkg -i local deb exit=" in text
     assert "proot installed package smoke exit=" in text
 
