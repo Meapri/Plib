@@ -36,3 +36,14 @@ def test_main_activity_reports_shell_and_script_smoke_results():
     assert "proot script stdout=" in text
     assert "proot shell -c exit=" in text
     assert "proot shell -c stdout=" in text
+
+
+def test_main_activity_reports_glibc_dynamic_smoke_result():
+    text = MAIN.read_text()
+    assert "GLIBC DYNAMIC EXECUTION:" in text
+    assert "rootfs /bin/glibc-hello exists=" in text
+    assert "rootfs glibc loader exists=" in text
+    assert "rootfs libc exists=" in text
+    assert "proot glibc exit=" in text
+    assert "proot glibc stdout=" in text
+    assert "proot glibc stderr=" in text

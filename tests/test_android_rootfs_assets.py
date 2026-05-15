@@ -9,7 +9,7 @@ PAYLOAD = ROOT / "app" / "src" / "main" / "assets" / "rootfs" / "payloads" / "ti
 def test_android_assets_include_rootfs_manifest_and_payload():
     assert MANIFEST.is_file()
     assert PAYLOAD.is_file()
-    assert PAYLOAD.stat().st_size == 6297600
+    assert PAYLOAD.stat().st_size == 8294400
 
 
 def test_android_asset_manifest_matches_host_manifest():
@@ -67,3 +67,28 @@ def test_tiny_rootfs_contains_shell_script_smoke_fixture():
         script = archive.extractfile("./bin/script-hello").read().decode()
     assert script.startswith("#!/bin/sh\n")
     assert "hello from shell script rootfs" in script
+
+
+def test_tiny_rootfs_contains_glibc_dynamic_smoke_files():
+    import tarfile
+
+    with tarfile.open(PAYLOAD) as archive:
+        names = set(archive.getnames())
+        assert "./bin/glibc-hello" in names
+        assert "./lib/ld-linux-aarch64.so.1" in names
+        assert "./lib/aarch64-linux-gnu/libc.so.6" in names
+        assert archive.extractfile("./bin/glibc-hello").read(4) == b"\x7fELF"
+        assert archive.extractfile("./lib/ld-linux-aarch64.so.1").read(4) == b"\x7fELF"
+        assert archive.extractfile("./lib/aarch64-linux-gnu/libc.so.6").read(4) == b"\x7fELF"
+
+
+def test_tiny_rootfs_glibc_hello_requests_rootfs_loader():
+    import subprocess
+    import tarfile
+    import tempfile
+
+    with tarfile.open(PAYLOAD) as archive, tempfile.NamedTemporaryFile() as tmp:
+        tmp.write(archive.extractfile("./bin/glibc-hello").read())
+        tmp.flush()
+        program_headers = subprocess.check_output(["readelf", "-l", tmp.name], text=True)
+    assert "Requesting program interpreter: /lib/ld-linux-aarch64.so.1" in program_headers

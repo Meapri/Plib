@@ -40,6 +40,7 @@ class MainActivity : Activity() {
             rootfsStatus.rootfsDir,
             "echo shell-c ok; /bin/hello; /bin/cat /etc/os-release",
         )
+        val prootGlibcResult = nativeCommandRunner.runProotRootfsProgram(rootfsStatus.rootfsDir, "/bin/glibc-hello")
         val prootHelloVerboseResult = if (prootHelloResult.exitCode == 0) {
             null
         } else {
@@ -50,6 +51,9 @@ class MainActivity : Activity() {
         val rootfsShellFile = File(rootfsStatus.rootfsDir, "bin/sh")
         val rootfsCatFile = File(rootfsStatus.rootfsDir, "bin/cat")
         val rootfsScriptFile = File(rootfsStatus.rootfsDir, "bin/script-hello")
+        val rootfsGlibcHelloFile = File(rootfsStatus.rootfsDir, "bin/glibc-hello")
+        val rootfsGlibcLoaderFile = File(rootfsStatus.rootfsDir, "lib/ld-linux-aarch64.so.1")
+        val rootfsLibcFile = File(rootfsStatus.rootfsDir, "lib/aarch64-linux-gnu/libc.so.6")
         val rootfsExecutionPassed = prootHelloResult.exitCode == 0 &&
             prootHelloResult.stdout.contains("hello from static arm64 rootfs")
         val shellScriptExecutionPassed = prootScriptResult.exitCode == 0 &&
@@ -57,17 +61,24 @@ class MainActivity : Activity() {
         val shellCommandExecutionPassed = prootShellResult.exitCode == 0 &&
             prootShellResult.stdout.contains("shell-c ok") &&
             prootShellResult.stdout.contains("NAME=\"AndroLinux Tiny Rootfs\"")
+        val glibcDynamicExecutionPassed = prootGlibcResult.exitCode == 0 &&
+            prootGlibcResult.stdout.contains("hello from dynamic glibc rootfs") &&
+            prootGlibcResult.stdout.contains("glibc version=")
 
-        val executionSummary = "build: 0.3.6-tiny-shell-userland" +
+        val executionSummary = "build: 0.3.7-glibc-dynamic-smoke" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL -C EXECUTION: ${if (shellCommandExecutionPassed) "PASS" else "FAIL"}" +
+            "\nGLIBC DYNAMIC EXECUTION: ${if (glibcDynamicExecutionPassed) "PASS" else "FAIL"}" +
             "\nrootfs verified=${rootfsStatus.verified} extracted=${rootfsStatus.extracted}" +
             "\nrootfs /bin/hello exists=${rootfsHelloFile.isFile} executable=${rootfsHelloFile.canExecute()} bytes=${rootfsHelloFile.length()}" +
             "\nrootfs /bin/sh exists=${rootfsShellFile.isFile} executable=${rootfsShellFile.canExecute()} bytes=${rootfsShellFile.length()}" +
             "\nrootfs /bin/cat exists=${rootfsCatFile.isFile} executable=${rootfsCatFile.canExecute()} bytes=${rootfsCatFile.length()}" +
             "\nrootfs /bin/script-hello exists=${rootfsScriptFile.isFile} executable=${rootfsScriptFile.canExecute()} bytes=${rootfsScriptFile.length()}" +
+            "\nrootfs /bin/glibc-hello exists=${rootfsGlibcHelloFile.isFile} executable=${rootfsGlibcHelloFile.canExecute()} bytes=${rootfsGlibcHelloFile.length()}" +
+            "\nrootfs glibc loader exists=${rootfsGlibcLoaderFile.isFile} executable=${rootfsGlibcLoaderFile.canExecute()} bytes=${rootfsGlibcLoaderFile.length()}" +
+            "\nrootfs libc exists=${rootfsLibcFile.isFile} executable=${rootfsLibcFile.canExecute()} bytes=${rootfsLibcFile.length()}" +
             "\nnative smoke exit=${nativeCommandResult.exitCode}" +
             "\nnative smoke stdout=${nativeCommandResult.stdout}" +
             "\nproot --version exit=${prootCandidateResult.exitCode}" +
@@ -81,6 +92,9 @@ class MainActivity : Activity() {
             "\nproot shell -c exit=${prootShellResult.exitCode}" +
             "\nproot shell -c stdout=${prootShellResult.stdout}" +
             "\nproot shell -c stderr=${prootShellResult.stderr}" +
+            "\nproot glibc exit=${prootGlibcResult.exitCode}" +
+            "\nproot glibc stdout=${prootGlibcResult.stdout}" +
+            "\nproot glibc stderr=${prootGlibcResult.stderr}" +
             "\nprobe dlopen talloc=${nativeProbe.lineStartingWith("dlopen libtalloc.so")}" +
             "\nprobe dlopen proot=${nativeProbe.lineStartingWith("dlopen libalr_proot.so")}" +
             "\nproot loader=${prootCandidateResult.environment["PROOT_LOADER"]}" +
@@ -123,6 +137,7 @@ class MainActivity : Activity() {
             resultBlock("proot hello quiet", prootHelloResult) +
             resultBlock("proot script", prootScriptResult) +
             resultBlock("proot shell -c", prootShellResult) +
+            resultBlock("proot glibc", prootGlibcResult) +
             optionalResultBlock("proot hello verbose on failure", prootHelloVerboseResult)
 
         val report = executionSummary + "\n\n--- verbose report ---\n" + verboseReport

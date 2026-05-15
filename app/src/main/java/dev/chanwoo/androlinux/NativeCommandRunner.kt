@@ -81,6 +81,7 @@ class NativeCommandRunner(
             "PROOT_NO_SECCOMP" to "1",
             "PROOT_VERBOSE" to verbose,
             "LD_LIBRARY_PATH" to nativeLibraryDir.absolutePath,
+            "GLIBC_TUNABLES" to "glibc.pthread.rseq=0",
             "HOME" to "/root",
             "TMPDIR" to "/tmp",
             "PATH" to "/bin:/usr/bin:/usr/local/bin",
