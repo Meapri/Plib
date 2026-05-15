@@ -118,6 +118,7 @@ class MainActivity : Activity() {
         val guestX11GuiBridgeResult = runGuestGuiBridge(nativeCommandRunner, rootfsStatus.rootfsDir, "X11")
         val alrGuestWaylandGuiBridgeResult = runGuestGuiBridge(nativeCommandRunner, rootfsStatus.rootfsDir, "WAYLAND", useAlr = true)
         val alrGuestX11GuiBridgeResult = runGuestGuiBridge(nativeCommandRunner, rootfsStatus.rootfsDir, "X11", useAlr = true)
+        val nativeGlesBaselineCommands = buildNativeGlesBaselineCommands(glesShimBenchmarkFrameCount)
         val guestGuiSurfaceCommands = alrGuestWaylandGuiBridgeResult.commands + alrGuestX11GuiBridgeResult.commands +
             guestWaylandGuiBridgeResult.commands + guestX11GuiBridgeResult.commands
         val surfaceGpuCommands = buildList {
@@ -125,6 +126,7 @@ class MainActivity : Activity() {
             addAll(if (alrGuestGpuIpcBridgeResult.commands.isNotEmpty()) alrGuestGpuIpcBridgeResult.commands else guestGpuIpcBridgeResult.commands)
             addAll(if (alrGuestGpuCommands.isNotEmpty()) alrGuestGpuCommands else guestGpuCommands)
             addAll(if (alrGuestGlesShimBenchmarkCommands.isNotEmpty()) alrGuestGlesShimBenchmarkCommands else guestGlesShimBenchmarkCommands)
+            addAll(nativeGlesBaselineCommands)
             addAll(if (alrGuestGlesShimCommands.isNotEmpty()) alrGuestGlesShimCommands else guestGlesShimCommands)
             if (isEmpty()) {
                 add(GuestGpuCommand(0.05f, 0.18f, 0.45f, "host-default"))
@@ -341,7 +343,7 @@ class MainActivity : Activity() {
             alrGuestX11GuiBridgeResult.error == null
         val hostGpuHardwareCandidate = hostGpuProbe.lineStartingWith("host gpu hardware candidate=") == "host gpu hardware candidate=true"
 
-        val executionSummary = "build: 0.4.48-gles-shim-frame-workload" +
+        val executionSummary = "build: 0.4.49-gles-native-ratio" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -480,6 +482,7 @@ class MainActivity : Activity() {
             "\nguest gles shim frame workload elapsed ms=${prootGuestGlesShimBenchmarkResult.elapsedMs}" +
             "\nguest gles shim frame workload commands=${guestGlesShimBenchmarkCommands.size}" +
             "\nguest gles shim frame workload stdout=${prootGuestGlesShimBenchmarkResult.stdout}" +
+            "\nnative gles baseline frame workload commands=${nativeGlesBaselineCommands.size}" +
             "\nalr guest gles shim smoke handoff=${alrGuestGlesShimSmokeResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
             "\nalr guest gles shim smoke path rewrite=${alrGuestGlesShimSmokeResult.stdout.lineStartingWith("alr handoff path rewrite count=")}" +
             "\nalr guest gles shim smoke stdout=${alrGuestGlesShimSmokeResult.stdout.alrHandoffStdoutText()}" +
@@ -1021,6 +1024,18 @@ class MainActivity : Activity() {
         return GuestGpuCommand(red, green, blue, parts[4])
     }
 
+    private fun buildNativeGlesBaselineCommands(frameCount: Int): List<GuestGpuCommand> =
+        (1..frameCount.coerceIn(1, 120)).map { frame ->
+            GuestGpuCommand(
+                red = ((frame * 17) % 100) / 100f,
+                green = ((frame * 29) % 100) / 100f,
+                blue = ((frame * 43) % 100) / 100f,
+                tag = "baseline-frame-%04d".format(frame),
+                protocol = "NATIVE_GLES",
+                seq = frame,
+            )
+        }
+
     private fun encodeSurfaceFrames(commands: List<GuestGpuCommand>): String =
         commands.joinToString(separator = "\n") { "${it.red} ${it.green} ${it.blue} ${it.protocol}-seq${it.seq}-${it.tag}" }
 
@@ -1166,7 +1181,12 @@ class MainActivity : Activity() {
             "\n${surfaceReport.lineStartingWith("surface frames dropped=")}" +
             "\n${surfaceReport.lineStartingWith("surface render elapsed us=")}" +
             "\n${surfaceReport.lineStartingWith("surface average frame render us=")}" +
+            "\n${surfaceReport.lineStartingWith("surface gles shim render elapsed us=")}" +
             "\n${surfaceReport.lineStartingWith("surface gles shim average frame render us=")}" +
+            "\n${surfaceReport.lineStartingWith("surface native gles frames rendered=")}" +
+            "\n${surfaceReport.lineStartingWith("surface native gles render elapsed us=")}" +
+            "\n${surfaceReport.lineStartingWith("surface native gles average frame render us=")}" +
+            "\n${surfaceReport.lineStartingWith("surface gles shim vs native average ratio pct=")}" +
             "\n${surfaceReport.lineStartingWith("surface frame lossless=")}" +
             "\n${surfaceReport.lineStartingWith("surface gpu hardware render=")}" +
             "\n${surfaceReport.lineStartingWith("guest wayland/x11 gui gpu surface hardware render=")}" +

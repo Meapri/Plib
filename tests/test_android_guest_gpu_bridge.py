@@ -78,6 +78,11 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "surface render elapsed us=" in text
     assert "surface average frame render us=" in text
     assert "surface gles shim average frame render us=" in text
+    assert "native gles baseline frame workload commands=" in text
+    assert "buildNativeGlesBaselineCommands" in text
+    assert "surface native gles frames rendered=" in text
+    assert "surface native gles average frame render us=" in text
+    assert "surface gles shim vs native average ratio pct=" in text
     assert "runProotRootfsGuestGlesShimBenchmark" in runner
     assert "runAlrRuntimeTrampolineGuestGlesShimBenchmark" in runner
     assert "hasGlesApiSteps" in text
@@ -146,7 +151,12 @@ def test_native_surface_renderer_accepts_multi_frame_stream_and_reports_bridge()
     assert "surface gles shim frames rendered=" in text
     assert "surface render elapsed us=" in text
     assert "surface average frame render us=" in text
+    assert "surface gles shim render elapsed us=" in text
     assert "surface gles shim average frame render us=" in text
+    assert "surface native gles frames rendered=" in text
+    assert "surface native gles render elapsed us=" in text
+    assert "surface native gles average frame render us=" in text
+    assert "surface gles shim vs native average ratio pct=" in text
     assert "surface gui total frames rendered=" in text
     assert "surface frames rendered=" in text
     assert "surface frames dropped=" in text
