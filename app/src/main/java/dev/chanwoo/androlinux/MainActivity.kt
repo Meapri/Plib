@@ -22,7 +22,7 @@ class MainActivity : Activity() {
 
         val rootfsManifest = RootfsManifest(
             name = "debian-arm64",
-            version = "bookworm-slim-2026-05-gui-gpu-v40",
+            version = "bookworm-slim-2026-05-gui-gpu-v47",
             assets = listOf(
                 RootfsAsset(
                     path = "rootfs.tar.zst",
@@ -99,8 +99,10 @@ class MainActivity : Activity() {
         val alrGuestGpuIpcBridgeResult = runGuestGpuIpcBridge(nativeCommandRunner, rootfsStatus.rootfsDir, useAlr = true)
         val prootGuestGlesShimSmokeResult = nativeCommandRunner.runProotRootfsGuestGlesShimSmoke(rootfsStatus.rootfsDir)
         val alrGuestGlesShimSmokeResult = nativeCommandRunner.runAlrRuntimeTrampolineGuestGlesShimSmoke(rootfsStatus.rootfsDir)
+        val prootGuestGlesShimStdout = prootGuestGlesShimSmokeResult.stdout
+        val alrGuestGlesShimStdout = alrGuestGlesShimSmokeResult.stdout.alrHandoffStdoutText()
         val guestGlesShimCommand = parseGuestGlesShimCommand(prootGuestGlesShimSmokeResult.stdout)
-        val alrGuestGlesShimCommand = parseGuestGlesShimCommand(alrGuestGlesShimSmokeResult.stdout.alrHandoffStdoutText())
+        val alrGuestGlesShimCommand = parseGuestGlesShimCommand(alrGuestGlesShimStdout)
         val prootGuestWaylandGuiResult = nativeCommandRunner.runProotRootfsGuestGuiClient(rootfsStatus.rootfsDir, "WAYLAND")
         val prootGuestX11GuiResult = nativeCommandRunner.runProotRootfsGuestGuiClient(rootfsStatus.rootfsDir, "X11")
         val alrGuestWaylandGuiResult = nativeCommandRunner.runAlrRuntimeTrampolineGuestGuiClient(rootfsStatus.rootfsDir, "WAYLAND")
@@ -295,10 +297,17 @@ class MainActivity : Activity() {
             prootGuestGlesShimSmokeResult.stdout.contains("ALR_GLES_SHIM_LOAD ok") &&
             guestGlesShimCommand != null
         val alrGuestGlesShimSmokePassed = alrGuestGlesShimSmokeResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
-            alrGuestGlesShimSmokeResult.stdout.alrHandoffStdoutText().contains("alr guest gles shim smoke ok") &&
-            alrGuestGlesShimSmokeResult.stdout.alrHandoffStdoutText().contains("ALR_GLES_SHIM_LOAD ok") &&
-            alrGuestGlesShimSmokeResult.stdout.lineStartingWith("alr handoff path rewrite count=") != "alr handoff path rewrite count=0" &&
+            alrGuestGlesShimStdout.contains("alr guest gles shim smoke ok") &&
+            alrGuestGlesShimStdout.contains("ALR_GLES_SHIM_LOAD ok") &&
             alrGuestGlesShimCommand != null
+        val guestGlesShimInitPassed = (guestGlesShimSmokePassed && prootGuestGlesShimStdout.hasGlesApiSteps("eglGetDisplay", "eglInitialize", "eglChooseConfig")) ||
+            (alrGuestGlesShimSmokePassed && alrGuestGlesShimStdout.hasGlesApiSteps("eglGetDisplay", "eglInitialize", "eglChooseConfig"))
+        val guestGlesShimContextPassed = (guestGlesShimSmokePassed && prootGuestGlesShimStdout.hasGlesApiSteps("eglCreateContext", "eglMakeCurrent")) ||
+            (alrGuestGlesShimSmokePassed && alrGuestGlesShimStdout.hasGlesApiSteps("eglCreateContext", "eglMakeCurrent"))
+        val guestGlesShimClearPassed = (guestGlesShimSmokePassed && prootGuestGlesShimStdout.hasGlesApiSteps("glViewport", "glClearColor", "glClear")) ||
+            (alrGuestGlesShimSmokePassed && alrGuestGlesShimStdout.hasGlesApiSteps("glViewport", "glClearColor", "glClear"))
+        val guestGlesShimSwapPassed = (guestGlesShimSmokePassed && prootGuestGlesShimStdout.hasGlesApiSteps("eglSwapBuffers")) ||
+            (alrGuestGlesShimSmokePassed && alrGuestGlesShimStdout.hasGlesApiSteps("eglSwapBuffers"))
         val alrGuestWaylandGuiCommandPassed = alrGuestWaylandGuiResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
             alrGuestWaylandGuiResult.stdout.alrHandoffStdoutText().contains("alr-wayland-gpu-client ok")
         val alrGuestX11GuiCommandPassed = alrGuestX11GuiResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
@@ -356,6 +365,10 @@ class MainActivity : Activity() {
             "\nALR GUEST GPU IPC BRIDGE EXECUTION: ${if (alrGuestGpuIpcBridgePassed) "PASS" else "FAIL"}" +
             "\nGUEST GLES SHIM SMOKE EXECUTION: ${if (guestGlesShimSmokePassed) "PASS" else "FAIL"}" +
             "\nALR GUEST GLES SHIM SMOKE EXECUTION: ${if (alrGuestGlesShimSmokePassed) "PASS" else "FAIL"}" +
+            "\nGUEST EGL INIT VIA SHIM EXECUTION: ${if (guestGlesShimInitPassed) "PASS" else "FAIL"}" +
+            "\nGUEST EGL CONTEXT VIA SHIM EXECUTION: ${if (guestGlesShimContextPassed) "PASS" else "FAIL"}" +
+            "\nGUEST GLES CLEAR VIA SHIM EXECUTION: ${if (guestGlesShimClearPassed) "PASS" else "FAIL"}" +
+            "\nGUEST EGL SWAP COMMAND VIA SHIM EXECUTION: ${if (guestGlesShimSwapPassed) "PASS" else "FAIL"}" +
             "\nGUEST GPU MULTI-FRAME SURFACE EXECUTION: PENDING_SURFACE_CALLBACK" +
             "\nALR GUEST WAYLAND GUI COMMAND EXECUTION: ${if (alrGuestWaylandGuiCommandPassed) "PASS" else "FAIL"}" +
             "\nALR GUEST X11 GUI COMMAND EXECUTION: ${if (alrGuestX11GuiCommandPassed) "PASS" else "FAIL"}" +
@@ -764,7 +777,10 @@ class MainActivity : Activity() {
                     val surfaceReport = nativeRenderGpuSurfaceFrames(holder.surface, encodedFrames)
                     val executionUpdate = surfaceExecutionUpdate(
                         surfaceReport,
-                        guestGlesShimSmokePassed || alrGuestGlesShimSmokePassed,
+                        guestGlesShimInitPassed,
+                        guestGlesShimContextPassed,
+                        guestGlesShimClearPassed,
+                        guestGlesShimSwapPassed,
                     )
                     surfaceStatusView.text = "Linux guest GPU Surface renderer callback complete\n$executionUpdate"
                     view.append("\n\n--- Linux guest Wayland/X11 GUI GPU surface renderer ---\n$executionUpdate\n$surfaceReport")
@@ -1080,7 +1096,13 @@ class MainActivity : Activity() {
     private fun optionalResultBlock(label: String, result: NativeCommandResult?): String =
         result?.let { resultBlock(label, it) } ?: "\n\n$label skipped=quiet rootfs execution passed"
 
-    private fun surfaceExecutionUpdate(surfaceReport: String, glesShimLifecyclePassed: Boolean): String {
+    private fun surfaceExecutionUpdate(
+        surfaceReport: String,
+        glesShimInitPassed: Boolean,
+        glesShimContextPassed: Boolean,
+        glesShimClearPassed: Boolean,
+        glesShimSwapPassed: Boolean,
+    ): String {
         val framesRendered = surfaceReport.lineStartingWith("surface frames rendered=")
             .removePrefix("surface frames rendered=")
             .toIntOrNull()
@@ -1099,7 +1121,10 @@ class MainActivity : Activity() {
             surfaceReport.lineStartingWith("guest wayland/x11 gui gpu surface hardware render=") ==
                 "guest wayland/x11 gui gpu surface hardware render=true"
         val glesShimSurfacePassed =
-            glesShimLifecyclePassed &&
+            glesShimInitPassed &&
+                glesShimContextPassed &&
+                glesShimClearPassed &&
+                glesShimSwapPassed &&
                 surfaceReport.lineStartingWith("guest egl swap via android surface=") == "guest egl swap via android surface=true" &&
                 surfaceReport.lineStartingWith("guest gles hardware render=") == "guest gles hardware render=true" &&
                 glesShimFramesRendered > 0
@@ -1107,7 +1132,8 @@ class MainActivity : Activity() {
         return "HOST GPU SURFACE EXECUTION UPDATE: ${if (hostSurfacePassed) "PASS" else "FAIL"}" +
             "\nGUEST GPU MULTI-FRAME SURFACE EXECUTION UPDATE: ${if (multiFrameSurfacePassed) "PASS" else "FAIL"}" +
             "\nGUEST GUI GPU SURFACE EXECUTION UPDATE: ${if (guiSurfacePassed) "PASS" else "FAIL"}" +
-            "\nGUEST EGL INIT VIA SHIM UPDATE: ${if (glesShimLifecyclePassed) "PASS" else "FAIL"}" +
+            "\nGUEST EGL INIT VIA SHIM UPDATE: ${if (glesShimInitPassed) "PASS" else "FAIL"}" +
+            "\nGUEST EGL CONTEXT VIA SHIM UPDATE: ${if (glesShimContextPassed) "PASS" else "FAIL"}" +
             "\nGUEST GLES CLEAR VIA SHIM UPDATE: ${if (glesShimSurfacePassed) "PASS" else "FAIL"}" +
             "\nGUEST EGL SWAP VIA ANDROID SURFACE UPDATE: ${if (glesShimSurfacePassed) "PASS" else "FAIL"}" +
             "\nGUEST GLES HARDWARE RENDER UPDATE: ${if (glesShimSurfacePassed) "PASS" else "FAIL"}" +
@@ -1128,6 +1154,9 @@ class MainActivity : Activity() {
 
     private fun String.lineStartingWith(prefix: String): String =
         lineSequence().firstOrNull { it.startsWith(prefix) } ?: "missing"
+
+    private fun String.hasGlesApiSteps(vararg names: String): Boolean =
+        names.all { name -> contains("ALR_GLES_API_STEP $name ok") }
 
     private fun String.alrHandoffStdoutText(): String =
         lineStartingWith("alr handoff stdout=")

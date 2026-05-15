@@ -15,6 +15,7 @@ Current VPS result: Android debug APK builds successfully on this aarch64 Oracle
 - Ninja: system `/usr/bin/ninja`
 - qemu-user-static/binfmt: used to run x86_64 SDK tools such as AAPT2 and NDK clang
 - x86_64 runtime shims: `libc6-amd64-cross`, `libstdc++6-amd64-cross`, and copied amd64 `libz.so.1`
+- Guest GLES shim cross compiler: Zig 0.16.0, `aarch64-linux-gnu` target
 
 ## Bootstrap command
 
@@ -60,6 +61,18 @@ Build command used on the macOS workstation:
 
 ```bash
 JAVA_HOME=/Users/naen/.local/jdks/jdk-17.0.19+10/Contents/Home ./gradlew :app:assembleDebug --console=plain
+```
+
+Guest GLES shim build command used on the macOS workstation:
+
+```bash
+scripts/build-guest-gles-shim.sh
+```
+
+The script uses `$ZIG` first, then `zig` from `PATH`, then this local fallback:
+
+```text
+/Users/naen/.local/zig/zig-aarch64-macos-0.16.0/zig
 ```
 
 Do not claim device runtime success until the debug APK is installed and `MainActivity` displays the native runtime report on an Android device or emulator.

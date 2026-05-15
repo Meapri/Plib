@@ -24,6 +24,8 @@ def test_rootfs_contains_guest_gpu_ipc_client_and_gles_shim():
         assert "tcp-loopback" in payload
         assert "multi-frame" in payload
         assert "gles-shim-smoke" in payload
+        assert "gles-shim-api-subset" in payload
+        assert "surface-present" in payload
         gui_payload = archive.extractfile("./usr/share/androlinux/gui-gpu-bridge.txt").read().decode()
         assert "Wayland/X11" in gui_payload
         assert "ALR_GUI_FRAME" in gui_payload
@@ -59,12 +61,68 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "ALR GUEST WAYLAND GUI GPU BRIDGE EXECUTION" in text
     assert "ALR GUEST X11 GUI GPU BRIDGE EXECUTION" in text
     assert "alr guest gles shim smoke path rewrite" in text
+    assert "GUEST EGL INIT VIA SHIM EXECUTION:" in text
+    assert "GUEST EGL CONTEXT VIA SHIM EXECUTION:" in text
+    assert "GUEST GLES CLEAR VIA SHIM EXECUTION:" in text
+    assert "GUEST EGL SWAP COMMAND VIA SHIM EXECUTION:" in text
     assert "GUEST EGL INIT VIA SHIM UPDATE:" in text
+    assert "GUEST EGL CONTEXT VIA SHIM UPDATE:" in text
     assert "GUEST GLES CLEAR VIA SHIM UPDATE:" in text
     assert "GUEST EGL SWAP VIA ANDROID SURFACE UPDATE:" in text
     assert "GUEST GLES HARDWARE RENDER UPDATE:" in text
     assert "surface gles shim frames rendered=" in text
+    assert "hasGlesApiSteps" in text
     assert "alrHandoffStdoutText" in text
+
+
+def test_guest_gles_shim_is_source_built_api_subset():
+    source_root = ROOT / "rootfs/guest-src/gles-shim"
+    shim_source = (source_root / "alr_gles_shim.c").read_text()
+    smoke_source = (source_root / "alr_gles_api_smoke.c").read_text()
+    build_script = (ROOT / "scripts/build-guest-gles-shim.sh").read_text()
+
+    for symbol in [
+        "alr_egl_get_display",
+        "alr_egl_initialize",
+        "alr_egl_choose_config",
+        "alr_egl_create_context",
+        "alr_egl_make_current",
+        "alr_gl_viewport",
+        "alr_gl_clear_color",
+        "alr_gl_clear",
+        "alr_egl_swap_buffers",
+        "alr_egl_destroy_context",
+        "alr_egl_terminate",
+    ]:
+        assert symbol in shim_source
+    assert "ALR_GLES_API_STEP %s %s" in smoke_source
+    assert '"eglGetDisplay"' in smoke_source
+    assert '"eglSwapBuffers"' in smoke_source
+    assert "ALR_GLES_SHIM_COMMAND ALR_GPU_CLEAR" in shim_source
+    assert "-target aarch64-linux-gnu" in build_script
+    assert "-Wl,-rpath,/usr/lib/androlinux" in build_script
+
+
+def test_guest_gles_shim_binary_links_rootfs_library_without_libdl():
+    import subprocess
+    import tempfile
+
+    with tarfile.open(PAYLOAD) as archive, tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp)
+        smoke = tmp_path / "alr-gles-shim-smoke"
+        shim = tmp_path / "libalr_gles_shim.so"
+        smoke.write_bytes(archive.extractfile("./usr/bin/alr-gles-shim-smoke").read())
+        shim.write_bytes(archive.extractfile("./usr/lib/androlinux/libalr_gles_shim.so").read())
+        smoke_dynamic = subprocess.check_output(["readelf", "-d", smoke], text=True)
+        shim_dynamic = subprocess.check_output(["readelf", "-d", shim], text=True)
+
+    assert "NEEDED" in smoke_dynamic
+    assert "libalr_gles_shim.so" in smoke_dynamic
+    assert "RUNPATH" in smoke_dynamic
+    assert "/usr/lib/androlinux" in smoke_dynamic
+    assert "libdl.so" not in smoke_dynamic
+    assert "SONAME" in shim_dynamic
+    assert "libalr_gles_shim.so" in shim_dynamic
 
 
 def test_native_surface_renderer_accepts_multi_frame_stream_and_reports_bridge():
