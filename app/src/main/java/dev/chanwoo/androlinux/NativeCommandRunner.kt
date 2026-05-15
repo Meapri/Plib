@@ -234,6 +234,32 @@ class NativeCommandRunner(
             ),
         )
 
+    fun runAlrRuntimeTrampolineInstalledPackageVulkanProxySmoke(rootfsDir: File, port: Int): NativeCommandResult {
+        val program = "/usr/local/bin/alr-package-vulkan-proxy-smoke"
+        val libraryPath = glibcLibraryPath(rootfsDir) + ":" + File(rootfsDir, "usr/lib/androlinux").absolutePath
+        return runAlrRuntimeTrampoline(
+            rootfsDir,
+            "/lib/ld-linux-aarch64.so.1",
+            executeEntry = true,
+            extraArgs = listOf(
+                "--argv0",
+                program,
+                "--library-path",
+                libraryPath,
+                translateGuestPath(rootfsDir, program),
+            ),
+            timeoutMs = 3000,
+            extraGuestEnvironment = mapOf(
+                "ALR_VK_BRIDGE_HOST" to "127.0.0.1",
+                "ALR_VK_BRIDGE_PORT" to port.toString(),
+                "ALR_GPU_BRIDGE_TRANSPORT" to "tcp-loopback-vulkan-proxy",
+            ),
+            pathRewrite = true,
+            pathRewriteLimit = 16,
+            pathRewriteIdleSyscallLimit = 16,
+        )
+    }
+
     fun runAlrRuntimeTrampolineDpkgVersion(rootfsDir: File): NativeCommandResult =
         runAlrRuntimeTrampolineGlibcRootfsProgram(rootfsDir, "/usr/bin/dpkg", listOf("--version"))
 

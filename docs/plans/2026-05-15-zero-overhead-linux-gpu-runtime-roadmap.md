@@ -1165,7 +1165,43 @@ surface vulkan render elapsed us=19542
 
 Next implementation batch:
 
-1. Turn the guest-requested Vulkan clear into a bounded request/response schema instead of line-oriented text.
-2. Add a guest-side Vulkan proxy/ICD smoke that exposes the current device record and clear command through Vulkan-shaped entrypoints.
+Latest V81 guest Vulkan proxy smoke evidence:
+
+```text
+build: 0.4.81-guest-vulkan-proxy-smoke
+versionCode=81
+versionName=0.4.81-guest-vulkan-proxy-smoke
+rootfs_version=bookworm-slim-2026-05-gui-gpu-v81
+rootfs sha256=c67ec2fbf8e6d882d6f28cc4aab29d6e6658f1eb3ebe64b1d579b4f8a991a120
+rootfs size bytes=35860480
+rootfs alr-vulkan-proxy-smoke bytes=5920
+rootfs libvulkan.so.1 bytes=5256
+ALR_VK_PROXY_STEP vkEnumerateInstanceVersion ok api=1.3.247
+ALR_VK_PROXY_SURFACE_CLEAR_REQUEST_ACCEPTED ok
+ALR_VK_PROXY_DONE ok
+ANDROID HOST VULKAN SURFACE EXECUTION: PASS
+GUEST VULKAN SURFACE CLEAR REQUEST EXECUTION: PASS
+GUEST VULKAN PROXY SURFACE CLEAR EXECUTION: PASS
+surface vulkan clear request source=guest-request
+surface vulkan clear request tag=guest-vulkan-proxy-clear-0001
+surface vulkan device=Mali-G615 MC2
+surface vulkan api version=1.3.247
+surface vulkan graphics present queue=0
+surface vulkan present mode=mailbox
+surface vulkan swapchain image count=7
+surface vulkan clear command=ok color=0.33,0.22,0.88,1
+surface vulkan queue submit=ok
+surface vulkan present=ok
+surface vulkan hardware render=true
+surface vulkan render elapsed us=19552
+surface gl renderer=Mali-G615 MC2
+surface gpu hardware render=true
+surface gles shim vs native average ratio pct=100
+```
+
+Next implementation batch:
+
+1. Replace the Vulkan proxy smoke's line protocol with a bounded binary request/response schema.
+2. Add Vulkan loader/ICD discovery metadata so ordinary guest Vulkan clients can discover the proxy without a bespoke smoke binary.
 3. Split known-fail legacy dpkg/proot diagnostics away from the active ALR summary.
 4. Add a small real toolkit fixture target, likely a tiny GTK/Qt-independent Wayland protocol smoke before pulling in a larger GUI stack.

@@ -23,4 +23,15 @@ fi
   "$SRC_DIR/alr_vulkan_discovery_client.c" \
   -o "$OUT_DIR/alr-vulkan-discovery-client"
 
+"$ZIG_BIN" cc -target aarch64-linux-gnu -O2 -s -fPIC -shared \
+  "$SRC_DIR/alr_vulkan_proxy.c" \
+  -Wl,-soname,libvulkan.so.1 \
+  -o "$OUT_DIR/libvulkan.so.1"
+
+"$ZIG_BIN" cc -target aarch64-linux-gnu -O2 -s \
+  "$SRC_DIR/alr_vulkan_proxy_smoke.c" \
+  -o "$OUT_DIR/alr-vulkan-proxy-smoke"
+
 file "$OUT_DIR/alr-vulkan-discovery-client"
+file "$OUT_DIR/libvulkan.so.1"
+file "$OUT_DIR/alr-vulkan-proxy-smoke"

@@ -577,17 +577,27 @@ guest gles draw via android surface=true
 ```text
 ANDROID HOST VULKAN SURFACE EXECUTION: PASS
 GUEST VULKAN SURFACE CLEAR REQUEST EXECUTION: PASS
+GUEST VULKAN PROXY SURFACE CLEAR EXECUTION: PASS
 surface vulkan clear request source=guest-request
-surface vulkan clear request tag=guest-vulkan-clear-0001
+surface vulkan clear request tag=guest-vulkan-proxy-clear-0001
 surface vulkan device=Mali-G615 MC2
 surface vulkan present mode=mailbox
 surface vulkan swapchain image count=7
-surface vulkan clear command=ok color=0.12,0.64,0.92,1
+surface vulkan clear command=ok color=0.33,0.22,0.88,1
 surface vulkan present=ok
 surface vulkan hardware render=true
+ALR_VK_PROXY_STEP vkEnumerateInstanceVersion ok api=1.3.247
+ALR_VK_PROXY_SURFACE_CLEAR_REQUEST_ACCEPTED ok
+ALR_VK_PROXY_DONE ok
 GUEST VULKAN ICD SMOKE EXECUTION: PASS
 GUEST VULKAN CLEAR PRESENT EXECUTION: PASS
 ```
+
+Build `0.4.81-guest-vulkan-proxy-smoke` packages the first guest
+`libvulkan.so.1` proxy smoke. The guest binary loads the Vulkan ABI name from
+the rootfs and routes a bounded clear request to the Android host bridge. The
+host renders and presents through the native Android Vulkan swapchain, so this
+is still a proxy/ICD seed rather than full Vulkan command forwarding.
 
 ## Open Questions
 

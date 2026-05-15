@@ -9,7 +9,7 @@ PAYLOAD = ROOT / "app" / "src" / "main" / "assets" / "rootfs" / "payloads" / "ti
 def test_android_assets_include_rootfs_manifest_and_payload():
     assert MANIFEST.is_file()
     assert PAYLOAD.is_file()
-    assert PAYLOAD.stat().st_size == 35840000
+    assert PAYLOAD.stat().st_size == 35860480
 
 
 def test_android_asset_manifest_matches_host_manifest():
@@ -310,6 +310,8 @@ def test_tiny_rootfs_contains_local_deb_install_smoke_package():
             wayland_gui = data_archive.extractfile("./usr/local/bin/alr-package-wayland-gpu-client").read()
             x11_gui = data_archive.extractfile("./usr/local/bin/alr-package-x11-gpu-client").read()
             vulkan_discovery = data_archive.extractfile("./usr/local/bin/alr-package-vulkan-discovery-client").read()
+            vulkan_proxy_smoke = data_archive.extractfile("./usr/local/bin/alr-package-vulkan-proxy-smoke").read()
+            vulkan_proxy_lib = data_archive.extractfile("./usr/lib/androlinux/libvulkan.so.1").read()
         assert b"ALR_SMOKE_PACKAGE_SCRIPT=1" in script
         assert b"ALR_SMOKE_ARCH=$(dpkg --print-architecture" in script
         assert b"ALR_SMOKE_ENV_ARCH=$(/usr/bin/env dpkg --print-architecture" in script
@@ -323,6 +325,10 @@ def test_tiny_rootfs_contains_local_deb_install_smoke_package():
         assert b"ALR_VK_DISCOVERY_DEVICE_RECORD ok" in vulkan_discovery
         assert b"ALR_VK_SURFACE_CLEAR_REQUEST" in vulkan_discovery
         assert b"ALR_VK_SURFACE_CLEAR_REQUEST_ACCEPTED ok" in vulkan_discovery
+        assert vulkan_proxy_smoke.startswith(b"\x7fELF")
+        assert vulkan_proxy_lib.startswith(b"\x7fELF")
+        assert b"ALR_VK_PROXY_SURFACE_CLEAR_REQUEST_ACCEPTED ok" in vulkan_proxy_smoke
+        assert b"alr-guest-libvulkan-proxy-v1" in vulkan_proxy_lib
         assert archive.extractfile("./usr/bin/dpkg-deb").read(4) == b"\x7fELF"
         assert archive.extractfile("./bin/tar").read(4) == b"\x7fELF"
         dpkg_deb = archive.extractfile("./usr/bin/dpkg-deb").read()

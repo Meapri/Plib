@@ -749,9 +749,9 @@ std::string render_vulkan_clear_to_android_surface(JNIEnv* env, jobject surface_
     VkApplicationInfo app_info{};
     app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     app_info.pApplicationName = "PlibVulkanSurfaceClear";
-    app_info.applicationVersion = VK_MAKE_VERSION(0, 4, 80);
+    app_info.applicationVersion = VK_MAKE_VERSION(0, 4, 81);
     app_info.pEngineName = "Plib";
-    app_info.engineVersion = VK_MAKE_VERSION(0, 4, 80);
+    app_info.engineVersion = VK_MAKE_VERSION(0, 4, 81);
     app_info.apiVersion = VK_API_VERSION_1_0;
 
     const char* instance_extensions[] = {

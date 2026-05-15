@@ -18,9 +18,11 @@ def test_rootfs_contains_guest_gpu_ipc_client_and_gles_shim():
             "./usr/bin/alr-gles-demo-gears",
             "./usr/bin/alr-gles-procaddr-demo",
             "./usr/bin/alr-vulkan-discovery-client",
+            "./usr/bin/alr-vulkan-proxy-smoke",
             "./usr/lib/androlinux/libalr_gles_shim.so",
             "./usr/lib/androlinux/libEGL.so",
             "./usr/lib/androlinux/libGLESv2.so",
+            "./usr/lib/androlinux/libvulkan.so.1",
             "./usr/bin/alr-wayland-gpu-client",
             "./usr/bin/alr-x11-gpu-client",
         ]:
@@ -123,6 +125,9 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "alr installed package vulkan discovery feature record" in text
     assert "alr installed package vulkan surface clear request" in text
     assert "alr installed package vulkan surface clear accepted" in text
+    assert "alr installed package vulkan proxy surface clear request" in text
+    assert "alr installed package vulkan proxy surface clear accepted" in text
+    assert "alr installed package vulkan proxy stdout" in text
     assert "alr installed package vulkan discovery ack lines" in text
     assert "alr installed package vulkan discovery stdout" in text
     assert "nativeHostVulkanProbe" in text
@@ -252,6 +257,8 @@ def test_guest_gles_shim_is_source_built_api_subset():
 
 def test_guest_vulkan_discovery_client_is_source_built_ipc_probe():
     source = (ROOT / "rootfs/guest-src/vulkan/alr_vulkan_discovery_client.c").read_text()
+    proxy_source = (ROOT / "rootfs/guest-src/vulkan/alr_vulkan_proxy.c").read_text()
+    proxy_smoke = (ROOT / "rootfs/guest-src/vulkan/alr_vulkan_proxy_smoke.c").read_text()
     build_script = (ROOT / "scripts/build-guest-vulkan-probe.sh").read_text()
     cmake = (ROOT / "app/src/main/cpp/CMakeLists.txt").read_text()
     native_report = (ROOT / "app/src/main/cpp/runtime_report.cpp").read_text()
@@ -267,8 +274,15 @@ def test_guest_vulkan_discovery_client_is_source_built_ipc_probe():
     assert "ALR_VK_SURFACE_CLEAR_REQUEST_ACCEPTED ok" in source
     assert "ALR_VK_BRIDGE_HOST" in source
     assert "ALR_VK_BRIDGE_PORT" in source
+    assert "vkEnumerateInstanceVersion" in proxy_source
+    assert "vkGetInstanceProcAddr" in proxy_source
+    assert "alrVkProxyRequestSurfaceClear" in proxy_source
+    assert 'dlopen("libvulkan.so.1"' in proxy_smoke
+    assert "ALR_VK_PROXY_SURFACE_CLEAR_REQUEST_ACCEPTED ok" in proxy_smoke
     assert "-target aarch64-linux-gnu" in build_script
     assert "alr-vulkan-discovery-client" in build_script
+    assert "libvulkan.so.1" in build_script
+    assert "alr-vulkan-proxy-smoke" in build_script
     assert "vulkan)" in cmake
     assert "#include <vulkan/vulkan.h>" in native_report
     assert "vkCreateInstance" in native_report

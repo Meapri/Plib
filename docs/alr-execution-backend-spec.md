@@ -982,6 +982,43 @@ the Vulkan clear command source. This is still a narrow clear/present command,
 not an ICD, but it moves the Vulkan path from host-only proof to a
 guest-directed Android-native Surface operation.
 
+Current V81 guest `libvulkan.so.1` proxy smoke snapshot:
+
+```text
+build: 0.4.81-guest-vulkan-proxy-smoke
+versionCode=81
+versionName=0.4.81-guest-vulkan-proxy-smoke
+rootfs_version=bookworm-slim-2026-05-gui-gpu-v81
+rootfs sha256=c67ec2fbf8e6d882d6f28cc4aab29d6e6658f1eb3ebe64b1d579b4f8a991a120
+rootfs size bytes=35860480
+rootfs alr-vulkan-proxy-smoke bytes=5920
+rootfs libvulkan.so.1 bytes=5256
+ANDROID HOST VULKAN SURFACE EXECUTION: PASS
+GUEST VULKAN SURFACE CLEAR REQUEST EXECUTION: PASS
+GUEST VULKAN PROXY SURFACE CLEAR EXECUTION: PASS
+surface vulkan clear request source=guest-request
+surface vulkan clear request tag=guest-vulkan-proxy-clear-0001
+surface vulkan device=Mali-G615 MC2
+surface vulkan api version=1.3.247
+surface vulkan graphics present queue=0
+surface vulkan present mode=mailbox
+surface vulkan swapchain image count=7
+surface vulkan clear command=ok color=0.33,0.22,0.88,1
+surface vulkan queue submit=ok
+surface vulkan present=ok
+surface vulkan hardware render=true
+surface vulkan render elapsed us=19552
+surface gl renderer=Mali-G615 MC2
+surface gles shim vs native average ratio pct=100
+```
+
+V81 adds the first guest-side Vulkan-shaped loader artifact. The rootfs now
+contains a minimal `libvulkan.so.1` proxy plus an installed-package smoke binary
+that `dlopen`s the library, calls `vkEnumerateInstanceVersion`, and asks the
+host bridge for a Vulkan Surface clear. The host still executes the real
+Android Vulkan WSI work, but the request now originates behind the guest
+Vulkan ABI name instead of a standalone discovery-only client.
+
 Report:
 
 ```text

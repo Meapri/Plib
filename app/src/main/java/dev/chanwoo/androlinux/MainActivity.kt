@@ -22,7 +22,7 @@ class MainActivity : Activity() {
 
         val rootfsManifest = RootfsManifest(
             name = "debian-arm64",
-            version = "bookworm-slim-2026-05-gui-gpu-v80",
+            version = "bookworm-slim-2026-05-gui-gpu-v81",
             assets = listOf(
                 RootfsAsset(
                     path = "rootfs.tar.zst",
@@ -231,6 +231,7 @@ class MainActivity : Activity() {
         val alrInstalledPackageWaylandGuiBridgeResult = runGuestGuiBridge(nativeCommandRunner, rootfsStatus.rootfsDir, "WAYLAND", useInstalledPackage = true)
         val alrInstalledPackageX11GuiBridgeResult = runGuestGuiBridge(nativeCommandRunner, rootfsStatus.rootfsDir, "X11", useInstalledPackage = true)
         val alrInstalledPackageVulkanDiscoveryBridgeResult = runInstalledPackageVulkanDiscoveryBridge(nativeCommandRunner, rootfsStatus.rootfsDir)
+        val alrInstalledPackageVulkanProxyBridgeResult = runInstalledPackageVulkanProxyBridge(nativeCommandRunner, rootfsStatus.rootfsDir)
         val nativeGlesBaselineCommands = buildNativeGlesBaselineCommands(glesShimBenchmarkFrameCount)
         val guestGuiSurfaceCommands = alrInstalledPackageWaylandGuiBridgeResult.commands + alrInstalledPackageX11GuiBridgeResult.commands +
             alrGuestWaylandGuiBridgeResult.commands + alrGuestX11GuiBridgeResult.commands +
@@ -309,6 +310,8 @@ class MainActivity : Activity() {
         val rootfsInstalledWaylandGuiClientFile = File(rootfsStatus.rootfsDir, "usr/local/bin/alr-package-wayland-gpu-client")
         val rootfsInstalledX11GuiClientFile = File(rootfsStatus.rootfsDir, "usr/local/bin/alr-package-x11-gpu-client")
         val rootfsInstalledVulkanDiscoveryClientFile = File(rootfsStatus.rootfsDir, "usr/local/bin/alr-package-vulkan-discovery-client")
+        val rootfsInstalledVulkanProxySmokeFile = File(rootfsStatus.rootfsDir, "usr/local/bin/alr-package-vulkan-proxy-smoke")
+        val rootfsInstalledVulkanProxyLibFile = File(rootfsStatus.rootfsDir, "usr/lib/androlinux/libvulkan.so.1")
         val rootfsDpkgStatusFile = File(rootfsStatus.rootfsDir, "var/lib/dpkg/status")
         val rootfsDevNullFile = File(rootfsStatus.rootfsDir, "dev/null")
         val rootfsDpkgTriggersFile = File(rootfsStatus.rootfsDir, "var/lib/dpkg/triggers/File")
@@ -642,6 +645,17 @@ class MainActivity : Activity() {
                 alrInstalledPackageVulkanDiscoveryBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("ALR_VK_SURFACE_CLEAR_REQUEST_ACCEPTED ok") &&
                 alrInstalledPackageVulkanDiscoveryBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("ALR_VK_DISCOVERY_DONE ok") &&
                 alrInstalledPackageVulkanDiscoveryBridgeResult.error == null
+        val alrInstalledPackageVulkanProxyPassed =
+            alrInstalledPackageVulkanProxyBridgeResult.clientResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+                rootfsInstalledVulkanProxySmokeFile.isFile &&
+                rootfsInstalledVulkanProxySmokeFile.canExecute() &&
+                rootfsInstalledVulkanProxyLibFile.isFile &&
+                alrInstalledPackageVulkanProxyBridgeResult.clearRequestLine.contains("source=libvulkan-proxy") &&
+                alrInstalledPackageVulkanProxyBridgeResult.clearAcceptedLine.startsWith("ALR_VK_SURFACE_CLEAR_ACCEPTED status=PASS") &&
+                alrInstalledPackageVulkanProxyBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("ALR_VK_PROXY_STEP vkEnumerateInstanceVersion ok") &&
+                alrInstalledPackageVulkanProxyBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("ALR_VK_PROXY_SURFACE_CLEAR_REQUEST_ACCEPTED ok") &&
+                alrInstalledPackageVulkanProxyBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("ALR_VK_PROXY_DONE ok") &&
+                alrInstalledPackageVulkanProxyBridgeResult.error == null
 
         val installedPackageCompatibilityTable =
             "script:${if (alrInstalledPackagePreloadExecutionPassed) "PASS" else "FAIL"}," +
@@ -651,9 +665,10 @@ class MainActivity : Activity() {
                 "gles-procaddr:${if (alrInstalledPackageGlesProcaddrDemoPassed) "PASS" else "FAIL"}," +
                 "wayland:${if (alrInstalledPackageWaylandGuiBridgePassed) "PASS" else "FAIL"}," +
                 "x11:${if (alrInstalledPackageX11GuiBridgePassed) "PASS" else "FAIL"}," +
-                "vulkan-discovery:${if (alrInstalledPackageVulkanDiscoveryPassed) "PASS" else "FAIL"}"
+                "vulkan-discovery:${if (alrInstalledPackageVulkanDiscoveryPassed) "PASS" else "FAIL"}," +
+                "vulkan-proxy:${if (alrInstalledPackageVulkanProxyPassed) "PASS" else "FAIL"}"
 
-        val executionSummary = "build: 0.4.80-guest-vulkan-clear-request" +
+        val executionSummary = "build: 0.4.81-guest-vulkan-proxy-smoke" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -791,6 +806,8 @@ class MainActivity : Activity() {
             "\nrootfs installed alr wayland gui client exists=${rootfsInstalledWaylandGuiClientFile.isFile} executable=${rootfsInstalledWaylandGuiClientFile.canExecute()} bytes=${rootfsInstalledWaylandGuiClientFile.length()}" +
             "\nrootfs installed alr x11 gui client exists=${rootfsInstalledX11GuiClientFile.isFile} executable=${rootfsInstalledX11GuiClientFile.canExecute()} bytes=${rootfsInstalledX11GuiClientFile.length()}" +
             "\nrootfs installed alr vulkan discovery client exists=${rootfsInstalledVulkanDiscoveryClientFile.isFile} executable=${rootfsInstalledVulkanDiscoveryClientFile.canExecute()} bytes=${rootfsInstalledVulkanDiscoveryClientFile.length()}" +
+            "\nrootfs installed alr vulkan proxy smoke exists=${rootfsInstalledVulkanProxySmokeFile.isFile} executable=${rootfsInstalledVulkanProxySmokeFile.canExecute()} bytes=${rootfsInstalledVulkanProxySmokeFile.length()}" +
+            "\nrootfs installed alr vulkan proxy lib exists=${rootfsInstalledVulkanProxyLibFile.isFile} bytes=${rootfsInstalledVulkanProxyLibFile.length()}" +
             "\ninstalled package compatibility table=$installedPackageCompatibilityTable" +
             "\nrootfs dpkg status exists=${rootfsDpkgStatusFile.isFile} bytes=${rootfsDpkgStatusFile.length()}" +
             "\nrootfs /dev/null placeholder exists=${rootfsDevNullFile.isFile} bytes=${rootfsDevNullFile.length()}" +
@@ -969,6 +986,13 @@ class MainActivity : Activity() {
             "\nalr installed package vulkan discovery error=${alrInstalledPackageVulkanDiscoveryBridgeResult.error ?: "none"}" +
             "\nalr installed package vulkan discovery handoff=${alrInstalledPackageVulkanDiscoveryBridgeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
             "\nalr installed package vulkan discovery stdout=${alrInstalledPackageVulkanDiscoveryBridgeResult.clientResult.stdout.alrHandoffStdoutText()}" +
+            "\nalr installed package vulkan proxy raw=${alrInstalledPackageVulkanProxyBridgeResult.rawLines.joinToString("|")}" +
+            "\nalr installed package vulkan proxy surface clear request=${alrInstalledPackageVulkanProxyBridgeResult.clearRequestLine}" +
+            "\nalr installed package vulkan proxy surface clear accepted=${alrInstalledPackageVulkanProxyBridgeResult.clearAcceptedLine}" +
+            "\nalr installed package vulkan proxy ack lines=${alrInstalledPackageVulkanProxyBridgeResult.ackLines.joinToString("|")}" +
+            "\nalr installed package vulkan proxy error=${alrInstalledPackageVulkanProxyBridgeResult.error ?: "none"}" +
+            "\nalr installed package vulkan proxy handoff=${alrInstalledPackageVulkanProxyBridgeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr installed package vulkan proxy stdout=${alrInstalledPackageVulkanProxyBridgeResult.clientResult.stdout.alrHandoffStdoutText()}" +
             "\nsurface gpu command source frames=${surfaceGpuCommands.size}" +
             "\nproot dpkg-split --version exit=${prootDpkgSplitVersionResult.exitCode}" +
             "\nproot dpkg-split --version stdout=${prootDpkgSplitVersionResult.stdout}" +
@@ -1381,6 +1405,7 @@ class MainActivity : Activity() {
             resultBlock("alr installed package wayland gui ipc client", alrInstalledPackageWaylandGuiBridgeResult.clientResult) +
             resultBlock("alr installed package x11 gui ipc client", alrInstalledPackageX11GuiBridgeResult.clientResult) +
             resultBlock("alr installed package vulkan discovery client", alrInstalledPackageVulkanDiscoveryBridgeResult.clientResult) +
+            resultBlock("alr installed package vulkan proxy smoke", alrInstalledPackageVulkanProxyBridgeResult.clientResult) +
             optionalResultBlock("proot hello verbose on failure", prootHelloVerboseResult)
 
         val report = executionSummary + "\n\n--- verbose report ---\n" + verboseReport
@@ -1404,7 +1429,7 @@ class MainActivity : Activity() {
                     val surfaceReport = nativeRenderGpuSurfaceFrames(holder.surface, encodedFrames)
                     val vulkanSurfaceReport = nativeRenderVulkanSurfaceClear(
                         holder.surface,
-                        alrInstalledPackageVulkanDiscoveryBridgeResult.clearRequestLine,
+                        alrInstalledPackageVulkanProxyBridgeResult.clearRequestLine,
                     )
                     val executionUpdate = surfaceExecutionUpdate(
                         surfaceReport,
@@ -1482,6 +1507,22 @@ class MainActivity : Activity() {
     private fun runInstalledPackageVulkanDiscoveryBridge(
         nativeCommandRunner: NativeCommandRunner,
         rootfsDir: File,
+    ): GuestVulkanDiscoveryBridgeResult =
+        runInstalledPackageVulkanBridge(rootfsDir) { port ->
+            nativeCommandRunner.runAlrRuntimeTrampolineInstalledPackageVulkanDiscovery(rootfsDir, port)
+        }
+
+    private fun runInstalledPackageVulkanProxyBridge(
+        nativeCommandRunner: NativeCommandRunner,
+        rootfsDir: File,
+    ): GuestVulkanDiscoveryBridgeResult =
+        runInstalledPackageVulkanBridge(rootfsDir) { port ->
+            nativeCommandRunner.runAlrRuntimeTrampolineInstalledPackageVulkanProxySmoke(rootfsDir, port)
+        }
+
+    private fun runInstalledPackageVulkanBridge(
+        rootfsDir: File,
+        runClient: (Int) -> NativeCommandResult,
     ): GuestVulkanDiscoveryBridgeResult {
         val host = "127.0.0.1"
         val server = ServerSocket(0, 1, InetAddress.getByName(host)).apply { soTimeout = 3000 }
@@ -1564,7 +1605,7 @@ class MainActivity : Activity() {
                 errors += error.javaClass.simpleName + ": " + (error.message ?: "unknown")
             }
         }
-        val clientResult = nativeCommandRunner.runAlrRuntimeTrampolineInstalledPackageVulkanDiscovery(rootfsDir, port)
+        val clientResult = runClient(port)
         acceptThread.join(3500)
         if (acceptThread.isAlive) {
             errors += "vulkan discovery accept thread still alive after join"
@@ -2283,6 +2324,7 @@ class MainActivity : Activity() {
     }
 
     private fun vulkanSurfaceExecutionUpdate(vulkanSurfaceReport: String): String {
+        val clearRequestTag = vulkanSurfaceReport.lineStartingWith("surface vulkan clear request tag=")
         val passed =
             vulkanSurfaceReport.lineStartingWith("surface vulkan clear request source=") ==
                 "surface vulkan clear request source=guest-request" &&
@@ -2290,10 +2332,12 @@ class MainActivity : Activity() {
                 vulkanSurfaceReport.lineStartingWith("surface vulkan hardware render=") == "surface vulkan hardware render=true" &&
                 vulkanSurfaceReport.lineStartingWith("android host vulkan surface execution=") ==
                 "android host vulkan surface execution=PASS"
+        val proxySurfacePassed = passed && clearRequestTag == "surface vulkan clear request tag=guest-vulkan-proxy-clear-0001"
         return "ANDROID HOST VULKAN SURFACE EXECUTION: ${if (passed) "PASS" else "FAIL"}" +
             "\nGUEST VULKAN SURFACE CLEAR REQUEST EXECUTION: ${if (passed) "PASS" else "FAIL"}" +
+            "\nGUEST VULKAN PROXY SURFACE CLEAR EXECUTION: ${if (proxySurfacePassed) "PASS" else "FAIL"}" +
             "\n${vulkanSurfaceReport.lineStartingWith("surface vulkan clear request source=")}" +
-            "\n${vulkanSurfaceReport.lineStartingWith("surface vulkan clear request tag=")}" +
+            "\n$clearRequestTag" +
             "\n${vulkanSurfaceReport.lineStartingWith("surface vulkan device=")}" +
             "\n${vulkanSurfaceReport.lineStartingWith("surface vulkan api version=")}" +
             "\n${vulkanSurfaceReport.lineStartingWith("surface vulkan graphics present queue=")}" +
