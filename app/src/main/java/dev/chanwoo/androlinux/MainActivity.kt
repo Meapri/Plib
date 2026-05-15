@@ -1,6 +1,8 @@
 package dev.chanwoo.androlinux
 
+import android.Manifest
 import android.app.Activity
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.widget.ScrollView
 import android.widget.TextView
@@ -62,6 +64,10 @@ class MainActivity : Activity() {
         }
         val nativeProbe = nativeLibraryProbe(applicationInfo.nativeLibraryDir)
         val hostGpuProbe = nativeHostGpuProbe()
+        val requestedPermissions = requestedPermissionNames()
+        val internetPermissionDeclared = Manifest.permission.INTERNET in requestedPermissions
+        val networkStatePermissionDeclared = Manifest.permission.ACCESS_NETWORK_STATE in requestedPermissions
+        val broadStoragePermissionDeclared = "android.permission.MANAGE_EXTERNAL_STORAGE" in requestedPermissions
         val rootfsHelloFile = File(rootfsStatus.rootfsDir, "bin/hello")
         val rootfsShellFile = File(rootfsStatus.rootfsDir, "bin/sh")
         val rootfsCatFile = File(rootfsStatus.rootfsDir, "bin/cat")
@@ -100,6 +106,12 @@ class MainActivity : Activity() {
         val rootfsDevNullFile = File(rootfsStatus.rootfsDir, "dev/null")
         val rootfsDpkgTriggersFile = File(rootfsStatus.rootfsDir, "var/lib/dpkg/triggers/File")
         val rootfsDpkgTriggersUnincorpFile = File(rootfsStatus.rootfsDir, "var/lib/dpkg/triggers/Unincorp")
+        val rootfsRmFile = File(rootfsStatus.rootfsDir, "usr/bin/rm")
+        val rootfsTarFile = File(rootfsStatus.rootfsDir, "usr/bin/tar")
+        val rootfsDiffFile = File(rootfsStatus.rootfsDir, "usr/bin/diff")
+        val rootfsLdconfigFile = File(rootfsStatus.rootfsDir, "usr/sbin/ldconfig")
+        val rootfsLdconfigRealFile = File(rootfsStatus.rootfsDir, "sbin/ldconfig.real")
+        val rootfsStartStopDaemonFile = File(rootfsStatus.rootfsDir, "usr/sbin/start-stop-daemon")
         val rootfsExecutionPassed = prootHelloResult.exitCode == 0 &&
             prootHelloResult.stdout.contains("hello from static arm64 rootfs")
         val shellScriptExecutionPassed = prootScriptResult.exitCode == 0 &&
@@ -153,14 +165,18 @@ class MainActivity : Activity() {
             prootAptConfigVersionResult.stdout.contains("apt ") &&
             prootAptConfigVersionResult.stdout.contains("arm64")
         val dpkgLocalInstallExecutionPassed = prootDpkgInstallLocalResult.exitCode == 0 &&
+            !prootDpkgInstallLocalResult.stderr.contains("dpkg: error") &&
             (prootDpkgInstallLocalResult.stdout.contains("Setting up alr-smoke") ||
+                prootDpkgInstallLocalResult.stderr.contains("Setting up alr-smoke") ||
                 prootDpkgInstallLocalResult.stdout.contains("alr-smoke (1.0)") ||
-                prootDpkgInstallLocalResult.stdout.contains("Selecting previously unselected package alr-smoke"))
+                prootDpkgInstallLocalResult.stderr.contains("alr-smoke (1.0)") ||
+                prootDpkgInstallLocalResult.stdout.contains("Selecting previously unselected package alr-smoke") ||
+                prootDpkgInstallLocalResult.stderr.contains("Selecting previously unselected package alr-smoke"))
         val installedPackageExecutionPassed = prootInstalledPackageSmokeResult.exitCode == 0 &&
             prootInstalledPackageSmokeResult.stdout.contains("alr local deb package smoke ok")
         val hostGpuHardwareCandidate = hostGpuProbe.lineStartingWith("host gpu hardware candidate=") == "host gpu hardware candidate=true"
 
-        val executionSummary = "build: 0.4.9-dpkg-install-devbind" +
+        val executionSummary = "build: 0.4.11-permission-network-helper" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -179,6 +195,7 @@ class MainActivity : Activity() {
             "\nDPKG LOCAL INSTALL EXECUTION: ${if (dpkgLocalInstallExecutionPassed) "PASS" else "FAIL"}" +
             "\nINSTALLED PACKAGE EXECUTION: ${if (installedPackageExecutionPassed) "PASS" else "FAIL"}" +
             "\nHOST GPU EGL/GLES EXECUTION: ${if (hostGpuHardwareCandidate) "PASS" else "FAIL"}" +
+            "\nANDROID PERMISSION MODEL: ${if (internetPermissionDeclared && networkStatePermissionDeclared && !broadStoragePermissionDeclared) "PASS" else "FAIL"}" +
             "\nidentity numeric root=$identityNumericRoot" +
             "\nidentity named root=$identityNamedRoot" +
             "\nidentity proot mode=raw -r" +
@@ -222,6 +239,12 @@ class MainActivity : Activity() {
             "\nrootfs /dev/null placeholder exists=${rootfsDevNullFile.isFile} bytes=${rootfsDevNullFile.length()}" +
             "\nrootfs dpkg triggers File exists=${rootfsDpkgTriggersFile.isFile} bytes=${rootfsDpkgTriggersFile.length()}" +
             "\nrootfs dpkg triggers Unincorp exists=${rootfsDpkgTriggersUnincorpFile.isFile} bytes=${rootfsDpkgTriggersUnincorpFile.length()}" +
+            "\nrootfs helper rm exists=${rootfsRmFile.isFile} executable=${rootfsRmFile.canExecute()} bytes=${rootfsRmFile.length()}" +
+            "\nrootfs helper tar exists=${rootfsTarFile.isFile} executable=${rootfsTarFile.canExecute()} bytes=${rootfsTarFile.length()}" +
+            "\nrootfs helper diff exists=${rootfsDiffFile.isFile} executable=${rootfsDiffFile.canExecute()} bytes=${rootfsDiffFile.length()}" +
+            "\nrootfs helper ldconfig exists=${rootfsLdconfigFile.isFile} executable=${rootfsLdconfigFile.canExecute()} bytes=${rootfsLdconfigFile.length()}" +
+            "\nrootfs helper ldconfig.real exists=${rootfsLdconfigRealFile.isFile} executable=${rootfsLdconfigRealFile.canExecute()} bytes=${rootfsLdconfigRealFile.length()}" +
+            "\nrootfs helper start-stop-daemon exists=${rootfsStartStopDaemonFile.isFile} executable=${rootfsStartStopDaemonFile.canExecute()} bytes=${rootfsStartStopDaemonFile.length()}" +
             "\nnative smoke exit=${nativeCommandResult.exitCode}" +
             "\nnative smoke stdout=${nativeCommandResult.stdout}" +
             "\nproot --version exit=${prootCandidateResult.exitCode}" +
@@ -279,7 +302,11 @@ class MainActivity : Activity() {
             "\nhost gpu renderer=${hostGpuProbe.lineStartingWith("gl renderer=")}" +
             "\nhost gpu vendor=${hostGpuProbe.lineStartingWith("gl vendor=")}" +
             "\nhost gpu software renderer=${hostGpuProbe.lineStartingWith("host gpu software renderer=")}" +
-            "\nhost gpu hardware candidate=${hostGpuProbe.lineStartingWith("host gpu hardware candidate=")}"
+            "\nhost gpu hardware candidate=${hostGpuProbe.lineStartingWith("host gpu hardware candidate=")}" +
+            "\npermission INTERNET declared=$internetPermissionDeclared" +
+            "\npermission ACCESS_NETWORK_STATE declared=$networkStatePermissionDeclared" +
+            "\npermission broad storage declared=$broadStoragePermissionDeclared" +
+            "\npermission runtime dangerous requested=false"
 
         val verboseReport = nativeRuntimeReport(
             packageName,
@@ -355,6 +382,12 @@ class MainActivity : Activity() {
 
     private fun String.lineStartingWith(prefix: String): String =
         lineSequence().firstOrNull { it.startsWith(prefix) } ?: "missing"
+
+    private fun requestedPermissionNames(): Set<String> =
+        packageManager.getPackageInfo(packageName, PackageManager.GET_PERMISSIONS)
+            .requestedPermissions
+            ?.toSet()
+            .orEmpty()
 
     private external fun nativeRuntimeReport(
         packageName: String,

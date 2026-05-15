@@ -46,5 +46,5 @@ def test_launch_plan_env_points_tools_inside_rootfs_without_claiming_chroot():
 
     assert plan.env["ALR_ROOTFS"] == "/data/user/0/dev.chanwoo.androlinux/files/rootfs/debian-arm64"
     assert plan.env["ALR_PROGRAM"] == "/usr/bin/python3"
-    assert plan.env["PATH"] == "/bin:/usr/bin:/usr/local/bin"
+    assert plan.env["PATH"] == "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
     assert "CHROOT" not in plan.env

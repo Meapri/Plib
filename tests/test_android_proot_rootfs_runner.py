@@ -181,3 +181,21 @@ def test_main_activity_reports_dpkg_install_state_placeholders():
     assert "rootfs /dev/null placeholder exists=" in text
     assert "rootfs dpkg triggers File exists=" in text
     assert "rootfs dpkg triggers Unincorp exists=" in text
+
+
+def test_package_manager_path_includes_sbin_helpers():
+    text = RUNNER.read_text()
+    assert "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" in text
+
+
+def test_main_activity_reports_dpkg_helper_programs():
+    text = MAIN.read_text()
+    for label in [
+        "rootfs helper rm exists=",
+        "rootfs helper tar exists=",
+        "rootfs helper diff exists=",
+        "rootfs helper ldconfig exists=",
+        "rootfs helper ldconfig.real exists=",
+        "rootfs helper start-stop-daemon exists=",
+    ]:
+        assert label in text

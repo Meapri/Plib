@@ -9,7 +9,7 @@ PAYLOAD = ROOT / "app" / "src" / "main" / "assets" / "rootfs" / "payloads" / "ti
 def test_android_assets_include_rootfs_manifest_and_payload():
     assert MANIFEST.is_file()
     assert PAYLOAD.is_file()
-    assert PAYLOAD.stat().st_size == 30648320
+    assert PAYLOAD.stat().st_size == 32327680
 
 
 def test_android_asset_manifest_matches_host_manifest():
@@ -272,5 +272,23 @@ def test_tiny_rootfs_contains_dpkg_install_state_and_dev_placeholders():
             "./var/lib/dpkg/lock",
             "./var/lib/dpkg/lock-frontend",
             "./var/lib/dpkg/available",
+        ]:
+            assert member in names
+
+
+def test_tiny_rootfs_contains_dpkg_install_helper_programs():
+    import tarfile
+
+    with tarfile.open(PAYLOAD) as archive:
+        names = set(archive.getnames())
+        for member in [
+            "./usr/bin/rm",
+            "./usr/bin/tar",
+            "./usr/bin/diff",
+            "./usr/sbin/ldconfig",
+            "./sbin/ldconfig.real",
+            "./usr/sbin/start-stop-daemon",
+            "./usr/bin/dpkg-trigger",
+            "./lib/aarch64-linux-gnu/libacl.so.1",
         ]:
             assert member in names

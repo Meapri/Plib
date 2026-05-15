@@ -86,7 +86,7 @@ LoaderLaunchPlan build_loader_launch_plan(const RuntimeReportInput& input) {
         {"ALR_BACKEND", "loader"},
         {"HOME", "/root"},
         {"TMPDIR", "/tmp"},
-        {"PATH", "/bin:/usr/bin:/usr/local/bin"},
+        {"PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"},
     };
     return plan;
 }
@@ -116,7 +116,7 @@ LoaderLaunchPlan build_proot_launch_plan(const RuntimeReportInput& input) {
         {"LD_LIBRARY_PATH", input.native_library_dir},
         {"HOME", "/root"},
         {"TMPDIR", "/tmp"},
-        {"PATH", "/bin:/usr/bin:/usr/local/bin"},
+        {"PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"},
     };
     return plan;
 }

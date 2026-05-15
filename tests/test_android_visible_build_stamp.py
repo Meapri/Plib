@@ -7,11 +7,11 @@ MAIN = ROOT / "app/src/main/java/dev/chanwoo/androlinux/MainActivity.kt"
 
 def test_debug_apk_version_code_is_bumped_for_device_update():
     text = BUILD.read_text()
-    assert "versionCode = 22" in text
-    assert 'versionName = "0.4.9-dpkg-install-devbind"' in text
+    assert "versionCode = 24" in text
+    assert 'versionName = "0.4.11-permission-network-helper"' in text
 
 
 def test_main_activity_starts_with_visible_build_stamp_before_summary():
     text = MAIN.read_text()
-    assert "build: 0.4.9-dpkg-install-devbind" in text
-    assert text.index("build: 0.4.9-dpkg-install-devbind") < text.index("execution summary")
+    assert "build: 0.4.11-permission-network-helper" in text
+    assert text.index("build: 0.4.11-permission-network-helper") < text.index("execution summary")

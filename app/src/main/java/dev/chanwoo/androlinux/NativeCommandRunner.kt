@@ -145,7 +145,7 @@ class NativeCommandRunner(
             "GLIBC_TUNABLES" to "glibc.pthread.rseq=0",
             "HOME" to "/root",
             "TMPDIR" to "/tmp",
-            "PATH" to "/bin:/usr/bin:/usr/local/bin",
+            "PATH" to "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
         )
         if (rootfsDir != null) {
             environment["ALR_ROOTFS"] = rootfsDir.absolutePath

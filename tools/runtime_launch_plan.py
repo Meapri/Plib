@@ -65,7 +65,7 @@ def build_launch_plan(
         "ALR_BACKEND": backend,
         "HOME": "/root",
         "TMPDIR": "/tmp",
-        "PATH": "/bin:/usr/bin:/usr/local/bin",
+        "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
     }
     if backend == "proot":
         env["PROOT_NO_SECCOMP"] = "1"
