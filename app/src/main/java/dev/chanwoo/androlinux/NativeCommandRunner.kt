@@ -377,6 +377,19 @@ class NativeCommandRunner(
             extraGuestEnvironment = preloadPathFastPathEnvironment(rootfsDir),
         )
 
+    fun runAlrRuntimeTrampolineInstalledPackageGpuSmoke(rootfsDir: File, port: Int): NativeCommandResult =
+        runAlrRuntimeTrampoline(
+            rootfsDir,
+            "/usr/local/bin/alr-package-gpu-smoke",
+            executeEntry = true,
+            timeoutMs = 1500,
+            extraGuestEnvironment = mapOf(
+                "ALR_GPU_BRIDGE_HOST" to "127.0.0.1",
+                "ALR_GPU_BRIDGE_PORT" to port.toString(),
+                "ALR_GPU_BRIDGE_TRANSPORT" to "tcp-loopback",
+            ),
+        )
+
     private fun glibcLibraryPath(rootfsDir: File): String =
         listOf(
             File(rootfsDir, "lib/aarch64-linux-gnu").absolutePath,

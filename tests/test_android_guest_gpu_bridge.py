@@ -48,6 +48,7 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     runner = RUNNER.read_text()
     assert "runProotRootfsGuestGpuClientIpc" in runner
     assert "runAlrRuntimeTrampolineGuestGpuClientIpc" in runner
+    assert "runAlrRuntimeTrampolineInstalledPackageGpuSmoke" in runner
     assert "runAlrRuntimeTrampolineGuestGuiClientIpc" in runner
     assert "runAlrRuntimeTrampolineGuestGlesShimSmoke" in runner
     assert "pathRewrite = true" in runner
@@ -80,6 +81,11 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "guest wayland gui ipc seq gaps" in text
     assert "guest x11 gui ipc seq gaps" in text
     assert "ALR GUEST GPU IPC BRIDGE EXECUTION" in text
+    assert "ALR INSTALLED PACKAGE GPU IPC EXECUTION" in text
+    assert "runInstalledPackageGpuIpcBridge" in text
+    assert "alr installed package gpu ipc lossless" in text
+    assert "alr installed package gpu ipc execve loader rewrites" in text
+    assert "alr installed package gpu ipc client" in text
     assert "ALR GUEST GLES SHIM SMOKE EXECUTION" in text
     assert "ALR GUEST WAYLAND GUI GPU BRIDGE EXECUTION" in text
     assert "ALR GUEST X11 GUI GPU BRIDGE EXECUTION" in text

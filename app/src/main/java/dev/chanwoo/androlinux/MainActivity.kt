@@ -22,7 +22,7 @@ class MainActivity : Activity() {
 
         val rootfsManifest = RootfsManifest(
             name = "debian-arm64",
-            version = "bookworm-slim-2026-05-gui-gpu-v70",
+            version = "bookworm-slim-2026-05-gui-gpu-v71",
             assets = listOf(
                 RootfsAsset(
                     path = "rootfs.tar.zst",
@@ -172,6 +172,7 @@ class MainActivity : Activity() {
         val alrGuestGpuCommands = parseGuestGpuCommands(alrGuestGpuClientResult.stdout.alrHandoffStdoutText())
         val guestGpuIpcBridgeResult = runGuestGpuIpcBridge(nativeCommandRunner, rootfsStatus.rootfsDir)
         val alrGuestGpuIpcBridgeResult = runGuestGpuIpcBridge(nativeCommandRunner, rootfsStatus.rootfsDir, useAlr = true)
+        val alrInstalledPackageGpuIpcBridgeResult = runInstalledPackageGpuIpcBridge(nativeCommandRunner, rootfsStatus.rootfsDir)
         val glesShimBenchmarkFrameCount = 32
         val glesShimDrawFrameCount = 32
         val glesDemoFrameCount = 60
@@ -225,6 +226,7 @@ class MainActivity : Activity() {
             guestWaylandGuiBridgeResult.commands + guestX11GuiBridgeResult.commands
         val surfaceGpuCommands = buildList {
             addAll(guestGuiSurfaceCommands)
+            addAll(alrInstalledPackageGpuIpcBridgeResult.commands)
             addAll(if (alrGuestGpuIpcBridgeResult.commands.isNotEmpty()) alrGuestGpuIpcBridgeResult.commands else guestGpuIpcBridgeResult.commands)
             addAll(if (alrGuestGpuCommands.isNotEmpty()) alrGuestGpuCommands else guestGpuCommands)
             addAll(if (alrGuestGlesShimBenchmarkCommands.isNotEmpty()) alrGuestGlesShimBenchmarkCommands else guestGlesShimBenchmarkCommands)
@@ -286,6 +288,7 @@ class MainActivity : Activity() {
         val rootfsLocalDebFile = File(rootfsStatus.rootfsDir, "var/cache/apt/archives/alr-smoke_1.0_arm64.deb")
         val rootfsDpkgDebFile = File(rootfsStatus.rootfsDir, "usr/bin/dpkg-deb")
         val rootfsInstalledSmokeFile = File(rootfsStatus.rootfsDir, "usr/local/bin/alr-package-smoke")
+        val rootfsInstalledGpuSmokeFile = File(rootfsStatus.rootfsDir, "usr/local/bin/alr-package-gpu-smoke")
         val rootfsDpkgStatusFile = File(rootfsStatus.rootfsDir, "var/lib/dpkg/status")
         val rootfsDevNullFile = File(rootfsStatus.rootfsDir, "dev/null")
         val rootfsDpkgTriggersFile = File(rootfsStatus.rootfsDir, "var/lib/dpkg/triggers/File")
@@ -472,6 +475,14 @@ class MainActivity : Activity() {
             alrGuestGpuIpcBridgeResult.commands.size == alrGuestGpuIpcBridgeResult.expectedFrames &&
             alrGuestGpuIpcBridgeResult.expectedFrames > 0 &&
             alrGuestGpuIpcBridgeResult.error == null
+        val alrInstalledPackageGpuIpcBridgePassed =
+            alrInstalledPackageGpuIpcBridgeResult.clientResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+                rootfsInstalledGpuSmokeFile.isFile &&
+                rootfsInstalledGpuSmokeFile.canExecute() &&
+                alrInstalledPackageGpuIpcBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("alr guest gpu client ok") &&
+                alrInstalledPackageGpuIpcBridgeResult.commands.size == alrInstalledPackageGpuIpcBridgeResult.expectedFrames &&
+                alrInstalledPackageGpuIpcBridgeResult.expectedFrames > 0 &&
+                alrInstalledPackageGpuIpcBridgeResult.error == null
         val guestGlesShimSmokePassed = prootGuestGlesShimSmokeResult.exitCode == 0 &&
             prootGuestGlesShimSmokeResult.stdout.contains("alr guest gles shim smoke ok") &&
             prootGuestGlesShimSmokeResult.stdout.contains("ALR_GLES_SHIM_LOAD ok") &&
@@ -550,7 +561,7 @@ class MainActivity : Activity() {
             alrGuestX11GuiBridgeResult.error == null
         val hostGpuHardwareCandidate = hostGpuProbe.lineStartingWith("host gpu hardware candidate=") == "host gpu hardware candidate=true"
 
-        val executionSummary = "build: 0.4.70-preload-env-child-chain" +
+        val executionSummary = "build: 0.4.71-installed-package-gpu-ipc" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -605,6 +616,7 @@ class MainActivity : Activity() {
             "\nALR GUEST GPU BRIDGE COMMAND EXECUTION: ${if (alrGuestGpuBridgeCommandPassed) "PASS" else "FAIL"}" +
             "\nGUEST GPU IPC BRIDGE EXECUTION: ${if (guestGpuIpcBridgePassed) "PASS" else "FAIL"}" +
             "\nALR GUEST GPU IPC BRIDGE EXECUTION: ${if (alrGuestGpuIpcBridgePassed) "PASS" else "FAIL"}" +
+            "\nALR INSTALLED PACKAGE GPU IPC EXECUTION: ${if (alrInstalledPackageGpuIpcBridgePassed) "PASS" else "FAIL"}" +
             "\nGUEST GLES SHIM SMOKE EXECUTION: ${if (guestGlesShimSmokePassed) "PASS" else "FAIL"}" +
             "\nALR GUEST GLES SHIM SMOKE EXECUTION: ${if (alrGuestGlesShimSmokePassed) "PASS" else "FAIL"}" +
             "\nGUEST EGL/GLES ABI LIB EXECUTION: ${if (guestGlesAbiSmokePassed) "PASS" else "FAIL"}" +
@@ -672,6 +684,7 @@ class MainActivity : Activity() {
             "\nrootfs local deb exists=${rootfsLocalDebFile.isFile} bytes=${rootfsLocalDebFile.length()}" +
             "\nrootfs /usr/bin/dpkg-deb exists=${rootfsDpkgDebFile.isFile} executable=${rootfsDpkgDebFile.canExecute()} bytes=${rootfsDpkgDebFile.length()}" +
             "\nrootfs installed alr smoke exists=${rootfsInstalledSmokeFile.isFile} executable=${rootfsInstalledSmokeFile.canExecute()} bytes=${rootfsInstalledSmokeFile.length()}" +
+            "\nrootfs installed alr gpu smoke exists=${rootfsInstalledGpuSmokeFile.isFile} executable=${rootfsInstalledGpuSmokeFile.canExecute()} bytes=${rootfsInstalledGpuSmokeFile.length()}" +
             "\nrootfs dpkg status exists=${rootfsDpkgStatusFile.isFile} bytes=${rootfsDpkgStatusFile.length()}" +
             "\nrootfs /dev/null placeholder exists=${rootfsDevNullFile.isFile} bytes=${rootfsDevNullFile.length()}" +
             "\nrootfs dpkg triggers File exists=${rootfsDpkgTriggersFile.isFile} bytes=${rootfsDpkgTriggersFile.length()}" +
@@ -718,6 +731,16 @@ class MainActivity : Activity() {
             "\nalr guest gpu ipc error=${alrGuestGpuIpcBridgeResult.error ?: "none"}" +
             "\nalr guest gpu ipc client handoff=${alrGuestGpuIpcBridgeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
             "\nalr guest gpu ipc client stdout=${alrGuestGpuIpcBridgeResult.clientResult.stdout.alrHandoffStdoutText()}" +
+            "\nalr installed package gpu ipc received frames=${alrInstalledPackageGpuIpcBridgeResult.commands.size}" +
+            "\nalr installed package gpu ipc lossless=${alrInstalledPackageGpuIpcBridgeResult.expectedFrames > 0 && alrInstalledPackageGpuIpcBridgeResult.expectedFrames == alrInstalledPackageGpuIpcBridgeResult.commands.size}" +
+            "\nalr installed package gpu ipc raw=${alrInstalledPackageGpuIpcBridgeResult.rawLines.joinToString("|")}" +
+            "\nalr installed package gpu ipc error=${alrInstalledPackageGpuIpcBridgeResult.error ?: "none"}" +
+            "\nalr installed package gpu ipc handoff=${alrInstalledPackageGpuIpcBridgeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr installed package gpu ipc execve attempts=${alrInstalledPackageGpuIpcBridgeResult.clientResult.stdout.lineStartingWith("alr handoff execve attempt count=")}" +
+            "\nalr installed package gpu ipc execve loader rewrites=${alrInstalledPackageGpuIpcBridgeResult.clientResult.stdout.lineStartingWith("alr handoff execve loader rewrite count=")}" +
+            "\nalr installed package gpu ipc traced processes=${alrInstalledPackageGpuIpcBridgeResult.clientResult.stdout.lineStartingWith("alr handoff traced process count=")}" +
+            "\nalr installed package gpu ipc stdout=${alrInstalledPackageGpuIpcBridgeResult.clientResult.stdout.alrHandoffStdoutText()}" +
+            "\nalr installed package gpu ipc stderr=${alrInstalledPackageGpuIpcBridgeResult.clientResult.stdout.alrHandoffStderrText()}" +
             "\nproot guest gles shim smoke exit=${prootGuestGlesShimSmokeResult.exitCode}" +
             "\nproot guest gles shim smoke stdout=${prootGuestGlesShimSmokeResult.stdout}" +
             "\nproot guest gles shim smoke stderr=${prootGuestGlesShimSmokeResult.stderr}" +
@@ -1183,6 +1206,7 @@ class MainActivity : Activity() {
             resultBlock("alr guest gpu client", alrGuestGpuClientResult) +
             resultBlock("proot guest gpu ipc client", guestGpuIpcBridgeResult.clientResult) +
             resultBlock("alr guest gpu ipc client", alrGuestGpuIpcBridgeResult.clientResult) +
+            resultBlock("alr installed package gpu ipc client", alrInstalledPackageGpuIpcBridgeResult.clientResult) +
             resultBlock("proot guest gles shim smoke", prootGuestGlesShimSmokeResult) +
             resultBlock("alr guest gles shim smoke", alrGuestGlesShimSmokeResult) +
             resultBlock("proot guest gles abi smoke", prootGuestGlesAbiSmokeResult) +
@@ -1302,6 +1326,55 @@ class MainActivity : Activity() {
         } else {
             nativeCommandRunner.runProotRootfsGuestGpuClientIpc(rootfsDir, port)
         }
+        acceptThread.join(3500)
+        if (acceptThread.isAlive) {
+            errors += "accept thread still alive after join"
+            server.close()
+        }
+        val commands = parseGuestGpuCommands(rawLines.joinToString("\n"))
+        val expectedFrames = rawLines.firstOrNull { it.startsWith("ALR_GPU_IPC_HELLO ") }
+            ?.substringAfter("frames=", "0")
+            ?.substringBefore(" ")
+            ?.toIntOrNull()
+            ?: commands.size
+        return GuestGpuIpcBridgeResult(
+            host = host,
+            port = port,
+            expectedFrames = expectedFrames,
+            commands = commands,
+            rawLines = rawLines.toList(),
+            error = errors.firstOrNull(),
+            clientResult = clientResult,
+        )
+    }
+
+    private fun runInstalledPackageGpuIpcBridge(
+        nativeCommandRunner: NativeCommandRunner,
+        rootfsDir: File,
+    ): GuestGpuIpcBridgeResult {
+        val host = "127.0.0.1"
+        val server = ServerSocket(0, 1, InetAddress.getByName(host)).apply { soTimeout = 3000 }
+        val port = server.localPort
+        val rawLines = mutableListOf<String>()
+        val errors = mutableListOf<String>()
+        val acceptThread = thread(name = "alr-installed-package-gpu-ipc-bridge", start = true) {
+            try {
+                server.use { srv ->
+                    val socket = srv.accept()
+                    socket.use { accepted ->
+                        accepted.soTimeout = 3000
+                        accepted.getInputStream().bufferedReader().useLines { lines ->
+                            lines.forEach { rawLines += it }
+                        }
+                    }
+                }
+            } catch (error: SocketTimeoutException) {
+                errors += "timeout waiting for installed package gpu ipc client"
+            } catch (error: Exception) {
+                errors += error.javaClass.simpleName + ": " + (error.message ?: "unknown")
+            }
+        }
+        val clientResult = nativeCommandRunner.runAlrRuntimeTrampolineInstalledPackageGpuSmoke(rootfsDir, port)
         acceptThread.join(3500)
         if (acceptThread.isAlive) {
             errors += "accept thread still alive after join"

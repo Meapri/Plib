@@ -999,12 +999,27 @@ latency measured
 
 ## Immediate Next Step
 
-Continue with V36–V40:
+Continue from the V71 installed-package GPU IPC proof:
 
-1. Fix ACK lifecycle bug.
-2. Add explicit GUI ACK stdout.
-3. Add seq/loss/gap metrics.
-4. Add per-protocol Surface render counts.
-5. Build and deliver `androlinux-gui-gpu-proof-clean-v40.apk`.
+```text
+build: 0.4.71-installed-package-gpu-ipc
+ALR DPKG LOCAL INSTALL PRELOAD EXECUTION: PASS
+INSTALLED PACKAGE EXECUTION: PASS
+ALR INSTALLED PACKAGE PRELOAD EXECUTION: PASS
+ALR GUEST GPU IPC BRIDGE EXECUTION: PASS
+ALR INSTALLED PACKAGE GPU IPC EXECUTION: PASS
+rootfs installed alr gpu smoke exists=true executable=true bytes=537664
+alr installed package gpu ipc received frames=3
+alr installed package gpu ipc lossless=true
+alr installed package gpu ipc error=none
+alr installed package gpu ipc handoff=ALR STATIC ENTRY HANDOFF: PASS
+surface gl renderer=Mali-G615 MC2
+surface gpu hardware render=true
+```
 
-After V40 device PASS, proceed to V41–V45 proroot A/B backend probe.
+Next implementation batch:
+
+1. Package a source-built installed GLES shim demo binary through `.deb`, not only the tiny GPU clear client.
+2. Add installed-package GLES shim IPC and Android Surface presentation gates.
+3. Start replacing stale non-preload dpkg/proot install checks with clearly labeled known-fail diagnostics so the summary stays truthful.
+4. Add measured installed-package GPU timing against the native GLES baseline already reported on device.

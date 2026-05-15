@@ -715,6 +715,34 @@ Compare:
 - Optional external low-overhead backend if present.
 - ALR runtime backend.
 
+Current V71 installed-package GPU IPC snapshot:
+
+```text
+build: 0.4.71-installed-package-gpu-ipc
+ALR DPKG LOCAL INSTALL PRELOAD EXECUTION: PASS
+INSTALLED PACKAGE EXECUTION: PASS
+ALR INSTALLED PACKAGE PRELOAD EXECUTION: PASS
+ALR GUEST GPU IPC BRIDGE EXECUTION: PASS
+ALR INSTALLED PACKAGE GPU IPC EXECUTION: PASS
+rootfs installed alr gpu smoke exists=true executable=true bytes=537664
+alr installed package gpu ipc received frames=3
+alr installed package gpu ipc lossless=true
+alr installed package gpu ipc error=none
+alr installed package gpu ipc handoff=ALR STATIC ENTRY HANDOFF: PASS
+alr installed package gpu ipc execve attempts=alr handoff execve attempt count=0
+alr installed package gpu ipc execve loader rewrites=alr handoff execve loader rewrite count=0
+alr installed package gpu ipc stdout=alr guest gpu client ok
+surface gl renderer=Mali-G615 MC2
+surface gpu hardware render=true
+```
+
+V71 intentionally keeps the regular installed package script smoke as the
+preload child-exec proof, and makes the installed GPU entrypoint an ELF copied
+from the guest GPU client. This avoids the static-child exec loop observed when
+a shell wrapper tried to `exec /usr/bin/alr-gpu-client` through the preload
+chain, while still proving that a `.deb` can install a Linux GPU app entrypoint
+that ALR launches through the Android-native GPU IPC bridge.
+
 Report:
 
 ```text
