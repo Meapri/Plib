@@ -2,9 +2,11 @@
 
 #include <fcntl.h>
 #include <signal.h>
+#include <sys/stat.h>
 #include <sys/mman.h>
 #if defined(__ANDROID__) && defined(__aarch64__)
 #include <asm/ptrace.h>
+#include <asm/unistd.h>
 #include <linux/elf.h>
 #include <sys/ptrace.h>
 #include <sys/uio.h>
@@ -18,6 +20,7 @@
 #include <cstring>
 #include <string>
 #include <sstream>
+#include <vector>
 
 namespace {
 
@@ -80,6 +83,11 @@ std::string build_report(const alr::runtime::StaticEntryHandoffResult& result) {
     out << "\nalr handoff fault pc=" << hex_value(result.fault_pc);
     out << "\nalr handoff fault syscall=" << result.fault_syscall;
     out << "\nalr handoff syscall emulated count=" << result.syscall_emulated_count;
+    out << "\nalr handoff path rewrite enabled=" << (result.path_rewrite_enabled ? "true" : "false");
+    out << "\nalr handoff path rewrite limit=" << result.path_rewrite_limit;
+    out << "\nalr handoff path rewrite count=" << result.path_rewrite_count;
+    out << "\nalr handoff last guest path=" << one_line_text(result.last_guest_path);
+    out << "\nalr handoff last host path=" << one_line_text(result.last_host_path);
     out << "\nalr handoff stdout=" << one_line_text(result.stdout_text);
     out << "\nalr handoff stderr=" << one_line_text(result.stderr_text);
     if (!result.error.empty()) {
@@ -206,6 +214,10 @@ bool continue_child_ptrace(pid_t child, int signal_number = 0) {
     return ::ptrace(PTRACE_CONT, child, nullptr, reinterpret_cast<void*>(static_cast<std::uintptr_t>(signal_number))) == 0;
 }
 
+bool continue_child_syscall(pid_t child, int signal_number = 0) {
+    return ::ptrace(PTRACE_SYSCALL, child, nullptr, reinterpret_cast<void*>(static_cast<std::uintptr_t>(signal_number))) == 0;
+}
+
 bool get_child_registers(pid_t child, user_pt_regs& regs) {
     iovec iov {};
     iov.iov_base = &regs;
@@ -218,6 +230,148 @@ bool set_child_registers(pid_t child, const user_pt_regs& regs) {
     iov.iov_base = const_cast<user_pt_regs*>(&regs);
     iov.iov_len = sizeof(regs);
     return ::ptrace(PTRACE_SETREGSET, child, reinterpret_cast<void*>(static_cast<std::uintptr_t>(NT_PRSTATUS)), &iov) == 0;
+}
+
+bool set_child_ptrace_options(pid_t child, long options) {
+    return ::ptrace(PTRACE_SETOPTIONS, child, nullptr, reinterpret_cast<void*>(static_cast<std::uintptr_t>(options))) == 0;
+}
+
+std::string read_child_cstring(pid_t child, std::uintptr_t address, std::size_t max_size = 4096) {
+    std::string value;
+    value.reserve(128);
+    std::vector<char> buffer(256);
+    while (value.size() < max_size) {
+        const std::size_t remaining = max_size - value.size();
+        const std::size_t chunk_size = remaining < buffer.size() ? remaining : buffer.size();
+        iovec local {};
+        local.iov_base = buffer.data();
+        local.iov_len = chunk_size;
+        iovec remote {};
+        remote.iov_base = reinterpret_cast<void*>(address + value.size());
+        remote.iov_len = chunk_size;
+        const ssize_t count = ::process_vm_readv(child, &local, 1, &remote, 1, 0);
+        if (count <= 0) {
+            return "";
+        }
+        for (ssize_t index = 0; index < count; ++index) {
+            if (buffer[static_cast<std::size_t>(index)] == '\0') {
+                return value;
+            }
+            value.push_back(buffer[static_cast<std::size_t>(index)]);
+        }
+    }
+    return "";
+}
+
+bool write_child_bytes(pid_t child, std::uintptr_t address, const std::string& value) {
+    iovec local {};
+    local.iov_base = const_cast<char*>(value.data());
+    local.iov_len = value.size();
+    iovec remote {};
+    remote.iov_base = reinterpret_cast<void*>(address);
+    remote.iov_len = value.size();
+    return ::process_vm_writev(child, &local, 1, &remote, 1, 0) == static_cast<ssize_t>(value.size());
+}
+
+std::string join_rootfs_path(const std::string& rootfs_path, const std::string& guest_path) {
+    if (rootfs_path.empty() || guest_path.empty() || guest_path.front() != '/') {
+        return "";
+    }
+    return rootfs_path + guest_path;
+}
+
+bool path_exists(const std::string& path) {
+    struct stat st {};
+    return !path.empty() && ::stat(path.c_str(), &st) == 0;
+}
+
+int path_arg_index_for_syscall(std::uint64_t syscall_number) {
+    switch (syscall_number) {
+#if defined(__NR_openat)
+        case __NR_openat:
+            return 1;
+#endif
+#if defined(__NR_faccessat)
+        case __NR_faccessat:
+            return 1;
+#endif
+#if defined(__NR_newfstatat)
+        case __NR_newfstatat:
+            return 1;
+#endif
+#if defined(__NR_readlinkat)
+        case __NR_readlinkat:
+            return 1;
+#endif
+#if defined(__NR_mkdirat)
+        case __NR_mkdirat:
+            return 1;
+#endif
+#if defined(__NR_unlinkat)
+        case __NR_unlinkat:
+            return 1;
+#endif
+#if defined(__NR_renameat)
+        case __NR_renameat:
+            return 1;
+#endif
+#if defined(__NR_statx)
+        case __NR_statx:
+            return 1;
+#endif
+#if defined(__NR_openat2)
+        case __NR_openat2:
+            return 1;
+#endif
+#if defined(__NR_faccessat2)
+        case __NR_faccessat2:
+            return 1;
+#endif
+        default:
+            return -1;
+    }
+}
+
+bool maybe_rewrite_syscall_path(
+    pid_t child,
+    const alr::runtime::StaticEntryTransferContext& context,
+    const alr::runtime::StaticEntryHandoffOptions& options,
+    user_pt_regs& regs,
+    alr::runtime::StaticEntryHandoffResult& result) {
+    if (!result.path_rewrite_enabled || context.stack.mapped_base == 0 || context.stack.mapped_size < 32768) {
+        return false;
+    }
+    const int path_arg_index = path_arg_index_for_syscall(regs.regs[8]);
+    if (path_arg_index < 0) {
+        return false;
+    }
+    const std::uintptr_t guest_path_address = static_cast<std::uintptr_t>(regs.regs[path_arg_index]);
+    if (guest_path_address == 0) {
+        return false;
+    }
+    const std::string guest_path = read_child_cstring(child, guest_path_address);
+    if (guest_path.size() < 2 || guest_path.front() != '/' || guest_path.rfind("/data/", 0) == 0 ||
+        guest_path.rfind("/proc/", 0) == 0 || guest_path.rfind("/sys/", 0) == 0) {
+        return false;
+    }
+    const std::string host_path = join_rootfs_path(options.rootfs_path, guest_path);
+    if (!path_exists(host_path) || host_path.size() + 1 > 4096) {
+        return false;
+    }
+    const std::uintptr_t scratch_base = context.stack.mapped_base + 4096;
+    const std::uintptr_t scratch = scratch_base + (result.path_rewrite_count % 4) * 4096;
+    if (scratch + host_path.size() + 1 >= context.stack.mapped_base + context.stack.mapped_size) {
+        return false;
+    }
+    const std::string host_path_with_nul = host_path + '\0';
+    if (!write_child_bytes(child, scratch, host_path_with_nul)) {
+        return false;
+    }
+    regs.regs[path_arg_index] = scratch;
+    result.last_guest_path = guest_path;
+    result.last_host_path = host_path;
+    ++result.path_rewrite_count;
+    return true;
 }
 
 void capture_ptrace_fault(pid_t child, int signal_number, alr::runtime::StaticEntryHandoffResult& result) {
@@ -279,6 +433,11 @@ bool continue_child_ptrace(pid_t /*child*/, int /*signal_number*/ = 0) {
     return false;
 }
 
+bool continue_child_syscall(pid_t /*child*/, int /*signal_number*/ = 0) {
+    errno = ENOSYS;
+    return false;
+}
+
 void capture_ptrace_fault(pid_t /*child*/, int signal_number, alr::runtime::StaticEntryHandoffResult& result) {
     result.fault_captured = true;
     result.fault_signal = signal_number;
@@ -287,6 +446,7 @@ void capture_ptrace_fault(pid_t /*child*/, int signal_number, alr::runtime::Stat
 bool emulate_android_seccomp_syscall(pid_t /*child*/, alr::runtime::StaticEntryHandoffResult& /*result*/) {
     return false;
 }
+
 #endif
 
 }  // namespace
@@ -296,10 +456,13 @@ namespace alr::runtime {
 StaticEntryHandoffResult maybe_run_static_entry_handoff(
     const StaticEntryTransferContext& context,
     bool execute_requested,
-    int timeout_ms) {
+    int timeout_ms,
+    const StaticEntryHandoffOptions& options) {
     StaticEntryHandoffResult result;
     result.requested = execute_requested;
     result.timeout_ms = timeout_ms > 0 ? timeout_ms : 1000;
+    result.path_rewrite_enabled = options.path_rewrite_enabled && !options.rootfs_path.empty();
+    result.path_rewrite_limit = options.path_rewrite_limit;
 #if defined(__aarch64__)
     result.available = true;
 #endif
@@ -374,6 +537,13 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
     int waited_ms = 0;
     bool ptrace_entry_stop_seen = false;
     bool ptrace_fault_stop_seen = false;
+#if defined(__ANDROID__) && defined(__aarch64__)
+    bool entering_syscall = true;
+#endif
+    bool trace_syscalls = result.path_rewrite_enabled;
+#if defined(__ANDROID__) && defined(__aarch64__)
+    bool stop_tracing_after_syscall_exit = false;
+#endif
     do {
         waited = ::waitpid(child, &status, WNOHANG);
         if (waited == 0) {
@@ -397,7 +567,22 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
             const int stop_signal = WSTOPSIG(status);
             if (stop_signal == SIGSTOP && !ptrace_entry_stop_seen) {
                 ptrace_entry_stop_seen = true;
-                if (!continue_child_ptrace(child) && result.error.empty()) {
+#if defined(__ANDROID__) && defined(__aarch64__)
+                if (trace_syscalls &&
+                    !set_child_ptrace_options(child, PTRACE_O_TRACESYSGOOD) &&
+                    result.error.empty()) {
+                    result.error = errno_message("ptrace setoptions static entry handoff");
+                    (void)::kill(child, SIGKILL);
+                    do {
+                        waited = ::waitpid(child, &status, 0);
+                    } while (waited < 0 && errno == EINTR);
+                    break;
+                }
+#endif
+                const bool continued = trace_syscalls ?
+                    continue_child_syscall(child) :
+                    continue_child_ptrace(child);
+                if (!continued && result.error.empty()) {
                     result.error = errno_message("ptrace continue static entry handoff");
                     (void)::kill(child, SIGKILL);
                     do {
@@ -406,12 +591,50 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
                     break;
                 }
                 waited = 0;
+#if defined(__ANDROID__) && defined(__aarch64__)
+            } else if (trace_syscalls && stop_signal == (SIGTRAP | 0x80)) {
+                const bool was_entering_syscall = entering_syscall;
+                if (was_entering_syscall) {
+                    user_pt_regs regs {};
+                    const std::uint32_t rewrite_count_before = result.path_rewrite_count;
+                    if (get_child_registers(child, regs) &&
+                        maybe_rewrite_syscall_path(child, context, options, regs, result)) {
+                        (void)set_child_registers(child, regs);
+                    }
+                    if (result.path_rewrite_limit > 0 &&
+                        result.path_rewrite_count > rewrite_count_before &&
+                        result.path_rewrite_count >= result.path_rewrite_limit) {
+                        stop_tracing_after_syscall_exit = true;
+                    }
+                }
+                entering_syscall = !entering_syscall;
+                const bool stop_now = !was_entering_syscall && stop_tracing_after_syscall_exit;
+                if (stop_now) {
+                    trace_syscalls = false;
+                    stop_tracing_after_syscall_exit = false;
+                }
+                const bool continued = stop_now ?
+                    continue_child_ptrace(child) :
+                    continue_child_syscall(child);
+                if (!continued && result.error.empty()) {
+                    result.error = errno_message("ptrace syscall continue static entry handoff");
+                    (void)::kill(child, SIGKILL);
+                    do {
+                        waited = ::waitpid(child, &status, 0);
+                    } while (waited < 0 && errno == EINTR);
+                    break;
+                }
+                waited = 0;
+#endif
             } else {
                 capture_ptrace_fault(child, stop_signal, result);
                 if (stop_signal == SIGSYS &&
                     result.syscall_emulated_count < 64 &&
                     emulate_android_seccomp_syscall(child, result)) {
-                    if (!continue_child_ptrace(child) && result.error.empty()) {
+                    const bool continued = trace_syscalls ?
+                        continue_child_syscall(child) :
+                        continue_child_ptrace(child);
+                    if (!continued && result.error.empty()) {
                         result.error = errno_message("ptrace continue emulated static entry syscall");
                         (void)::kill(child, SIGKILL);
                         do {
@@ -478,6 +701,11 @@ std::string build_static_entry_handoff_skip_report() {
         "alr handoff fault pc=0x0\n"
         "alr handoff fault syscall=0\n"
         "alr handoff syscall emulated count=0\n"
+        "alr handoff path rewrite enabled=false\n"
+        "alr handoff path rewrite limit=0\n"
+        "alr handoff path rewrite count=0\n"
+        "alr handoff last guest path=\n"
+        "alr handoff last host path=\n"
         "alr handoff stdout=\n"
         "alr handoff stderr=";
 }

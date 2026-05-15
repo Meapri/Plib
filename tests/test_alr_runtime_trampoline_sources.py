@@ -46,6 +46,8 @@ def test_trampoline_report_contract_exists():
     assert "ALR_TRAMPOLINE_REPEAT_COUNT" in main
     assert "ALR_TRAMPOLINE_EXTRA_ARG_COUNT" in main
     assert "ALR_TRAMPOLINE_EXTRA_ENV_COUNT" in main
+    assert "ALR_TRAMPOLINE_PATH_REWRITE" in main
+    assert "ALR_TRAMPOLINE_PATH_REWRITE_LIMIT" in main
     assert "env_extra_guest_env" in main
     assert "maybe_run_static_entry_handoff" in main
     assert "ALR STATIC ENTRY HANDOFF BENCHMARK:" in main
@@ -62,6 +64,10 @@ def test_trampoline_report_contract_exists():
     assert "::usleep(1000)" in handoff
     assert "emulate_android_seccomp_syscall" in handoff
     assert "alr handoff syscall emulated count=" in handoff
+    assert "PTRACE_SYSCALL" in handoff
+    assert "process_vm_writev" in handoff
+    assert "alr handoff path rewrite count=" in handoff
+    assert "alr handoff path rewrite limit=" in handoff
     assert "syscall_number == 144" in handoff
     image = (ROOT / "app/src/main/cpp/alr_runtime/alr_image.cpp").read_text()
     transfer = (ROOT / "app/src/main/cpp/alr_runtime/alr_transfer.cpp").read_text()

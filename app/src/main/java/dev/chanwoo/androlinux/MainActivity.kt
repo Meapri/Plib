@@ -79,7 +79,9 @@ class MainActivity : Activity() {
         val guestGpuIpcBridgeResult = runGuestGpuIpcBridge(nativeCommandRunner, rootfsStatus.rootfsDir)
         val alrGuestGpuIpcBridgeResult = runGuestGpuIpcBridge(nativeCommandRunner, rootfsStatus.rootfsDir, useAlr = true)
         val prootGuestGlesShimSmokeResult = nativeCommandRunner.runProotRootfsGuestGlesShimSmoke(rootfsStatus.rootfsDir)
+        val alrGuestGlesShimSmokeResult = nativeCommandRunner.runAlrRuntimeTrampolineGuestGlesShimSmoke(rootfsStatus.rootfsDir)
         val guestGlesShimCommand = parseGuestGlesShimCommand(prootGuestGlesShimSmokeResult.stdout)
+        val alrGuestGlesShimCommand = parseGuestGlesShimCommand(alrGuestGlesShimSmokeResult.stdout.alrHandoffStdoutText())
         val prootGuestWaylandGuiResult = nativeCommandRunner.runProotRootfsGuestGuiClient(rootfsStatus.rootfsDir, "WAYLAND")
         val prootGuestX11GuiResult = nativeCommandRunner.runProotRootfsGuestGuiClient(rootfsStatus.rootfsDir, "X11")
         val alrGuestWaylandGuiResult = nativeCommandRunner.runAlrRuntimeTrampolineGuestGuiClient(rootfsStatus.rootfsDir, "WAYLAND")
@@ -96,6 +98,7 @@ class MainActivity : Activity() {
             guestGpuIpcBridgeResult.commands.isNotEmpty() -> guestGpuIpcBridgeResult.commands
             alrGuestGpuCommands.isNotEmpty() -> alrGuestGpuCommands
             guestGpuCommands.isNotEmpty() -> guestGpuCommands
+            alrGuestGlesShimCommand != null -> listOf(alrGuestGlesShimCommand)
             guestGlesShimCommand != null -> listOf(guestGlesShimCommand)
             else -> listOf(GuestGpuCommand(0.05f, 0.18f, 0.45f, "host-default"))
         }
@@ -244,6 +247,11 @@ class MainActivity : Activity() {
             prootGuestGlesShimSmokeResult.stdout.contains("alr guest gles shim smoke ok") &&
             prootGuestGlesShimSmokeResult.stdout.contains("ALR_GLES_SHIM_LOAD ok") &&
             guestGlesShimCommand != null
+        val alrGuestGlesShimSmokePassed = alrGuestGlesShimSmokeResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+            alrGuestGlesShimSmokeResult.stdout.alrHandoffStdoutText().contains("alr guest gles shim smoke ok") &&
+            alrGuestGlesShimSmokeResult.stdout.alrHandoffStdoutText().contains("ALR_GLES_SHIM_LOAD ok") &&
+            alrGuestGlesShimSmokeResult.stdout.lineStartingWith("alr handoff path rewrite count=") != "alr handoff path rewrite count=0" &&
+            alrGuestGlesShimCommand != null
         val alrGuestWaylandGuiCommandPassed = alrGuestWaylandGuiResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
             alrGuestWaylandGuiResult.stdout.alrHandoffStdoutText().contains("alr-wayland-gpu-client ok")
         val alrGuestX11GuiCommandPassed = alrGuestX11GuiResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
@@ -292,6 +300,7 @@ class MainActivity : Activity() {
             "\nGUEST GPU IPC BRIDGE EXECUTION: ${if (guestGpuIpcBridgePassed) "PASS" else "FAIL"}" +
             "\nALR GUEST GPU IPC BRIDGE EXECUTION: ${if (alrGuestGpuIpcBridgePassed) "PASS" else "FAIL"}" +
             "\nGUEST GLES SHIM SMOKE EXECUTION: ${if (guestGlesShimSmokePassed) "PASS" else "FAIL"}" +
+            "\nALR GUEST GLES SHIM SMOKE EXECUTION: ${if (alrGuestGlesShimSmokePassed) "PASS" else "FAIL"}" +
             "\nGUEST GPU MULTI-FRAME SURFACE EXECUTION: PENDING_SURFACE_CALLBACK" +
             "\nALR GUEST WAYLAND GUI COMMAND EXECUTION: ${if (alrGuestWaylandGuiCommandPassed) "PASS" else "FAIL"}" +
             "\nALR GUEST X11 GUI COMMAND EXECUTION: ${if (alrGuestX11GuiCommandPassed) "PASS" else "FAIL"}" +
@@ -386,6 +395,10 @@ class MainActivity : Activity() {
             "\nproot guest gles shim smoke stdout=${prootGuestGlesShimSmokeResult.stdout}" +
             "\nproot guest gles shim smoke stderr=${prootGuestGlesShimSmokeResult.stderr}" +
             "\nguest gles shim command parsed=${guestGlesShimCommand != null}" +
+            "\nalr guest gles shim smoke handoff=${alrGuestGlesShimSmokeResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr guest gles shim smoke path rewrite=${alrGuestGlesShimSmokeResult.stdout.lineStartingWith("alr handoff path rewrite count=")}" +
+            "\nalr guest gles shim smoke stdout=${alrGuestGlesShimSmokeResult.stdout.alrHandoffStdoutText()}" +
+            "\nalr guest gles shim command parsed=${alrGuestGlesShimCommand != null}" +
             "\nproot guest wayland gui client exit=${prootGuestWaylandGuiResult.exitCode}" +
             "\nproot guest wayland gui client stdout=${prootGuestWaylandGuiResult.stdout}" +
             "\nproot guest x11 gui client exit=${prootGuestX11GuiResult.exitCode}" +
@@ -613,6 +626,7 @@ class MainActivity : Activity() {
             resultBlock("proot guest gpu ipc client", guestGpuIpcBridgeResult.clientResult) +
             resultBlock("alr guest gpu ipc client", alrGuestGpuIpcBridgeResult.clientResult) +
             resultBlock("proot guest gles shim smoke", prootGuestGlesShimSmokeResult) +
+            resultBlock("alr guest gles shim smoke", alrGuestGlesShimSmokeResult) +
             resultBlock("proot guest wayland gui client", prootGuestWaylandGuiResult) +
             resultBlock("proot guest x11 gui client", prootGuestX11GuiResult) +
             resultBlock("alr guest wayland gui client", alrGuestWaylandGuiResult) +

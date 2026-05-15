@@ -34,6 +34,9 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "runProotRootfsGuestGpuClientIpc" in runner
     assert "runAlrRuntimeTrampolineGuestGpuClientIpc" in runner
     assert "runAlrRuntimeTrampolineGuestGuiClientIpc" in runner
+    assert "runAlrRuntimeTrampolineGuestGlesShimSmoke" in runner
+    assert "pathRewrite = true" in runner
+    assert "pathRewriteLimit = 1" in runner
     assert "extraGuestEnvironment" in runner
     assert "ALR_GPU_BRIDGE_PORT" in runner
     text = MAIN.read_text()
@@ -52,8 +55,10 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "guest wayland gui ipc seq gaps" in text
     assert "guest x11 gui ipc seq gaps" in text
     assert "ALR GUEST GPU IPC BRIDGE EXECUTION" in text
+    assert "ALR GUEST GLES SHIM SMOKE EXECUTION" in text
     assert "ALR GUEST WAYLAND GUI GPU BRIDGE EXECUTION" in text
     assert "ALR GUEST X11 GUI GPU BRIDGE EXECUTION" in text
+    assert "alr guest gles shim smoke path rewrite" in text
     assert "alrHandoffStdoutText" in text
 
 

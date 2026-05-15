@@ -82,6 +82,25 @@ class NativeCommandRunner(
         )
     }
 
+    fun runAlrRuntimeTrampolineGuestGlesShimSmoke(rootfsDir: File): NativeCommandResult {
+        val libraryPath = glibcLibraryPath(rootfsDir) + ":" + File(rootfsDir, "usr/lib/androlinux").absolutePath
+        return runAlrRuntimeTrampoline(
+            rootfsDir,
+            "/lib/ld-linux-aarch64.so.1",
+            executeEntry = true,
+            extraArgs = listOf(
+                "--argv0",
+                "/usr/bin/alr-gles-shim-smoke",
+                "--library-path",
+                libraryPath,
+                translateGuestPath(rootfsDir, "/usr/bin/alr-gles-shim-smoke"),
+            ),
+            timeoutMs = 1500,
+            pathRewrite = true,
+            pathRewriteLimit = 1,
+        )
+    }
+
     fun runAlrRuntimeTrampolineCatOsReleaseProbe(rootfsDir: File): NativeCommandResult {
         return runAlrRuntimeTrampoline(
             rootfsDir,
@@ -154,6 +173,8 @@ class NativeCommandRunner(
         extraGuestEnvironment: Map<String, String> = emptyMap(),
         timeoutMs: Int = 1000,
         repeatCount: Int = 1,
+        pathRewrite: Boolean = false,
+        pathRewriteLimit: Int = 0,
     ): NativeCommandResult {
         require(program.startsWith("/")) { "ALR trampoline program must be an absolute guest path" }
         require(!program.split('/').any { it == ".." }) { "ALR trampoline program must not contain .." }
@@ -185,6 +206,8 @@ class NativeCommandRunner(
                 "ALR_TRAMPOLINE_EXECUTE_ENTRY" to if (executeEntry) "1" else "0",
                 "ALR_TRAMPOLINE_HANDOFF_TIMEOUT_MS" to timeoutMs.toString(),
                 "ALR_TRAMPOLINE_REPEAT_COUNT" to repeatCount.coerceIn(1, 50).toString(),
+                "ALR_TRAMPOLINE_PATH_REWRITE" to if (pathRewrite) "1" else "0",
+                "ALR_TRAMPOLINE_PATH_REWRITE_LIMIT" to pathRewriteLimit.coerceAtLeast(0).toString(),
                 "LD_LIBRARY_PATH" to nativeLibraryDir.absolutePath,
                 "PATH" to "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
             ) + extraArgEnv,

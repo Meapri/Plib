@@ -89,14 +89,16 @@ HandoffBenchmarkSummary run_handoff_benchmark(
     const alr::runtime::StaticEntryTransferContext& transfer_context,
     bool execute_requested,
     int timeout_ms,
-    int repeat_count) {
+    int repeat_count,
+    const alr::runtime::StaticEntryHandoffOptions& options) {
     HandoffBenchmarkSummary summary;
     summary.requested_count = repeat_count;
     for (int index = 0; index < repeat_count; ++index) {
         auto result = alr::runtime::maybe_run_static_entry_handoff(
             transfer_context,
             execute_requested,
-            timeout_ms);
+            timeout_ms,
+            options);
         summary.last_result = result;
         ++summary.attempted_count;
         summary.total_elapsed_ms += result.elapsed_ms;
@@ -151,6 +153,8 @@ int main(int argc, char** argv) {
     std::cout << "alr trampoline elf status=" << env_or_none("ALR_TRAMPOLINE_ELF_STATUS") << "\n";
     std::cout << "alr trampoline execute entry=" << (env_enabled("ALR_TRAMPOLINE_EXECUTE_ENTRY") ? "true" : "false") << "\n";
     std::cout << "alr trampoline handoff timeout ms=" << env_int_or_default("ALR_TRAMPOLINE_HANDOFF_TIMEOUT_MS", 1000) << "\n";
+    std::cout << "alr trampoline path rewrite=" << (env_enabled("ALR_TRAMPOLINE_PATH_REWRITE") ? "true" : "false") << "\n";
+    std::cout << "alr trampoline path rewrite limit=" << env_int_or_default("ALR_TRAMPOLINE_PATH_REWRITE_LIMIT", 0) << "\n";
     const int repeat_count = env_int_clamped("ALR_TRAMPOLINE_REPEAT_COUNT", 1, 1, 50);
     std::cout << "alr trampoline repeat count=" << repeat_count << "\n";
     const char* target_host = std::getenv("ALR_TRAMPOLINE_TARGET_HOST_PATH");
@@ -178,11 +182,18 @@ int main(int argc, char** argv) {
             image_plan,
             entry_plan);
         const bool execute_requested = env_enabled("ALR_TRAMPOLINE_EXECUTE_ENTRY");
+        const std::string_view rootfs_env = env_or_none("ALR_ROOTFS");
+        const alr::runtime::StaticEntryHandoffOptions handoff_options{
+            .path_rewrite_enabled = env_enabled("ALR_TRAMPOLINE_PATH_REWRITE"),
+            .path_rewrite_limit = static_cast<std::uint32_t>(env_int_or_default("ALR_TRAMPOLINE_PATH_REWRITE_LIMIT", 0)),
+            .rootfs_path = rootfs_env == "none" ? "" : std::string(rootfs_env),
+        };
         const auto handoff_summary = run_handoff_benchmark(
             transfer_context,
             execute_requested,
             env_int_or_default("ALR_TRAMPOLINE_HANDOFF_TIMEOUT_MS", 1000),
-            repeat_count);
+            repeat_count,
+            handoff_options);
         std::cout << handoff_summary.last_result.report << "\n";
         if (execute_requested) {
             std::cout << build_handoff_benchmark_report(handoff_summary) << "\n";

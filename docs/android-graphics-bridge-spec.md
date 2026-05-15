@@ -313,12 +313,23 @@ report GUEST GLES UNSUPPORTED SYMBOL=<name>
 
 Vulkan comes after GLES.
 
+The Vulkan bridge direction should follow the same process boundary as the
+current ALR GUI/GPU probes: the glibc guest must not load Android vendor
+`libvulkan.so` directly. A May 15, 2026 proroot issue proposed the same split:
+guest-side Vulkan bridge ICD plus host-side Android Vulkan backend using the
+Android loader/NDK Vulkan stack, with `vulkan-wrapper-android`-style WSI and
+quirk handling as a candidate backend reference:
+<https://github.com/coderredlab/proroot/issues/7>.
+
 Initial guest ICD responsibilities:
 
 - Register as an ICD inside the rootfs.
 - Report one virtual physical device backed by Android host Vulkan.
 - Support instance/device creation subset.
 - Support one clear/present path.
+- Ship an ICD JSON inside a Plib-owned prefix such as
+  `/opt/plib-gfx/icd.d/plib_android_vulkan_bridge_icd.aarch64.json`.
+- Honor `VK_DRIVER_FILES` and `PLIB_VK_BRIDGE_SOCKET`/transport environment.
 
 Host responsibilities:
 
@@ -326,12 +337,41 @@ Host responsibilities:
 - Select physical device.
 - Create swapchain for Android Surface.
 - Execute clear/present command.
+- Keep bionic/Android Vulkan loader state inside the APK process.
+- Own `ANativeWindow`, `AHardwareBuffer`/gralloc, sync fence, and vendor
+  workaround handling.
+- Expose enough diagnostics for `vulkaninfo`, `vkcube`, and Zink smoke tests.
 
 Non-goals:
 
 - DXVK.
 - Full descriptor/pipeline ecosystem.
 - WSI parity beyond the test surface.
+- Mixing glibc guest code and bionic vendor Vulkan libraries in one process.
+
+Guest environment draft:
+
+```text
+VK_DRIVER_FILES=/opt/plib-gfx/icd.d/plib_android_vulkan_bridge_icd.aarch64.json
+PLIB_VK_BRIDGE_SOCKET=/tmp/plib-vk.sock
+PLIB_GPU_BACKEND=android-vulkan-wrapper
+MESA_LOADER_DRIVER_OVERRIDE=zink
+GALLIUM_DRIVER=zink
+OCL_ICD_VENDORS=/opt/plib-gfx/OpenCL/vendors
+```
+
+Vulkan/OpenGL/OpenCL smoke ladder:
+
+```text
+vulkaninfo
+vkcube
+vkmark
+glxinfo -B
+glxgears
+glmark2
+clinfo
+clpeak
+```
 
 ## Synchronization and Backpressure
 
