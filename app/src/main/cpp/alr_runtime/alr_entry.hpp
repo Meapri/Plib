@@ -24,6 +24,7 @@ struct EntryStackPlan {
     std::uint64_t initial_sp_vaddr = 0;
     std::uint64_t entry_vaddr = 0;
     std::uint64_t program_header_vaddr = 0;
+    std::uint64_t image_load_bias = 0;
     std::uint64_t program_header_entry_size = 0;
     std::uint64_t program_header_count = 0;
     std::uint64_t page_size = 0;
@@ -54,7 +55,7 @@ EntryStackPlan build_static_entry_stack_plan(
     const EntryStackInput& input);
 
 std::string build_entry_stack_skip_report();
-EntryStackRuntimeMapping map_entry_stack_for_transfer(const EntryStackPlan& plan);
+EntryStackRuntimeMapping map_entry_stack_for_transfer(const EntryStackPlan& plan, std::uint64_t image_load_bias = 0);
 void unmap_entry_stack_runtime_mapping(EntryStackRuntimeMapping& mapping);
 
 }  // namespace alr::runtime

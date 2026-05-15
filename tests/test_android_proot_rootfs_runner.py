@@ -49,6 +49,25 @@ def test_main_activity_reports_glibc_dynamic_smoke_result():
     assert "proot glibc stderr=" in text
 
 
+def test_main_activity_reports_alr_loader_help_probe():
+    text = MAIN.read_text()
+    runner = RUNNER.read_text()
+    assert "runAlrRuntimeTrampolineLoaderHelpProbe" in runner
+    assert "runAlrRuntimeTrampolineGlibcHelloProbe" in runner
+    assert '"/lib/ld-linux-aarch64.so.1"' in runner
+    assert '"--help"' in runner
+    assert '"--library-path"' in runner
+    assert '"bin/glibc-hello"' in runner
+    assert "alr loader help probe exit=" in text
+    assert "alr loader help probe fixed required=" in text
+    assert "alr loader help probe load bias=" in text
+    assert "alr loader help probe stdout=" in text
+    assert "alr glibc hello probe exit=" in text
+    assert "alr glibc hello probe handoff=" in text
+    assert "alr glibc hello probe stdout=" in text
+    assert "alr direct dynamic glibc hello=" in text
+
+
 def test_native_command_runner_can_attempt_proot_dash_command():
     text = RUNNER.read_text()
     assert "runProotRootfsDash" in text

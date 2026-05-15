@@ -40,6 +40,8 @@ class MainActivity : Activity() {
         val nativeCommandResult = nativeCommandRunner.runSmokeTest()
         val alrTrampolinePreflightResult = nativeCommandRunner.runAlrRuntimeTrampolinePreflight(rootfsStatus.rootfsDir, "/bin/hello")
         val alrTrampolineEntryProbeResult = nativeCommandRunner.runAlrRuntimeTrampolineEntryProbe(rootfsStatus.rootfsDir, "/bin/hello")
+        val alrTrampolineLoaderHelpProbeResult = nativeCommandRunner.runAlrRuntimeTrampolineLoaderHelpProbe(rootfsStatus.rootfsDir)
+        val alrTrampolineGlibcHelloProbeResult = nativeCommandRunner.runAlrRuntimeTrampolineGlibcHelloProbe(rootfsStatus.rootfsDir)
         val prootCandidateResult = nativeCommandRunner.runProotCandidateSmokeTest()
         val prootShortVersionResult = nativeCommandRunner.runProotShortVersionProbe()
         val prootHelpResult = nativeCommandRunner.runProotHelpProbe()
@@ -384,6 +386,21 @@ class MainActivity : Activity() {
             "\nalr entry probe timeout=${alrTrampolineEntryProbeResult.stdout.lineStartingWith("alr handoff timed out=")}" +
             "\nalr entry probe stdout=${alrTrampolineEntryProbeResult.stdout.lineStartingWith("alr handoff stdout=")}" +
             "\nalr direct static hello=${if (alrTrampolineEntryProbeResult.stdout.contains("hello from static arm64 rootfs")) "PASS" else "SKIP"}" +
+            "\nalr loader help probe exit=${alrTrampolineLoaderHelpProbeResult.exitCode}" +
+            "\nalr loader help probe handoff=${alrTrampolineLoaderHelpProbeResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr loader help probe jump ready=${alrTrampolineLoaderHelpProbeResult.stdout.lineStartingWith("ALR STATIC ENTRY JUMP READY:")}" +
+            "\nalr loader help probe fixed required=${alrTrampolineLoaderHelpProbeResult.stdout.lineStartingWith("alr transfer fixed vaddr required=")}" +
+            "\nalr loader help probe load bias=${alrTrampolineLoaderHelpProbeResult.stdout.lineStartingWith("alr transfer image load bias=")}" +
+            "\nalr loader help probe syscall emulated=${alrTrampolineLoaderHelpProbeResult.stdout.lineStartingWith("alr handoff syscall emulated count=")}" +
+            "\nalr loader help probe stdout=${alrTrampolineLoaderHelpProbeResult.stdout.lineStartingWith("alr handoff stdout=")}" +
+            "\nalr glibc hello probe exit=${alrTrampolineGlibcHelloProbeResult.exitCode}" +
+            "\nalr glibc hello probe handoff=${alrTrampolineGlibcHelloProbeResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr glibc hello probe child exited=${alrTrampolineGlibcHelloProbeResult.stdout.lineStartingWith("alr handoff child exited=")}" +
+            "\nalr glibc hello probe child signaled=${alrTrampolineGlibcHelloProbeResult.stdout.lineStartingWith("alr handoff child signaled=")}" +
+            "\nalr glibc hello probe fault syscall=${alrTrampolineGlibcHelloProbeResult.stdout.lineStartingWith("alr handoff fault syscall=")}" +
+            "\nalr glibc hello probe syscall emulated=${alrTrampolineGlibcHelloProbeResult.stdout.lineStartingWith("alr handoff syscall emulated count=")}" +
+            "\nalr glibc hello probe stdout=${alrTrampolineGlibcHelloProbeResult.stdout.lineStartingWith("alr handoff stdout=")}" +
+            "\nalr direct dynamic glibc hello=${if (alrTrampolineGlibcHelloProbeResult.stdout.contains("hello from dynamic glibc rootfs")) "PASS" else "SKIP"}" +
             "\nproot --version exit=${prootCandidateResult.exitCode}" +
             "\nlinker64 proot --version exit=${prootViaLinkerResult.exitCode}" +
             "\nproot hello quiet exit=${prootHelloResult.exitCode}" +
@@ -466,6 +483,8 @@ class MainActivity : Activity() {
             "\nnative command stderr=${nativeCommandResult.stderr}" +
             resultBlock("alr trampoline preflight", alrTrampolinePreflightResult) +
             resultBlock("alr trampoline entry probe", alrTrampolineEntryProbeResult) +
+            resultBlock("alr trampoline loader help probe", alrTrampolineLoaderHelpProbeResult) +
+            resultBlock("alr trampoline glibc hello probe", alrTrampolineGlibcHelloProbeResult) +
             "\n\nnative library probe:" +
             "\n$nativeProbe" +
             "\n\nAndroid host GPU probe:" +

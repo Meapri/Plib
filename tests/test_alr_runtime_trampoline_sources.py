@@ -43,6 +43,7 @@ def test_trampoline_report_contract_exists():
     assert "build_static_image_plan" in source
     assert "load_static_image_for_preflight" in main
     assert "ALR_TRAMPOLINE_EXECUTE_ENTRY" in main
+    assert "ALR_TRAMPOLINE_EXTRA_ARG_COUNT" in main
     assert "maybe_run_static_entry_handoff" in main
     handoff = (ROOT / "app/src/main/cpp/alr_runtime/alr_handoff.cpp").read_text()
     assert "ALR STATIC ENTRY HANDOFF:" in handoff
@@ -54,6 +55,14 @@ def test_trampoline_report_contract_exists():
     assert "alr handoff fault pc=" in handoff
     assert "emulate_android_seccomp_syscall" in handoff
     assert "alr handoff syscall emulated count=" in handoff
+    image = (ROOT / "app/src/main/cpp/alr_runtime/alr_image.cpp").read_text()
+    transfer = (ROOT / "app/src/main/cpp/alr_runtime/alr_transfer.cpp").read_text()
+    entry = (ROOT / "app/src/main/cpp/alr_runtime/alr_entry.cpp").read_text()
+    assert "alr image fixed vaddr required=" in image
+    assert "elf_plan.type == \"dyn\"" in image
+    assert "alr transfer image load bias=" in transfer
+    assert "map_entry_stack_for_transfer(entry_plan, image_load_bias)" in transfer
+    assert "runtime_entry_vaddr" in entry
 
 
 def test_launch_report_and_runtime_plan_include_trampoline():

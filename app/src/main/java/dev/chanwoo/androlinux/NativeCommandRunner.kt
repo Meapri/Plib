@@ -27,11 +27,53 @@ class NativeCommandRunner(
         return runAlrRuntimeTrampoline(rootfsDir, program, executeEntry = true)
     }
 
-    private fun runAlrRuntimeTrampoline(rootfsDir: File, program: String, executeEntry: Boolean): NativeCommandResult {
+    fun runAlrRuntimeTrampolineLoaderHelpProbe(rootfsDir: File): NativeCommandResult {
+        return runAlrRuntimeTrampoline(
+            rootfsDir,
+            "/lib/ld-linux-aarch64.so.1",
+            executeEntry = true,
+            extraArgs = listOf("--help"),
+            timeoutMs = 1500,
+        )
+    }
+
+    fun runAlrRuntimeTrampolineGlibcHelloProbe(rootfsDir: File): NativeCommandResult {
+        val libraryPath = listOf(
+            File(rootfsDir, "lib/aarch64-linux-gnu").absolutePath,
+            File(rootfsDir, "usr/lib/aarch64-linux-gnu").absolutePath,
+            File(rootfsDir, "lib").absolutePath,
+            File(rootfsDir, "usr/lib").absolutePath,
+        ).joinToString(":")
+        return runAlrRuntimeTrampoline(
+            rootfsDir,
+            "/lib/ld-linux-aarch64.so.1",
+            executeEntry = true,
+            extraArgs = listOf(
+                "--library-path",
+                libraryPath,
+                File(rootfsDir, "bin/glibc-hello").absolutePath,
+            ),
+            timeoutMs = 1500,
+        )
+    }
+
+    private fun runAlrRuntimeTrampoline(
+        rootfsDir: File,
+        program: String,
+        executeEntry: Boolean,
+        extraArgs: List<String> = emptyList(),
+        timeoutMs: Int = 1000,
+    ): NativeCommandResult {
         require(program.startsWith("/")) { "ALR trampoline program must be an absolute guest path" }
         require(!program.split('/').any { it == ".." }) { "ALR trampoline program must not contain .." }
         val targetHost = File(rootfsDir, program.removePrefix("/"))
         val mode = if (executeEntry) "entry-probe" else "preflight"
+        val extraArgEnv = buildMap {
+            put("ALR_TRAMPOLINE_EXTRA_ARG_COUNT", extraArgs.size.coerceAtMost(8).toString())
+            extraArgs.take(8).forEachIndexed { index, value ->
+                put("ALR_TRAMPOLINE_EXTRA_ARG_$index", value)
+            }
+        }
         return runPackagedCommand(
             "libalr_runtime_trampoline.so",
             listOf("--preflight"),
@@ -42,10 +84,10 @@ class NativeCommandRunner(
                 "ALR_TRAMPOLINE_TARGET_HOST_PATH" to targetHost.absolutePath,
                 "ALR_TRAMPOLINE_MODE" to mode,
                 "ALR_TRAMPOLINE_EXECUTE_ENTRY" to if (executeEntry) "1" else "0",
-                "ALR_TRAMPOLINE_HANDOFF_TIMEOUT_MS" to "1000",
+                "ALR_TRAMPOLINE_HANDOFF_TIMEOUT_MS" to timeoutMs.toString(),
                 "LD_LIBRARY_PATH" to nativeLibraryDir.absolutePath,
                 "PATH" to "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-            ),
+            ) + extraArgEnv,
         )
     }
 

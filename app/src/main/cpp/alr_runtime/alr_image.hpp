@@ -25,6 +25,7 @@ struct StaticImageSegmentMap {
 struct StaticImagePlan {
     bool valid = false;
     bool entry_ready = false;
+    bool fixed_vaddr_required = true;
     std::string error;
     std::uint64_t page_size = 0;
     std::uint64_t entry = 0;
@@ -55,6 +56,7 @@ struct StaticImageRuntimeMapping {
     std::string error;
     std::uintptr_t mapped_base = 0;
     std::uint64_t mapped_size = 0;
+    std::uint64_t load_bias = 0;
     std::uintptr_t entry_address = 0;
     std::uint32_t loaded_segment_count = 0;
     std::string report;

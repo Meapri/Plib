@@ -22,6 +22,7 @@ std::string build_report(const StaticEntryTransferContext& context) {
     out << "\nalr transfer stack pointers rebased=" << (context.stack.pointers_rebased ? "true" : "false");
     out << "\nalr transfer fixed vaddr required=" << (context.fixed_vaddr_required ? "true" : "false");
     out << "\nalr transfer fixed image mapped=" << (context.fixed_image_mapped ? "true" : "false");
+    out << "\nalr transfer image load bias=" << hex_value(context.image.load_bias);
     out << "\nalr transfer cleanup done=" << (context.cleanup_done ? "true" : "false");
     out << "\nalr transfer image unmapped=" << (context.image.unmapped ? "true" : "false");
     out << "\nalr transfer stack unmapped=" << (context.stack.unmapped ? "true" : "false");
@@ -52,10 +53,15 @@ StaticEntryTransferContext prepare_static_entry_transfer_context(
         return context;
     }
 
-    context.image = map_static_image_fixed_for_transfer(host_path, image_plan);
-    context.fixed_image_mapped = context.image.mapped && context.image.fixed_address;
-    if (!context.fixed_image_mapped) {
+    context.fixed_vaddr_required = image_plan.fixed_vaddr_required;
+    if (context.fixed_vaddr_required) {
+        context.image = map_static_image_fixed_for_transfer(host_path, image_plan);
+        context.fixed_image_mapped = context.image.mapped && context.image.fixed_address;
+    }
+    if (context.fixed_vaddr_required && !context.fixed_image_mapped) {
         context.fixed_image_error = context.image.error;
+        context.image = map_static_image_for_transfer(host_path, image_plan);
+    } else if (!context.fixed_vaddr_required) {
         context.image = map_static_image_for_transfer(host_path, image_plan);
     }
     context.image_mapped = context.image.mapped;
@@ -65,7 +71,8 @@ StaticEntryTransferContext prepare_static_entry_transfer_context(
         return context;
     }
 
-    context.stack = map_entry_stack_for_transfer(entry_plan);
+    const std::uint64_t image_load_bias = context.fixed_image_mapped ? 0 : context.image.load_bias;
+    context.stack = map_entry_stack_for_transfer(entry_plan, image_load_bias);
     context.stack_mapped = context.stack.mapped;
     if (!context.stack_mapped) {
         context.error = context.stack.error.empty() ? "entry stack transfer mapping failed" : context.stack.error;
@@ -77,7 +84,7 @@ StaticEntryTransferContext prepare_static_entry_transfer_context(
     context.entry_address = context.image.entry_address;
     context.initial_sp_address = context.stack.initial_sp_address;
     context.prepared = true;
-    context.jump_ready = context.fixed_image_mapped && context.stack.pointers_rebased;
+    context.jump_ready = (!context.fixed_vaddr_required || context.fixed_image_mapped) && context.stack.pointers_rebased;
     context.report = build_report(context);
     return context;
 }
@@ -102,6 +109,7 @@ std::string build_static_entry_transfer_skip_report() {
         "alr transfer stack pointers rebased=false\n"
         "alr transfer fixed vaddr required=true\n"
         "alr transfer fixed image mapped=false\n"
+        "alr transfer image load bias=0x0\n"
         "alr transfer cleanup done=false\n"
         "alr transfer image unmapped=false\n"
         "alr transfer stack unmapped=false";

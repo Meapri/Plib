@@ -61,6 +61,7 @@ std::string build_report(const EntryStackPlan& plan) {
     out << "\nalr entry initial sp=" << hex_value(plan.initial_sp_vaddr);
     out << "\nalr entry vaddr=" << hex_value(plan.entry_vaddr);
     out << "\nalr entry phdr=" << hex_value(plan.program_header_vaddr);
+    out << "\nalr entry image load bias=" << hex_value(plan.image_load_bias);
     out << "\nalr entry pagesz=" << plan.page_size;
     out << "\nalr entry argc=" << plan.argc;
     out << "\nalr entry envc=" << plan.env_count;
@@ -129,15 +130,17 @@ void populate_entry_stack_image(EntryStackPlan& plan, const std::uint64_t stack_
         0x6b, 0x2d, 0x72, 0x61, 0x6e, 0x64, 0x30, 0x31,
     };
     const std::uint64_t random_vaddr = push_bytes(random_bytes.data(), random_bytes.size(), 16);
+    const std::uint64_t runtime_phdr_vaddr = plan.program_header_vaddr + plan.image_load_bias;
+    const std::uint64_t runtime_entry_vaddr = plan.entry_vaddr + plan.image_load_bias;
 
     std::vector<std::pair<std::uint64_t, std::uint64_t>> auxv{
-        {kAtPhdr, plan.program_header_vaddr},
+        {kAtPhdr, runtime_phdr_vaddr},
         {kAtPhent, plan.program_header_entry_size},
         {kAtPhnum, plan.program_header_count},
         {kAtPagesz, plan.page_size},
         {kAtBase, 0},
         {kAtFlags, 0},
-        {kAtEntry, plan.entry_vaddr},
+        {kAtEntry, runtime_entry_vaddr},
         {kAtUid, 0},
         {kAtEuid, 0},
         {kAtGid, 0},
@@ -181,6 +184,7 @@ std::string build_entry_stack_skip_report() {
         "alr entry stack size=0\n"
         "alr entry initial sp=0x0\n"
         "alr entry vaddr=0x0\n"
+        "alr entry image load bias=0x0\n"
         "alr entry argc=0\n"
         "alr entry envc=0\n"
         "alr entry auxv pairs=0";
@@ -236,7 +240,7 @@ EntryStackPlan build_static_entry_stack_plan(
     return plan;
 }
 
-EntryStackRuntimeMapping map_entry_stack_for_transfer(const EntryStackPlan& plan) {
+EntryStackRuntimeMapping map_entry_stack_for_transfer(const EntryStackPlan& plan, std::uint64_t image_load_bias) {
     EntryStackRuntimeMapping mapping;
     mapping.mapped_size = plan.stack_size;
     if (!plan.valid) {
@@ -274,6 +278,7 @@ EntryStackRuntimeMapping map_entry_stack_for_transfer(const EntryStackPlan& plan
     mapping.mapped_base = reinterpret_cast<std::uintptr_t>(mapped);
     const std::uint64_t runtime_stack_top = mapping.mapped_base + mapping.mapped_size;
     EntryStackPlan runtime_plan = plan;
+    runtime_plan.image_load_bias = image_load_bias;
     try {
         populate_entry_stack_image(runtime_plan, runtime_stack_top);
     } catch (const std::exception& exc) {

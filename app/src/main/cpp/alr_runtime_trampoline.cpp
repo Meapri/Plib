@@ -1,6 +1,8 @@
 #include <cstdlib>
 #include <iostream>
+#include <string>
 #include <string_view>
+#include <vector>
 
 #include "alr_runtime/alr_elf.hpp"
 #include "alr_runtime/alr_entry.hpp"
@@ -32,6 +34,19 @@ int env_int_or_default(const char* key, int fallback) {
     return parsed > 0 ? parsed : fallback;
 }
 
+std::vector<std::string> env_extra_args() {
+    std::vector<std::string> args;
+    const int count = env_int_or_default("ALR_TRAMPOLINE_EXTRA_ARG_COUNT", 0);
+    for (int index = 0; index < count && index < 8; ++index) {
+        const std::string key = "ALR_TRAMPOLINE_EXTRA_ARG_" + std::to_string(index);
+        const char* value = std::getenv(key.c_str());
+        if (value != nullptr) {
+            args.emplace_back(value);
+        }
+    }
+    return args;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -53,11 +68,14 @@ int main(int argc, char** argv) {
     if (target_host != nullptr && target_host[0] != '\0') {
         const auto elf_plan = alr::runtime::build_elf_load_plan(target_host);
         const auto image_plan = alr::runtime::build_static_image_plan(elf_plan);
+        std::vector<std::string> guest_argv{env_or_none("ALR_TRAMPOLINE_TARGET_GUEST_PATH")};
+        const auto extra_args = env_extra_args();
+        guest_argv.insert(guest_argv.end(), extra_args.begin(), extra_args.end());
         const auto entry_plan = alr::runtime::build_static_entry_stack_plan(
             elf_plan,
             image_plan,
             alr::runtime::EntryStackInput{
-                .argv = {env_or_none("ALR_TRAMPOLINE_TARGET_GUEST_PATH")},
+                .argv = guest_argv,
                 .env = {"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"},
             });
         std::cout << entry_plan.report << "\n";

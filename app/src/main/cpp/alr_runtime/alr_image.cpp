@@ -93,6 +93,7 @@ std::string build_report(const StaticImagePlan& plan) {
     out << "\nalr image min vaddr=" << hex_value(plan.image_min_vaddr);
     out << "\nalr image max vaddr=" << hex_value(plan.image_max_vaddr);
     out << "\nalr image size=" << plan.image_size;
+    out << "\nalr image fixed vaddr required=" << (plan.fixed_vaddr_required ? "true" : "false");
     out << "\nalr image load segments=" << plan.segments.size();
     for (std::size_t i = 0; i < plan.segments.size(); ++i) {
         const auto& segment = plan.segments[i];
@@ -134,6 +135,7 @@ std::string build_report(const StaticImageRuntimeMapping& result) {
     out << "\nALR STATIC IMAGE TRANSFER MPROTECT: " << (result.protected_segments ? "PASS" : "SKIP");
     out << "\nalr transfer image base=" << hex_value(result.mapped_base);
     out << "\nalr transfer image size=" << result.mapped_size;
+    out << "\nalr transfer image load bias=" << hex_value(result.load_bias);
     out << "\nalr transfer entry address=" << hex_value(result.entry_address);
     out << "\nalr transfer image fixed address=" << (result.fixed_address ? "true" : "false");
     out << "\nalr transfer loaded segments=" << result.loaded_segment_count;
@@ -155,6 +157,7 @@ std::string build_static_image_skip_report() {
         "alr image min vaddr=0x0\n"
         "alr image max vaddr=0x0\n"
         "alr image size=0\n"
+        "alr image fixed vaddr required=true\n"
         "alr image load segments=0";
 }
 
@@ -250,6 +253,7 @@ StaticImagePlan build_static_image_plan(const ElfLoadPlan& elf_plan, std::uint64
     plan.image_min_vaddr = min_vaddr;
     plan.image_max_vaddr = max_vaddr;
     plan.image_size = max_vaddr - min_vaddr;
+    plan.fixed_vaddr_required = !(elf_plan.type == "dyn" && min_vaddr == 0);
     if (!entry_ready) {
         plan.error = "ELF entry is not inside a PT_LOAD segment";
     }
@@ -374,6 +378,7 @@ StaticImageRuntimeMapping map_static_image_for_transfer(const std::string& host_
     }
     result.mapped = true;
     result.mapped_base = reinterpret_cast<std::uintptr_t>(mapped);
+    result.load_bias = result.mapped_base - plan.image_min_vaddr;
     result.entry_address = result.mapped_base + (plan.entry - plan.image_min_vaddr);
 
     auto* base = static_cast<unsigned char*>(mapped);
@@ -465,6 +470,7 @@ StaticImageRuntimeMapping map_static_image_fixed_for_transfer(const std::string&
     result.mapped = true;
     result.fixed_address = true;
     result.mapped_base = reinterpret_cast<std::uintptr_t>(mapped);
+    result.load_bias = 0;
     result.entry_address = plan.entry;
 
     auto* base = static_cast<unsigned char*>(mapped);
