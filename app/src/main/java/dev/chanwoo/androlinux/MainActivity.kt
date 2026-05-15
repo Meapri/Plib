@@ -9,13 +9,27 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         System.loadLibrary("alr_loader")
 
+        val rootfsManifest = RootfsManifest(
+            name = "debian-arm64",
+            version = "bookworm-slim-2026-05",
+            assets = listOf(
+                RootfsAsset(
+                    path = "rootfs.tar.zst",
+                    sha256 = "0000000000000000000000000000000000000000000000000000000000000000",
+                    sizeBytes = 0,
+                ),
+            ),
+        )
+        val rootfsPlan = buildRootfsInstallPlan(rootfsManifest, filesDir)
+
         val report = nativeRuntimeReport(
             packageName,
             applicationInfo.nativeLibraryDir,
             filesDir.absolutePath,
-            "debian-arm64",
+            rootfsManifest.name,
             "/bin/bash",
-        )
+        ) + "\n\nrootfs install dir: ${rootfsPlan.rootfsDir.absolutePath}" +
+            "\nrootfs marker: ${rootfsPlan.markerPath.absolutePath}"
 
         val view = TextView(this).apply {
             text = report
