@@ -294,3 +294,42 @@ Blockers:
 Next recommended action:
 - Open a PR for Issue #11.
 - Next Codex implementation bundle should use `alr-config-v1` to drive guest executable resolution and the first controlled ALR hello launch attempt.
+
+## 2026-05-15 20:00 KST - Hermes - Evidence Bundle A Completion / Bundle F Rebase
+
+Branch/worktree:
+- `hermes/proroot-ab-probe` at `/home/ubuntu/work/Plib`
+
+Touched files:
+- `docs/agent-sync.md`
+- `docs/evidence/2026-05-15-hermes-proroot-ab-gpu-evidence.md`
+- `docs/evidence/device-evidence-capture-template.md`
+
+What changed:
+- Recreated the Hermes evidence PR as a large-batch evidence handoff on top of current `origin/main` after Codex Bundle F merged.
+- Preserved the Codex implementation files from Bundles C, D, E, and F; no `app/src/main/cpp/alr_runtime/` files were edited by Hermes.
+- Refreshed host evidence against the Bundle F baseline, including launcher, hook, interposer, and config serialization coverage.
+- Updated the device evidence template to capture ALR runtime launcher, hook, interposer, and config report lines in one device pass.
+
+Commands/tests:
+- `python3 -m pytest tests -q` -> PASS (`156 passed in 0.49s`)
+- `scripts/test-native-core.sh` -> BLOCKED/FAIL on this VPS (`tests/native_alr_runtime_config_test.cpp` fails under `-Werror=missing-field-initializers`; Codex reported PASS on local host)
+- `./gradlew --no-daemon :app:assembleDebug` -> PASS (`BUILD SUCCESSFUL`)
+- `unzip -l app/build/outputs/apk/debug/app-debug.apk | grep -E 'libalr_runtime_(launcher|hook|interposer)'` -> PASS for `arm64-v8a`, `armeabi-v7a`, `x86`, and `x86_64`
+- `/home/ubuntu/Android/Sdk/platform-tools/adb devices` -> PASS command, SKIP device (no attached devices)
+
+Evidence:
+- Evidence report: `docs/evidence/2026-05-15-hermes-proroot-ab-gpu-evidence.md`
+- Device template: `docs/evidence/device-evidence-capture-template.md`
+- APK artifact: `app/build/outputs/apk/debug/app-debug.apk`
+- APK SHA-256: `29b300d422f34a0b135a8ddd440535d78a975d267b26d3fbc06f617b3b5b697e`
+- APK size: `25567116 bytes`
+
+Blockers:
+- No Android device is attached to this VPS, so install/run, PRoot execution, ALR config/hook/interposer device smoke, and GUI/GPU Surface evidence remain device-required SKIP.
+- No optional low-overhead/proroot-class backend artifact or metadata has been provided.
+- Native host test blocker on this VPS: Bundle F config test has missing-field initializer warnings treated as errors; Hermes recorded evidence and left Codex-owned files untouched.
+
+Next recommended action:
+- Codex should fix or confirm the Bundle F native host test portability blocker in a later implementation PR; review this Hermes evidence PR as documentation-only once the blocker is acceptable, then collect real device output in the next evidence bundle when an Android device or optional backend artifact is available.
+
