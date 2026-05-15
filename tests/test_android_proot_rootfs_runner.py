@@ -138,3 +138,19 @@ def test_main_activity_reports_dpkg_arch_and_query_smoke_results():
     assert "rootfs /usr/share/dpkg/tupletable exists=" in text
     assert "proot dpkg --print-architecture exit=" in text
     assert "proot dpkg-query --version exit=" in text
+
+
+def test_main_activity_reports_apt_base_bundle_smoke_results():
+    text = MAIN.read_text()
+    assert "APT VERSION EXECUTION:" in text
+    assert "APT-GET VERSION EXECUTION:" in text
+    assert "APT-CACHE VERSION EXECUTION:" in text
+    assert "APT-CONFIG VERSION EXECUTION:" in text
+    assert "rootfs /usr/bin/apt exists=" in text
+    assert "rootfs /usr/bin/apt-get exists=" in text
+    assert "rootfs libapt-pkg exists=" in text
+    assert "rootfs apt http method exists=" in text
+    assert "proot apt --version exit=" in text
+    assert "proot apt-get --version exit=" in text
+    assert "proot apt-cache --version exit=" in text
+    assert "proot apt-config --version exit=" in text

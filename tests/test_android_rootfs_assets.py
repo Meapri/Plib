@@ -9,7 +9,7 @@ PAYLOAD = ROOT / "app" / "src" / "main" / "assets" / "rootfs" / "payloads" / "ti
 def test_android_assets_include_rootfs_manifest_and_payload():
     assert MANIFEST.is_file()
     assert PAYLOAD.is_file()
-    assert PAYLOAD.stat().st_size == 10045440
+    assert PAYLOAD.stat().st_size == 30638080
 
 
 def test_android_asset_manifest_matches_host_manifest():
@@ -214,3 +214,31 @@ def test_real_distro_dpkg_query_requests_rootfs_loader_and_libmd():
     assert "Requesting program interpreter: /lib/ld-linux-aarch64.so.1" in program_headers
     assert "libmd.so.0" in dynamic
     assert "libc.so.6" in dynamic
+
+
+def test_tiny_rootfs_contains_bulk_apt_base_bundle():
+    import tarfile
+
+    with tarfile.open(PAYLOAD) as archive:
+        names = set(archive.getnames())
+        required = [
+            "./usr/bin/apt",
+            "./usr/bin/apt-get",
+            "./usr/bin/apt-cache",
+            "./usr/bin/apt-config",
+            "./usr/lib/apt/apt-helper",
+            "./usr/lib/apt/methods/http",
+            "./usr/lib/apt/methods/https",
+            "./lib/aarch64-linux-gnu/libapt-pkg.so.6.0",
+            "./lib/aarch64-linux-gnu/libapt-private.so.0.0",
+            "./lib/aarch64-linux-gnu/libstdc++.so.6",
+            "./lib/aarch64-linux-gnu/libzstd.so.1",
+            "./lib/aarch64-linux-gnu/libsystemd.so.0",
+            "./etc/apt/apt.conf.d",
+            "./var/lib/apt/lists/partial",
+            "./var/cache/apt/archives/partial",
+        ]
+        for member in required:
+            assert member in names
+        for member in ["./usr/bin/apt", "./usr/bin/apt-get", "./usr/bin/apt-cache", "./usr/bin/apt-config", "./lib/aarch64-linux-gnu/libapt-pkg.so.6.0"]:
+            assert archive.extractfile(member).read(4) == b"\x7fELF"

@@ -66,6 +66,18 @@ class NativeCommandRunner(
     fun runProotRootfsDpkgQueryVersion(rootfsDir: File): NativeCommandResult =
         runProotRootfsCommand(rootfsDir, "/usr/bin/dpkg-query", listOf("--version"), rootId = true, rawRootfs = true)
 
+    fun runProotRootfsAptVersion(rootfsDir: File): NativeCommandResult =
+        runProotRootfsCommand(rootfsDir, "/usr/bin/apt", listOf("--version"), rootId = true, rawRootfs = true)
+
+    fun runProotRootfsAptGetVersion(rootfsDir: File): NativeCommandResult =
+        runProotRootfsCommand(rootfsDir, "/usr/bin/apt-get", listOf("--version"), rootId = true, rawRootfs = true)
+
+    fun runProotRootfsAptCacheVersion(rootfsDir: File): NativeCommandResult =
+        runProotRootfsCommand(rootfsDir, "/usr/bin/apt-cache", listOf("--version"), rootId = true, rawRootfs = true)
+
+    fun runProotRootfsAptConfigVersion(rootfsDir: File): NativeCommandResult =
+        runProotRootfsCommand(rootfsDir, "/usr/bin/apt-config", listOf("--version"), rootId = true, rawRootfs = true)
+
     fun runProotRootfsProgramVerbose(rootfsDir: File, program: String): NativeCommandResult =
         runProotRootfsCommand(rootfsDir, program, verbose = "9")
 
