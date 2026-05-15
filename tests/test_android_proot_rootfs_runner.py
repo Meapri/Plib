@@ -110,3 +110,20 @@ def test_identity_nss_smoke_uses_raw_rootfs_to_avoid_host_etc_binds():
     assert "runProotRootfsIdAsRoot" in text
     assert "rawRootfs = true" in text
     assert 'if (rawRootfs) "-r" else "-R"' in text
+
+
+def test_native_command_runner_can_attempt_dpkg_version_smoke():
+    text = RUNNER.read_text()
+    assert "runProotRootfsDpkgVersion" in text
+    assert '"/usr/bin/dpkg"' in text
+    assert '"--version"' in text
+
+
+def test_main_activity_reports_dpkg_version_smoke_result():
+    text = MAIN.read_text()
+    assert "DPKG VERSION EXECUTION:" in text
+    assert "rootfs /usr/bin/dpkg exists=" in text
+    assert "rootfs libmd exists=" in text
+    assert "proot dpkg --version exit=" in text
+    assert "proot dpkg --version stdout=" in text
+    assert "proot dpkg --version stderr=" in text

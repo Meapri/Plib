@@ -9,7 +9,7 @@ PAYLOAD = ROOT / "app" / "src" / "main" / "assets" / "rootfs" / "payloads" / "ti
 def test_android_assets_include_rootfs_manifest_and_payload():
     assert MANIFEST.is_file()
     assert PAYLOAD.is_file()
-    assert PAYLOAD.stat().st_size == 9431040
+    assert PAYLOAD.stat().st_size == 9830400
 
 
 def test_android_asset_manifest_matches_host_manifest():
@@ -159,5 +159,32 @@ def test_real_distro_id_requests_rootfs_loader():
         program_headers = subprocess.check_output(["readelf", "-l", tmp.name], text=True)
         dynamic = subprocess.check_output(["readelf", "-d", tmp.name], text=True)
     assert "Requesting program interpreter: /lib/ld-linux-aarch64.so.1" in program_headers
+    assert "libselinux.so.1" in dynamic
+    assert "libc.so.6" in dynamic
+
+
+def test_tiny_rootfs_contains_dpkg_version_smoke_files():
+    import tarfile
+
+    with tarfile.open(PAYLOAD) as archive:
+        names = set(archive.getnames())
+        assert "./usr/bin/dpkg" in names
+        assert "./lib/aarch64-linux-gnu/libmd.so.0" in names
+        assert archive.extractfile("./usr/bin/dpkg").read(4) == b"\x7fELF"
+        assert archive.extractfile("./lib/aarch64-linux-gnu/libmd.so.0").read(4) == b"\x7fELF"
+
+
+def test_real_distro_dpkg_requests_rootfs_loader_and_libmd():
+    import subprocess
+    import tarfile
+    import tempfile
+
+    with tarfile.open(PAYLOAD) as archive, tempfile.NamedTemporaryFile() as tmp:
+        tmp.write(archive.extractfile("./usr/bin/dpkg").read())
+        tmp.flush()
+        program_headers = subprocess.check_output(["readelf", "-l", tmp.name], text=True)
+        dynamic = subprocess.check_output(["readelf", "-d", tmp.name], text=True)
+    assert "Requesting program interpreter: /lib/ld-linux-aarch64.so.1" in program_headers
+    assert "libmd.so.0" in dynamic
     assert "libselinux.so.1" in dynamic
     assert "libc.so.6" in dynamic

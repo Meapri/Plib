@@ -57,6 +57,9 @@ class NativeCommandRunner(
     fun runProotRootfsIdAsRoot(rootfsDir: File): NativeCommandResult =
         runProotRootfsCommand(rootfsDir, "/usr/bin/id", rootId = true, rawRootfs = true)
 
+    fun runProotRootfsDpkgVersion(rootfsDir: File): NativeCommandResult =
+        runProotRootfsCommand(rootfsDir, "/usr/bin/dpkg", listOf("--version"), rootId = true, rawRootfs = true)
+
     fun runProotRootfsProgramVerbose(rootfsDir: File, program: String): NativeCommandResult =
         runProotRootfsCommand(rootfsDir, program, verbose = "9")
 

@@ -46,6 +46,7 @@ class MainActivity : Activity() {
             "echo dash-c ok; /usr/bin/env | /bin/cat",
         )
         val prootIdResult = nativeCommandRunner.runProotRootfsIdAsRoot(rootfsStatus.rootfsDir)
+        val prootDpkgVersionResult = nativeCommandRunner.runProotRootfsDpkgVersion(rootfsStatus.rootfsDir)
         val prootHelloVerboseResult = if (prootHelloResult.exitCode == 0) {
             null
         } else {
@@ -68,6 +69,8 @@ class MainActivity : Activity() {
         val rootfsLibselinuxFile = File(rootfsStatus.rootfsDir, "lib/aarch64-linux-gnu/libselinux.so.1")
         val rootfsLibpcre2File = File(rootfsStatus.rootfsDir, "lib/aarch64-linux-gnu/libpcre2-8.so.0")
         val rootfsLibnssFilesFile = File(rootfsStatus.rootfsDir, "lib/aarch64-linux-gnu/libnss_files.so.2")
+        val rootfsDpkgFile = File(rootfsStatus.rootfsDir, "usr/bin/dpkg")
+        val rootfsLibmdFile = File(rootfsStatus.rootfsDir, "lib/aarch64-linux-gnu/libmd.so.0")
         val rootfsExecutionPassed = prootHelloResult.exitCode == 0 &&
             prootHelloResult.stdout.contains("hello from static arm64 rootfs")
         val shellScriptExecutionPassed = prootScriptResult.exitCode == 0 &&
@@ -102,8 +105,10 @@ class MainActivity : Activity() {
         val identityNamedRoot = prootIdResult.stdout.contains("uid=0(root)") &&
             prootIdResult.stdout.contains("gid=0(root)")
         val identityNssExecutionPassed = identityNumericRoot && identityNamedRoot
+        val dpkgVersionExecutionPassed = prootDpkgVersionResult.exitCode == 0 &&
+            prootDpkgVersionResult.stdout.contains("Debian 'dpkg' package management program")
 
-        val executionSummary = "build: 0.4.2-raw-nss-identity" +
+        val executionSummary = "build: 0.4.3-dpkg-version-smoke" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -112,6 +117,7 @@ class MainActivity : Activity() {
             "\nDISTRO USERLAND EXECUTION: ${if (distroUserlandExecutionPassed) "PASS" else "FAIL"}" +
             "\nCLEAN GUEST ENVIRONMENT: ${if (!guestEnvLeakedAndroidVars) "PASS" else "FAIL"}" +
             "\nIDENTITY NSS EXECUTION: ${if (identityNssExecutionPassed) "PASS" else "FAIL"}" +
+            "\nDPKG VERSION EXECUTION: ${if (dpkgVersionExecutionPassed) "PASS" else "FAIL"}" +
             "\nidentity numeric root=$identityNumericRoot" +
             "\nidentity named root=$identityNamedRoot" +
             "\nidentity proot mode=raw -r" +
@@ -133,6 +139,8 @@ class MainActivity : Activity() {
             "\nrootfs libselinux exists=${rootfsLibselinuxFile.isFile} executable=${rootfsLibselinuxFile.canExecute()} bytes=${rootfsLibselinuxFile.length()}" +
             "\nrootfs libpcre2 exists=${rootfsLibpcre2File.isFile} executable=${rootfsLibpcre2File.canExecute()} bytes=${rootfsLibpcre2File.length()}" +
             "\nrootfs libnss_files exists=${rootfsLibnssFilesFile.isFile} executable=${rootfsLibnssFilesFile.canExecute()} bytes=${rootfsLibnssFilesFile.length()}" +
+            "\nrootfs /usr/bin/dpkg exists=${rootfsDpkgFile.isFile} executable=${rootfsDpkgFile.canExecute()} bytes=${rootfsDpkgFile.length()}" +
+            "\nrootfs libmd exists=${rootfsLibmdFile.isFile} executable=${rootfsLibmdFile.canExecute()} bytes=${rootfsLibmdFile.length()}" +
             "\nnative smoke exit=${nativeCommandResult.exitCode}" +
             "\nnative smoke stdout=${nativeCommandResult.stdout}" +
             "\nproot --version exit=${prootCandidateResult.exitCode}" +
@@ -155,6 +163,9 @@ class MainActivity : Activity() {
             "\nproot id exit=${prootIdResult.exitCode}" +
             "\nproot id stdout=${prootIdResult.stdout}" +
             "\nproot id stderr=${prootIdResult.stderr}" +
+            "\nproot dpkg --version exit=${prootDpkgVersionResult.exitCode}" +
+            "\nproot dpkg --version stdout=${prootDpkgVersionResult.stdout}" +
+            "\nproot dpkg --version stderr=${prootDpkgVersionResult.stderr}" +
             "\nprobe dlopen talloc=${nativeProbe.lineStartingWith("dlopen libtalloc.so")}" +
             "\nprobe dlopen proot=${nativeProbe.lineStartingWith("dlopen libalr_proot.so")}" +
             "\nproot loader=${prootCandidateResult.environment["PROOT_LOADER"]}" +
@@ -200,6 +211,7 @@ class MainActivity : Activity() {
             resultBlock("proot glibc", prootGlibcResult) +
             resultBlock("proot dash", prootDashResult) +
             resultBlock("proot id", prootIdResult) +
+            resultBlock("proot dpkg --version", prootDpkgVersionResult) +
             optionalResultBlock("proot hello verbose on failure", prootHelloVerboseResult)
 
         val report = executionSummary + "\n\n--- verbose report ---\n" + verboseReport
