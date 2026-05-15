@@ -96,6 +96,14 @@ class NativeCommandRunner(
             binaryPath = "/usr/bin/alr-gles-demo-gears",
         )
 
+    fun runAlrRuntimeTrampolineGuestGlesProcaddrDemo(rootfsDir: File, frameCount: Int): NativeCommandResult =
+        runAlrRuntimeTrampolineGuestGlesShim(
+            rootfsDir,
+            mapOf("ALR_GLES_PROC_DEMO_FRAME_COUNT" to frameCount.coerceIn(1, 240).toString()),
+            timeoutMs = 4000,
+            binaryPath = "/usr/bin/alr-gles-procaddr-demo",
+        )
+
     fun runAlrRuntimeTrampolineGuestGlesShimBenchmark(rootfsDir: File, frameCount: Int): NativeCommandResult =
         runAlrRuntimeTrampolineGuestGlesShim(
             rootfsDir,
@@ -441,6 +449,15 @@ class NativeCommandRunner(
             rootId = true,
             rawRootfs = true,
             extraEnvironment = mapOf("ALR_GLES_DEMO_FRAME_COUNT" to frameCount.coerceIn(1, 240).toString()),
+        )
+
+    fun runProotRootfsGuestGlesProcaddrDemo(rootfsDir: File, frameCount: Int): NativeCommandResult =
+        runProotRootfsCommand(
+            rootfsDir,
+            "/usr/bin/alr-gles-procaddr-demo",
+            rootId = true,
+            rawRootfs = true,
+            extraEnvironment = mapOf("ALR_GLES_PROC_DEMO_FRAME_COUNT" to frameCount.coerceIn(1, 240).toString()),
         )
 
     fun runProotRootfsGuestGlesShimBenchmark(rootfsDir: File, frameCount: Int): NativeCommandResult =

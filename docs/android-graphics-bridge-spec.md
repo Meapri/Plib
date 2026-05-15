@@ -177,15 +177,15 @@ Report:
 surface frames submitted=<n>
 surface frames rendered=<n>
 surface frames dropped=0
-surface gles shim render elapsed us=573476
-surface gles shim average frame render us=15929
-surface gles shim draw frames rendered=95
-surface gles shim draw render elapsed us=1168045
-surface gles shim draw average frame render us=12295
+surface gles shim render elapsed us=576046
+surface gles shim average frame render us=16001
+surface gles shim draw frames rendered=140
+surface gles shim draw render elapsed us=1656444
+surface gles shim draw average frame render us=11831
 surface native gles frames rendered=32
-surface native gles render elapsed us=351467
-surface native gles average frame render us=10983
-surface gles shim vs native average ratio pct=145
+surface native gles render elapsed us=348498
+surface native gles average frame render us=10890
+surface gles shim vs native average ratio pct=146
 surface gpu hardware render=true
 ```
 
@@ -485,8 +485,8 @@ GUEST GUI GPU SURFACE EXECUTION UPDATE: PASS
 surface gl renderer=Mali-G615 MC2
 surface frames rendered=16
 surface frames dropped=0
-surface render elapsed us=2430883
-surface average frame render us=13139
+surface render elapsed us=2930426
+surface average frame render us=12740
 surface gles shim render elapsed us=548132
 surface gles shim average frame render us=16121
 surface native gles frames rendered=32
@@ -509,7 +509,7 @@ GUEST EGL SWAP VIA ANDROID SURFACE: PASS
 GUEST GLES HARDWARE RENDER: PASS
 ```
 
-Current device evidence from build `0.4.52-gles-demo-gears`:
+Current device evidence from build `0.4.53-gles-procaddr-demo`:
 
 ```text
 GUEST GLES SHIM SMOKE EXECUTION: PASS
@@ -518,6 +518,8 @@ GUEST EGL/GLES ABI LIB EXECUTION: PASS
 ALR GUEST EGL/GLES ABI LIB EXECUTION: PASS
 GUEST GLES DEMO GEARS EXECUTION: PASS
 ALR GUEST GLES DEMO GEARS EXECUTION: PASS
+GUEST GLES PROCADDR DEMO EXECUTION: PASS
+ALR GUEST GLES PROCADDR DEMO EXECUTION: PASS
 GUEST EGL INIT VIA SHIM EXECUTION: PASS
 GUEST EGL CONTEXT VIA SHIM EXECUTION: PASS
 GUEST GLES CLEAR VIA SHIM EXECUTION: PASS
@@ -550,17 +552,19 @@ ALR_GLES_ABI_STEP eglGetProcAddress ok
 ALR_GLES_ABI_STEP eglSwapBuffersDraw ok
 ALR_GLES_DEMO_KIND es2gears-like-triangle-strip-subset
 ALR_GLES_DEMO_WORKLOAD requested=60 submitted=60
-surface frames rendered=185
+ALR_GLES_PROC_DEMO_KIND eglGetProcAddress-es2-subset
+ALR_GLES_PROC_DEMO_WORKLOAD requested=45 submitted=45
+surface frames rendered=230
 surface frames dropped=0
-surface gles shim render elapsed us=573476
-surface gles shim average frame render us=15929
-surface gles shim draw frames rendered=95
-surface gles shim draw render elapsed us=1168045
-surface gles shim draw average frame render us=12295
+surface gles shim render elapsed us=576046
+surface gles shim average frame render us=16001
+surface gles shim draw frames rendered=140
+surface gles shim draw render elapsed us=1656444
+surface gles shim draw average frame render us=11831
 surface native gles frames rendered=32
-surface native gles render elapsed us=351467
-surface native gles average frame render us=10983
-surface gles shim vs native average ratio pct=145
+surface native gles render elapsed us=348498
+surface native gles average frame render us=10890
+surface gles shim vs native average ratio pct=146
 surface gpu hardware render=true
 surface gles shim frames rendered=36
 guest egl swap via android surface=true
