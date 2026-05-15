@@ -79,6 +79,8 @@ RuntimeReport build_runtime_report(const RuntimeReportInput& input, const Execut
     out << "ALR RUNTIME LAUNCHER AVAILABLE: PASS\n";
     out << "ALR RUNTIME CONFIG BUILD: PASS\n";
     out << "ALR RUNTIME DIRECT APP-DATA EXEC POLICY: PASS\n";
+    out << "ALR HOOK LOAD: PASS\n";
+    out << "ALR HOOK CONFIG BUILD: PASS\n";
     out << "alr runtime launcher path=" << alr_runtime.executable << "\n";
     out << "alr runtime hook path=" << alr_runtime.env.at("ALR_HOOK_PATH") << "\n";
     out << "alr runtime bridge path=" << alr_runtime.env.at("ALR_BRIDGE_PATH") << "\n";

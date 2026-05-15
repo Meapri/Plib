@@ -129,3 +129,71 @@ Blockers:
 
 Next recommended action:
 - Open a PR for Issue #2, then start Bundle D path hook MVP after review/merge.
+
+## 2026-05-15 - Codex - Bundle D Start
+
+Branch/worktree:
+- `codex/alr-path-hook-mvp` at `/Users/naen/Documents/Plib/androlinux-runtime-lab`
+
+Touched files:
+- Pending
+
+What changed:
+- Merged Bundle C PR #6 into `main`; Issue #2 closed.
+- Started GitHub Issue #7 / Bundle D: ALR path hook MVP.
+
+Commands/tests:
+- Pending
+
+Evidence:
+- Bundle C merge commit on main: `e1fbf106401181bb30e756ddef857223f5798f10`
+
+Blockers:
+- None known.
+
+Next recommended action:
+- Add a packaged ALR hook library and host-testable open/stat smoke using clean path translation.
+
+## 2026-05-15 - Codex - Bundle D Implementation
+
+Branch/worktree:
+- `codex/alr-path-hook-mvp` at `/Users/naen/Documents/Plib/androlinux-runtime-lab`
+
+Touched files:
+- `app/src/main/cpp/CMakeLists.txt`
+- `app/src/main/cpp/alr_runtime/alr_hook.hpp`
+- `app/src/main/cpp/alr_runtime/alr_hook.cpp`
+- `app/src/main/cpp/alr_runtime_hook.cpp`
+- `app/src/main/cpp/runtime_plan.cpp`
+- `app/src/main/cpp/runtime_report.cpp`
+- `scripts/test-native-core.sh`
+- `tests/native_alr_runtime_hook_test.cpp`
+- `tests/native_runtime_plan_test.cpp`
+- `tests/test_alr_runtime_hook_sources.py`
+- `tests/test_alr_runtime_launcher_sources.py`
+
+What changed:
+- Added a packaged `libalr_runtime_hook.so` smoke hook library.
+- Added clean-room host-path smoke plumbing that translates a guest path through the ALR rootfs path mapper and performs direct `stat`/`open` checks on the translated app-private file.
+- Added report lines for `ALR HOOK LOAD`, `ALR HOOK CONFIG BUILD`, `ALR STAT ROOTFS FILE`, and `ALR OPEN ROOTFS FILE`.
+- Added source, host-native, and Android APK packaging coverage.
+- Still does not claim full guest execution or LD_PRELOAD syscall/path interposition.
+
+Commands/tests:
+- `/Users/naen/.venvs/plib-py313/bin/python -m pytest tests -q` -> PASS, 147 passed.
+- `scripts/test-native-core.sh` -> PASS.
+- `JAVA_HOME=/Users/naen/.jdks/jdk-17.0.19+10/Contents/Home ./gradlew :app:assembleDebug --no-daemon` -> PASS.
+- `unzip -l app/build/outputs/apk/debug/app-debug.apk | rg 'libalr_runtime_hook|libalr_runtime_launcher'` -> PASS.
+
+Evidence:
+- Debug APK: `app/build/outputs/apk/debug/app-debug.apk`
+- APK sha256: `70b4c9b81dac2dad061ae0650e567596cb5810143295b503d5a373562a62a119`
+- APK contains `libalr_runtime_hook.so` and `libalr_runtime_launcher.so` for `arm64-v8a`, `armeabi-v7a`, `x86`, and `x86_64`.
+
+Blockers:
+- None for Bundle D source/build verification.
+- Device-side hook smoke still needs Hermes/device evidence before claiming runtime behavior on Android hardware.
+
+Next recommended action:
+- Open a PR for Issue #7.
+- Hermes can use the new hook report lines as APK/device smoke assertions while continuing Issue #1 and Issue #3 evidence work.
