@@ -1,5 +1,7 @@
 #include <jni.h>
 
+#include <dlfcn.h>
+
 #include <sstream>
 #include <string>
 
@@ -17,6 +19,44 @@ std::string jstring_to_string(JNIEnv* env, jstring value) {
         env->ReleaseStringUTFChars(value, chars);
     }
     return result;
+}
+
+std::string join_path(const std::string& left, const std::string& right) {
+    if (left.empty()) {
+        return right;
+    }
+    if (left.back() == '/') {
+        return left + right;
+    }
+    return left + "/" + right;
+}
+
+void append_dlopen_probe(std::ostringstream& out, const std::string& path, const std::string& label) {
+    dlerror();
+    void* handle = dlopen(path.c_str(), RTLD_NOW | RTLD_LOCAL);
+    if (handle == nullptr) {
+        const char* error = dlerror();
+        out << "\ndlopen " << label << "=fail: " << (error == nullptr ? "unknown" : error);
+        return;
+    }
+    out << "\ndlopen " << label << "=ok";
+    if (label == "libtalloc.so") {
+        using VersionFn = int (*)();
+        dlerror();
+        auto major = reinterpret_cast<VersionFn>(dlsym(handle, "talloc_version_major"));
+        const char* major_error = dlerror();
+        dlerror();
+        auto minor = reinterpret_cast<VersionFn>(dlsym(handle, "talloc_version_minor"));
+        const char* minor_error = dlerror();
+        if (major != nullptr && minor != nullptr) {
+            out << " version=" << major() << "." << minor();
+        } else {
+            out << " version_symbol_error="
+                << (major_error != nullptr ? major_error : "")
+                << (minor_error != nullptr ? minor_error : "");
+        }
+    }
+    dlclose(handle);
 }
 
 }  // namespace
@@ -65,5 +105,18 @@ Java_dev_chanwoo_androlinux_MainActivity_nativeRuntimeReport(
     out << "\n  PROOT_VERBOSE=" << proot.env.at("PROOT_VERBOSE");
     out << "\n  LD_LIBRARY_PATH=" << proot.env.at("LD_LIBRARY_PATH");
     out << "\n  PATH=" << proot.env.at("PATH");
+    return env->NewStringUTF(out.str().c_str());
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_dev_chanwoo_androlinux_MainActivity_nativeLibraryProbe(
+    JNIEnv* env,
+    jobject /* thiz */,
+    jstring native_library_dir) {
+    const auto dir = jstring_to_string(env, native_library_dir);
+    std::ostringstream out;
+    append_dlopen_probe(out, join_path(dir, "libtalloc.so"), "libtalloc.so");
+    append_dlopen_probe(out, join_path(dir, "libalr_proot.so"), "libalr_proot.so");
+    append_dlopen_probe(out, join_path(dir, "libproot-loader.so"), "libproot-loader.so");
     return env->NewStringUTF(out.str().c_str());
 }
