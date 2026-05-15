@@ -13,10 +13,10 @@ def test_load_rootfs_manifest_from_json_sample():
 
     assert isinstance(manifest, RootfsManifest)
     assert manifest.name == "debian-arm64"
-    assert manifest.version == "bookworm-slim-2026-05-gui-gpu-v71"
+    assert manifest.version == "bookworm-slim-2026-05-gui-gpu-v72"
     assert manifest.assets[0].path == "tiny-rootfs.tar"
-    assert manifest.assets[0].sha256 == "92221d160c647bd9e5dafbf79bc167ee2eb2a5c1542a7ffc1477f523f2ae5599"
-    assert manifest.assets[0].size_bytes == 35700736
+    assert manifest.assets[0].sha256 == "5cf93a11f27e192cba7b700489874db0631943bb490c42f7e09d5f7686f490f2"
+    assert manifest.assets[0].size_bytes == 35704320
 
 
 def test_sample_manifest_contains_explicit_unsupported_features():

@@ -390,6 +390,14 @@ class NativeCommandRunner(
             ),
         )
 
+    fun runAlrRuntimeTrampolineInstalledPackageGlesDemo(rootfsDir: File, frameCount: Int): NativeCommandResult =
+        runAlrRuntimeTrampolineGuestGlesShim(
+            rootfsDir,
+            mapOf("ALR_GLES_DEMO_FRAME_COUNT" to frameCount.coerceIn(1, 240).toString()),
+            timeoutMs = 4000,
+            binaryPath = "/usr/local/bin/alr-package-gles-demo",
+        )
+
     private fun glibcLibraryPath(rootfsDir: File): String =
         listOf(
             File(rootfsDir, "lib/aarch64-linux-gnu").absolutePath,

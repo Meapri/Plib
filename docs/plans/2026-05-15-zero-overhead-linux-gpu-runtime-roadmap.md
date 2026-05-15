@@ -1023,3 +1023,30 @@ Next implementation batch:
 2. Add installed-package GLES shim IPC and Android Surface presentation gates.
 3. Start replacing stale non-preload dpkg/proot install checks with clearly labeled known-fail diagnostics so the summary stays truthful.
 4. Add measured installed-package GPU timing against the native GLES baseline already reported on device.
+
+Latest V72 installed-package GLES shim evidence:
+
+```text
+build: 0.4.72-installed-package-gles-shim
+ALR DPKG LOCAL INSTALL PRELOAD EXECUTION: PASS
+INSTALLED PACKAGE EXECUTION: PASS
+ALR INSTALLED PACKAGE PRELOAD EXECUTION: PASS
+ALR GUEST GPU IPC BRIDGE EXECUTION: PASS
+ALR INSTALLED PACKAGE GPU IPC EXECUTION: PASS
+ALR GUEST GLES DEMO GEARS EXECUTION: PASS
+ALR INSTALLED PACKAGE GLES DEMO EXECUTION: PASS
+rootfs installed alr gles demo exists=true executable=true bytes=8264
+alr installed package gles demo handoff=ALR STATIC ENTRY HANDOFF: PASS
+alr installed package gles demo command parsed count=60
+alr installed package gles demo draw command count=60
+surface gl renderer=Mali-G615 MC2
+surface gpu hardware render=true
+surface gles shim vs native average ratio pct=99
+```
+
+Next implementation batch:
+
+1. Turn the installed-package GLES proof into a TCP/Surface bridge with explicit submit/ack timing.
+2. Package a second installed ELF that exercises `eglGetProcAddress` and multiple GLES symbols.
+3. Make the summary separate hard known-fail diagnostics from the current PASS path, especially non-preload dpkg/proot install failures.
+4. Start a small installed-app compatibility table for CLI, GPU clear, GLES demo, and GUI protocol clients.

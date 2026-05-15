@@ -743,6 +743,33 @@ a shell wrapper tried to `exec /usr/bin/alr-gpu-client` through the preload
 chain, while still proving that a `.deb` can install a Linux GPU app entrypoint
 that ALR launches through the Android-native GPU IPC bridge.
 
+Current V72 installed-package GLES shim snapshot:
+
+```text
+build: 0.4.72-installed-package-gles-shim
+ALR DPKG LOCAL INSTALL PRELOAD EXECUTION: PASS
+INSTALLED PACKAGE EXECUTION: PASS
+ALR INSTALLED PACKAGE PRELOAD EXECUTION: PASS
+ALR GUEST GPU IPC BRIDGE EXECUTION: PASS
+ALR INSTALLED PACKAGE GPU IPC EXECUTION: PASS
+ALR GUEST GLES DEMO GEARS EXECUTION: PASS
+ALR INSTALLED PACKAGE GLES DEMO EXECUTION: PASS
+rootfs installed alr gles demo exists=true executable=true bytes=8264
+alr installed package gles demo handoff=ALR STATIC ENTRY HANDOFF: PASS
+alr installed package gles demo stdout=alr guest gles demo gears ok
+alr installed package gles demo command parsed count=60
+alr installed package gles demo draw command count=60
+surface gl renderer=Mali-G615 MC2
+surface gpu hardware render=true
+surface gles shim vs native average ratio pct=99
+```
+
+V72 moves the installed-package proof from a tiny GPU clear client toward a
+realer GLES ABI path: the `.deb` installs an ELF copied from the source-built
+guest GLES demo, ALR launches it through the guest glibc loader and the
+`libEGL.so`/`libGLESv2.so` shim library path, and the Android Surface renderer
+consumes its 60 draw commands alongside the native GLES baseline.
+
 Report:
 
 ```text

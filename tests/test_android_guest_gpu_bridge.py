@@ -82,7 +82,11 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "guest x11 gui ipc seq gaps" in text
     assert "ALR GUEST GPU IPC BRIDGE EXECUTION" in text
     assert "ALR INSTALLED PACKAGE GPU IPC EXECUTION" in text
+    assert "ALR INSTALLED PACKAGE GLES DEMO EXECUTION" in text
     assert "runInstalledPackageGpuIpcBridge" in text
+    assert "runAlrRuntimeTrampolineInstalledPackageGlesDemo" in runner
+    assert "alr installed package gles demo command parsed count" in text
+    assert "alr installed package gles demo draw command count" in text
     assert "alr installed package gpu ipc lossless" in text
     assert "alr installed package gpu ipc execve loader rewrites" in text
     assert "alr installed package gpu ipc client" in text
