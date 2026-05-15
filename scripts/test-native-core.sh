@@ -11,6 +11,7 @@ cxx="${CXX:-g++}"
   app/src/main/cpp/alr_runtime/alr_path.cpp \
   app/src/main/cpp/alr_runtime/alr_config.cpp \
   app/src/main/cpp/alr_runtime/alr_exec.cpp \
+  app/src/main/cpp/alr_runtime/alr_launch.cpp \
   app/src/main/cpp/runtime_plan.cpp \
   -o /tmp/alr-native-runtime-plan-test
 
@@ -22,6 +23,7 @@ cxx="${CXX:-g++}"
   app/src/main/cpp/alr_runtime/alr_path.cpp \
   app/src/main/cpp/alr_runtime/alr_config.cpp \
   app/src/main/cpp/alr_runtime/alr_exec.cpp \
+  app/src/main/cpp/alr_runtime/alr_launch.cpp \
   app/src/main/cpp/runtime_plan.cpp \
   -o /tmp/alr-native-backend-policy-test
 
@@ -53,6 +55,16 @@ cxx="${CXX:-g++}"
   -o /tmp/alr-native-runtime-exec-test
 
 /tmp/alr-native-runtime-exec-test
+
+"$cxx" -std=c++20 -Wall -Wextra -Werror \
+  -Iapp/src/main/cpp \
+  tests/native_alr_runtime_launch_test.cpp \
+  app/src/main/cpp/alr_runtime/alr_path.cpp \
+  app/src/main/cpp/alr_runtime/alr_exec.cpp \
+  app/src/main/cpp/alr_runtime/alr_launch.cpp \
+  -o /tmp/alr-native-runtime-launch-test
+
+/tmp/alr-native-runtime-launch-test
 
 "$cxx" -std=c++20 -Wall -Wextra -Werror \
   -Iapp/src/main/cpp \

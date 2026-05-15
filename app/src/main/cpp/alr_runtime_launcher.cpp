@@ -5,6 +5,7 @@
 
 #include "alr_runtime/alr_config.hpp"
 #include "alr_runtime/alr_exec.hpp"
+#include "alr_runtime/alr_launch.hpp"
 
 extern "C" const char* alr_runtime_launcher_status() {
     return "ALR RUNTIME LAUNCHER AVAILABLE: PASS";
@@ -51,11 +52,13 @@ extern "C" const char* alr_runtime_launcher_build_report(
         .trace_exec = false,
     };
     const auto resolution = alr::runtime::resolve_guest_executable(config, input.program);
+    const auto launch_attempt = alr::runtime::attempt_guest_launch(config, input.program);
     std::ostringstream out;
     out << "ALR RUNTIME LAUNCHER AVAILABLE: PASS";
     out << "\nALR RUNTIME CONFIG BUILD: PASS";
     out << "\nALR RUNTIME DIRECT APP-DATA EXEC POLICY: PASS";
     out << "\n" << resolution.report;
+    out << "\n" << launch_attempt.report;
     out << "\ncan execute guest=no";
     out << "\nlauncher executable=" << launch.executable;
     out << "\nrootfs=" << launch.env.at("ALR_ROOTFS");

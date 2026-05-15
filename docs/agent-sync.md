@@ -338,3 +338,46 @@ Blockers:
 Next recommended action:
 - Open a PR for Issue #13.
 - Next Codex implementation bundle should turn the resolved ELF/shebang plan into the first controlled ALR hello launch attempt.
+
+## 2026-05-15 - Codex - Bundle H Implementation
+
+Branch/worktree:
+- `codex/alr-controlled-launch-attempt` at `/Users/naen/Documents/Plib/androlinux-runtime-lab`
+
+Touched files:
+- `app/src/main/cpp/CMakeLists.txt`
+- `app/src/main/cpp/alr_runtime/alr_launch.hpp`
+- `app/src/main/cpp/alr_runtime/alr_launch.cpp`
+- `app/src/main/cpp/alr_runtime_launcher.cpp`
+- `app/src/main/cpp/runtime_plan.cpp`
+- `scripts/test-native-core.sh`
+- `tests/native_alr_runtime_launch_test.cpp`
+- `tests/native_runtime_plan_test.cpp`
+- `tests/test_alr_runtime_launch_sources.py`
+- `tests/test_android_loader_plan_report.py`
+
+What changed:
+- Added the first controlled ALR launch-attempt engine after executable resolution.
+- Default policy blocks direct rootfs host exec and reports `SKIP` honestly.
+- Host-native tests can explicitly enable direct host exec for a tiny shebang fixture to prove fork/execve, stdout/stderr capture, and exit-code plumbing.
+- Runtime and launcher reports now include `ALR LAUNCH ATTEMPT`, `ALR LAUNCH MODE`, and `ALR LOW-OVERHEAD RUNTIME HELLO EXECUTION`.
+- Still does not claim Android device rootfs execution, glibc execution, shell `-c`, or performance wins.
+
+Commands/tests:
+- `/Users/naen/.venvs/plib-py313/bin/python -m pytest tests -q` -> PASS, 162 passed.
+- `scripts/test-native-core.sh` -> PASS.
+- `JAVA_HOME=/Users/naen/.jdks/jdk-17.0.19+10/Contents/Home ./gradlew :app:assembleDebug --no-daemon` -> PASS.
+- `unzip -l app/build/outputs/apk/debug/app-debug.apk | rg 'libalr_runtime_(launcher|hook|interposer)'` -> PASS.
+
+Evidence:
+- Debug APK: `app/build/outputs/apk/debug/app-debug.apk`
+- APK sha256: `56a5ce839c886b12d33ac78b407a4d3d053695a7bfb664c39eaadba47fb407da`
+- APK contains `libalr_runtime_launcher.so`, `libalr_runtime_hook.so`, and `libalr_runtime_interposer.so` for `arm64-v8a`, `armeabi-v7a`, `x86`, and `x86_64`.
+
+Blockers:
+- None for Bundle H source/build verification.
+- Real Android ALR hello PASS still needs a future execution strategy that does not rely on direct writable rootfs exec, plus device evidence.
+
+Next recommended action:
+- Open a PR for Issue #15.
+- Next Codex implementation bundle should replace policy-blocked direct exec with a real low-overhead packaged loader/trampoline path for static hello.
