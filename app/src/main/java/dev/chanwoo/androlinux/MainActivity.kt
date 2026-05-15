@@ -112,6 +112,7 @@ class MainActivity : Activity() {
         val prootAptConfigVersionResult = nativeCommandRunner.runProotRootfsAptConfigVersion(rootfsStatus.rootfsDir)
         val alrDpkgVersionResult = nativeCommandRunner.runAlrRuntimeTrampolineDpkgVersion(rootfsStatus.rootfsDir)
         val alrDpkgArchResult = nativeCommandRunner.runAlrRuntimeTrampolineDpkgPrintArchitecture(rootfsStatus.rootfsDir)
+        val alrDpkgArchPreloadResult = nativeCommandRunner.runAlrRuntimeTrampolineDpkgPrintArchitecturePreload(rootfsStatus.rootfsDir)
         val alrDpkgQueryVersionResult = nativeCommandRunner.runAlrRuntimeTrampolineDpkgQueryVersion(rootfsStatus.rootfsDir)
         val alrAptVersionResult = nativeCommandRunner.runAlrRuntimeTrampolineAptVersion(rootfsStatus.rootfsDir)
         val alrAptGetVersionResult = nativeCommandRunner.runAlrRuntimeTrampolineAptGetVersion(rootfsStatus.rootfsDir)
@@ -355,6 +356,8 @@ class MainActivity : Activity() {
             alrDpkgVersionResult.stdout.alrHandoffStdoutText().contains("Debian 'dpkg' package management program")
         val alrDpkgArchExecutionPassed = alrDpkgArchResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
             alrDpkgArchResult.stdout.alrHandoffStdoutText().trim() == "arm64"
+        val alrDpkgArchPreloadExecutionPassed = alrDpkgArchPreloadResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+            alrDpkgArchPreloadResult.stdout.alrHandoffStdoutText().trim() == "arm64"
         val alrDpkgQueryExecutionPassed = alrDpkgQueryVersionResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
             alrDpkgQueryVersionResult.stdout.alrHandoffStdoutText().contains("Debian dpkg-query package management program")
         val alrAptVersionExecutionPassed = alrAptVersionResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
@@ -501,7 +504,7 @@ class MainActivity : Activity() {
             alrGuestX11GuiBridgeResult.error == null
         val hostGpuHardwareCandidate = hostGpuProbe.lineStartingWith("host gpu hardware candidate=") == "host gpu hardware candidate=true"
 
-        val executionSummary = "build: 0.4.58-preload-fsmeta-fastpath" +
+        val executionSummary = "build: 0.4.59-preload-userland-dpkg" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -520,6 +523,7 @@ class MainActivity : Activity() {
             "\nAPT-CONFIG VERSION EXECUTION: ${if (aptConfigVersionExecutionPassed) "PASS" else "FAIL"}" +
             "\nALR DPKG VERSION EXECUTION: ${if (alrDpkgVersionExecutionPassed) "PASS" else "FAIL"}" +
             "\nALR DPKG ARCH EXECUTION: ${if (alrDpkgArchExecutionPassed) "PASS" else "FAIL"}" +
+            "\nALR DPKG ARCH PRELOAD EXECUTION: ${if (alrDpkgArchPreloadExecutionPassed) "PASS" else "FAIL"}" +
             "\nALR DPKG QUERY EXECUTION: ${if (alrDpkgQueryExecutionPassed) "PASS" else "FAIL"}" +
             "\nALR APT VERSION EXECUTION: ${if (alrAptVersionExecutionPassed) "PASS" else "FAIL"}" +
             "\nALR APT-GET VERSION EXECUTION: ${if (alrAptGetVersionExecutionPassed) "PASS" else "FAIL"}" +
@@ -916,6 +920,10 @@ class MainActivity : Activity() {
             "\nalr dpkg --print-architecture handoff=${alrDpkgArchResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
             "\nalr dpkg --print-architecture path rewrite=${alrDpkgArchResult.stdout.lineStartingWith("alr handoff path rewrite count=")}" +
             "\nalr dpkg --print-architecture stdout=${alrDpkgArchResult.stdout.alrHandoffStdoutText()}" +
+            "\nalr dpkg --print-architecture preload handoff=${alrDpkgArchPreloadResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr dpkg --print-architecture preload path rewrite=${alrDpkgArchPreloadResult.stdout.lineStartingWith("alr handoff path rewrite count=")}" +
+            "\nalr dpkg --print-architecture preload stdout=${alrDpkgArchPreloadResult.stdout.alrHandoffStdoutText()}" +
+            "\nalr dpkg --print-architecture preload stderr=${alrDpkgArchPreloadResult.stdout.alrHandoffStderrText()}" +
             "\nalr dpkg-query --version handoff=${alrDpkgQueryVersionResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
             "\nalr dpkg-query --version path rewrite=${alrDpkgQueryVersionResult.stdout.lineStartingWith("alr handoff path rewrite count=")}" +
             "\nalr dpkg-query --version stdout=${alrDpkgQueryVersionResult.stdout.alrHandoffStdoutText()}" +
@@ -1028,6 +1036,7 @@ class MainActivity : Activity() {
             resultBlock("proot syscall spawn benchmark", prootSyscallSpawnBenchmarkResult) +
             resultBlock("alr dpkg --version", alrDpkgVersionResult) +
             resultBlock("alr dpkg --print-architecture", alrDpkgArchResult) +
+            resultBlock("alr dpkg --print-architecture preload", alrDpkgArchPreloadResult) +
             resultBlock("alr dpkg-query --version", alrDpkgQueryVersionResult) +
             resultBlock("alr apt --version", alrAptVersionResult) +
             resultBlock("alr apt-get --version", alrAptGetVersionResult) +

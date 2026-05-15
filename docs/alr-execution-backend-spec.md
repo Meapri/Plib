@@ -257,6 +257,23 @@ hot path and proves it against an extracted rootfs symlink fixture. Safe
 relative symlink extraction is now part of the rootfs installer contract; hard
 links and escaping symlink targets remain rejected.
 
+Current V59 preload userland-dpkg snapshot:
+
+```text
+build: 0.4.59-preload-userland-dpkg
+ALR DPKG ARCH PRELOAD EXECUTION: PASS
+alr dpkg --print-architecture preload handoff=ALR STATIC ENTRY HANDOFF: PASS
+alr dpkg --print-architecture preload path rewrite=alr handoff path rewrite count=0
+alr dpkg --print-architecture preload stdout=arm64
+alr syscall preload hot path measured faster count=3/3
+alr syscall preload hot path perf evidence=PASS
+```
+
+The v59 result proves the preload filesystem layer is no longer bench-only:
+`dpkg --print-architecture` can run as a real glibc program with `LD_PRELOAD`
+and without ALR's global ptrace path rewrite loop. Directory iteration remains
+the next required preload surface for broader `apt`/package-manager commands.
+
 ### ALR Exec v3: Identity and Procfs
 
 Required behavior:

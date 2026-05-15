@@ -213,6 +213,15 @@ class NativeCommandRunner(
     fun runAlrRuntimeTrampolineDpkgPrintArchitecture(rootfsDir: File): NativeCommandResult =
         runAlrRuntimeTrampolineGlibcRootfsProgram(rootfsDir, "/usr/bin/dpkg", listOf("--print-architecture"))
 
+    fun runAlrRuntimeTrampolineDpkgPrintArchitecturePreload(rootfsDir: File): NativeCommandResult =
+        runAlrRuntimeTrampolineGlibcRootfsProgram(
+            rootfsDir,
+            "/usr/bin/dpkg",
+            listOf("--print-architecture"),
+            pathRewrite = false,
+            extraGuestEnvironment = preloadPathFastPathEnvironment(rootfsDir),
+        )
+
     fun runAlrRuntimeTrampolineDpkgQueryVersion(rootfsDir: File): NativeCommandResult =
         runAlrRuntimeTrampolineGlibcRootfsProgram(rootfsDir, "/usr/bin/dpkg-query", listOf("--version"))
 
@@ -245,10 +254,7 @@ class NativeCommandRunner(
             listOf(mode, count.coerceIn(1, 10000).toString()),
             timeoutMs = 8000,
             pathRewrite = false,
-            extraGuestEnvironment = mapOf(
-                "ALR_ROOTFS" to rootfsDir.absolutePath,
-                "LD_PRELOAD" to translateGuestPath(rootfsDir, "/usr/lib/androlinux/libalr_path_preload.so"),
-            ),
+            extraGuestEnvironment = preloadPathFastPathEnvironment(rootfsDir),
         )
 
     fun runAlrRuntimeTrampolineDpkgInstallLocalSmoke(rootfsDir: File): NativeCommandResult =
@@ -275,6 +281,12 @@ class NativeCommandRunner(
         require(!guestPath.split('/').any { it == ".." }) { "ALR guest path must not contain .." }
         return File(rootfsDir, guestPath.removePrefix("/")).absolutePath
     }
+
+    private fun preloadPathFastPathEnvironment(rootfsDir: File): Map<String, String> =
+        mapOf(
+            "ALR_ROOTFS" to rootfsDir.absolutePath,
+            "LD_PRELOAD" to translateGuestPath(rootfsDir, "/usr/lib/androlinux/libalr_path_preload.so"),
+        )
 
     private fun runAlrRuntimeTrampolineGlibcRootfsProgram(
         rootfsDir: File,

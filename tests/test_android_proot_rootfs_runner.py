@@ -62,6 +62,7 @@ def test_main_activity_reports_alr_loader_help_probe():
     assert "runNativeBionicForkBenchmark" in runner
     assert "runAlrRuntimeTrampolineSyscallBench" in runner
     assert "runAlrRuntimeTrampolineSyscallBenchPreload" in runner
+    assert "preloadPathFastPathEnvironment" in runner
     assert "runProotRootfsSyscallBench" in runner
     assert "translateGuestPath" in runner
     assert "ALR_TRAMPOLINE_REPEAT_COUNT" in runner
@@ -246,9 +247,11 @@ def test_main_activity_reports_dpkg_arch_and_query_smoke_results():
     assert "DPKG QUERY EXECUTION:" in text
     assert "ALR DPKG VERSION EXECUTION:" in text
     assert "ALR DPKG ARCH EXECUTION:" in text
+    assert "ALR DPKG ARCH PRELOAD EXECUTION:" in text
     assert "ALR DPKG QUERY EXECUTION:" in text
     assert "runAlrRuntimeTrampolineDpkgVersion" in runner
     assert "runAlrRuntimeTrampolineDpkgPrintArchitecture" in runner
+    assert "runAlrRuntimeTrampolineDpkgPrintArchitecturePreload" in runner
     assert "runAlrRuntimeTrampolineDpkgQueryVersion" in runner
     assert "rootfs /usr/bin/dpkg-query exists=" in text
     assert "rootfs /usr/share/dpkg/cputable exists=" in text
@@ -257,6 +260,9 @@ def test_main_activity_reports_dpkg_arch_and_query_smoke_results():
     assert "proot dpkg-query --version exit=" in text
     assert "alr dpkg --version handoff=" in text
     assert "alr dpkg --print-architecture stdout=" in text
+    assert "alr dpkg --print-architecture preload handoff=" in text
+    assert "alr dpkg --print-architecture preload path rewrite=" in text
+    assert "alr dpkg --print-architecture preload stdout=" in text
     assert "alr dpkg-query --version path rewrite=" in text
 
 

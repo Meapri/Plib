@@ -174,6 +174,25 @@ rootfs installer, which is required for real Linux rootfs compatibility. The
 preload fsmeta path measured about 5% of PRoot cost on the device while the
 ptrace path remained far slower.
 
+Latest V59 preload userland-dpkg evidence:
+
+```text
+build: 0.4.59-preload-userland-dpkg
+ALR DPKG ARCH PRELOAD EXECUTION: PASS
+alr dpkg --print-architecture preload handoff=ALR STATIC ENTRY HANDOFF: PASS
+alr dpkg --print-architecture preload path rewrite=alr handoff path rewrite count=0
+alr dpkg --print-architecture preload stdout=arm64
+alr syscall preload hot path measured faster count=3/3
+alr syscall preload hot path perf evidence=PASS
+```
+
+The V59 result moves the preload path out of synthetic syscall fixtures and
+into a real glibc userland command: `dpkg --print-architecture` runs through the
+ALR trampoline with `LD_PRELOAD` enabled and global ptrace path rewriting
+disabled. The next missing userland coverage observed during probing is
+directory iteration (`opendir`/`readdir`/`closedir`), which blocks some `apt`
+commands from running under preload-only path virtualization.
+
 Known issue:
 
 - V35 summary says `GUEST WAYLAND GUI GPU BRIDGE EXECUTION: FAIL` and `GUEST X11 GUI GPU BRIDGE EXECUTION: FAIL` because ACK writing happens after socket input is closed. Frames were received and rendered losslessly; this is a report/ACK lifecycle bug, not a GPU-path failure.
