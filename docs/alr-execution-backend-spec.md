@@ -204,6 +204,32 @@ overhead and can outperform the measured PRoot baseline by a wide margin. This
 does not yet complete the syscall backend. The stat preload path currently
 fails and must not be counted as a supported or faster fast path until fixed.
 
+Current V57 preload stat-fastpath snapshot:
+
+```text
+build: 0.4.57-preload-stat-fastpath
+ALR SYSCALL STAT PRELOAD BENCH EXECUTION: PASS
+ALR SYSCALL OPENREAD PRELOAD BENCH EXECUTION: PASS
+alr syscall stat benchmark average us=2471
+proot syscall stat benchmark average us=251
+alr syscall stat preload benchmark average us=2
+alr syscall stat preload vs proot ratio pct=0
+alr syscall stat preload faster than proot=true
+alr syscall openread benchmark average us=7898
+proot syscall openread benchmark average us=207
+alr syscall openread preload benchmark average us=7
+alr syscall openread preload vs proot ratio pct=3
+alr syscall openread preload faster than proot=true
+alr syscall preload hot path measured faster count=2/2
+alr syscall preload hot path perf evidence=PASS
+```
+
+The v57 result extends the preload path to glibc compatibility entry points
+such as `__xstat`, `__xstat64`, `__fxstatat`, and `__fxstatat64`. This makes
+the measured stat and open/read preload paths both faster than PRoot on the
+test device. The ptrace path remains a fallback/discovery path, not the desired
+interactive hot path.
+
 ### ALR Exec v3: Identity and Procfs
 
 Required behavior:

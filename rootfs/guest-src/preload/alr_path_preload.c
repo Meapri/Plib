@@ -83,32 +83,71 @@ int openat64(int dirfd, const char* path, int flags, ...) {
     return (int)syscall(SYS_openat, dirfd, target, flags);
 }
 
-int stat(const char* path, struct stat* st) {
+static int alr_stat_path(const char* path, struct stat* st) {
     char rewritten[4096];
-    const int fd = (int)syscall(SYS_openat, AT_FDCWD, alr_rewrite_path(path, rewritten, sizeof(rewritten)), O_RDONLY | O_CLOEXEC);
-    if (fd < 0) {
-        return -1;
-    }
-    const int rc = fstat(fd, st);
-    close(fd);
-    return rc;
+    return (int)syscall(SYS_newfstatat, AT_FDCWD, alr_rewrite_path(path, rewritten, sizeof(rewritten)), st, 0);
 }
 
-int lstat(const char* path, struct stat* st) {
+static int alr_lstat_path(const char* path, struct stat* st) {
     char rewritten[4096];
     return (int)syscall(SYS_newfstatat, AT_FDCWD, alr_rewrite_path(path, rewritten, sizeof(rewritten)), st, AT_SYMLINK_NOFOLLOW);
 }
 
-int fstatat(int dirfd, const char* path, struct stat* st, int flags) {
+static int alr_fstatat_path(int dirfd, const char* path, struct stat* st, int flags) {
     char rewritten[4096];
-    if (flags == 0) {
-        const int fd = (int)syscall(SYS_openat, dirfd, alr_rewrite_path(path, rewritten, sizeof(rewritten)), O_RDONLY | O_CLOEXEC);
-        if (fd < 0) {
-            return -1;
-        }
-        const int rc = fstat(fd, st);
-        close(fd);
-        return rc;
-    }
     return (int)syscall(SYS_newfstatat, dirfd, alr_rewrite_path(path, rewritten, sizeof(rewritten)), st, flags);
+}
+
+int stat(const char* path, struct stat* st) {
+    return alr_stat_path(path, st);
+}
+
+int stat64(const char* path, struct stat64* st) {
+    return alr_stat_path(path, (struct stat*)st);
+}
+
+int lstat(const char* path, struct stat* st) {
+    return alr_lstat_path(path, st);
+}
+
+int lstat64(const char* path, struct stat64* st) {
+    return alr_lstat_path(path, (struct stat*)st);
+}
+
+int fstatat(int dirfd, const char* path, struct stat* st, int flags) {
+    return alr_fstatat_path(dirfd, path, st, flags);
+}
+
+int fstatat64(int dirfd, const char* path, struct stat64* st, int flags) {
+    return alr_fstatat_path(dirfd, path, (struct stat*)st, flags);
+}
+
+int __xstat(int version, const char* path, struct stat* st) {
+    (void)version;
+    return alr_stat_path(path, st);
+}
+
+int __xstat64(int version, const char* path, struct stat64* st) {
+    (void)version;
+    return alr_stat_path(path, (struct stat*)st);
+}
+
+int __lxstat(int version, const char* path, struct stat* st) {
+    (void)version;
+    return alr_lstat_path(path, st);
+}
+
+int __lxstat64(int version, const char* path, struct stat64* st) {
+    (void)version;
+    return alr_lstat_path(path, (struct stat*)st);
+}
+
+int __fxstatat(int version, int dirfd, const char* path, struct stat* st, int flags) {
+    (void)version;
+    return alr_fstatat_path(dirfd, path, st, flags);
+}
+
+int __fxstatat64(int version, int dirfd, const char* path, struct stat64* st, int flags) {
+    (void)version;
+    return alr_fstatat_path(dirfd, path, (struct stat*)st, flags);
 }

@@ -117,6 +117,34 @@ the same open/read workload at about 2% of the measured PRoot cost on the test
 device. This is not a complete syscall backend yet: the stat preload path still
 fails and must remain excluded from pass/faster counts until fixed.
 
+Latest V57 preload stat-fastpath evidence:
+
+```text
+build: 0.4.57-preload-stat-fastpath
+ALR SYSCALL STAT PRELOAD BENCH EXECUTION: PASS
+ALR SYSCALL OPENREAD PRELOAD BENCH EXECUTION: PASS
+alr syscall stat benchmark average us=2471
+proot syscall stat benchmark average us=251
+alr syscall stat preload benchmark average us=2
+alr syscall stat preload vs proot ratio pct=0
+alr syscall stat preload faster than proot=true
+alr syscall openread benchmark average us=7898
+proot syscall openread benchmark average us=207
+alr syscall openread preload benchmark average us=7
+alr syscall openread preload vs proot ratio pct=3
+alr syscall openread preload faster than proot=true
+alr syscall preload hot path measured faster count=2/2
+alr syscall preload hot path perf evidence=PASS
+```
+
+The V57 result fixes the V56 stat preload failure by covering glibc's
+`__xstat`/`__fxstatat` compatibility entry points, not only the plain `stat`
+symbol. On the measured device, both preload filesystem microbenchmarks now run
+far below the PRoot baseline while the older ptrace path remains much slower.
+The immediate backend priority moves from proving the approach to widening
+coverage: `access`, `readlink`, `getcwd`, `chdir`, metadata patching, and
+process/package-manager edge cases.
+
 Known issue:
 
 - V35 summary says `GUEST WAYLAND GUI GPU BRIDGE EXECUTION: FAIL` and `GUEST X11 GUI GPU BRIDGE EXECUTION: FAIL` because ACK writing happens after socket input is closed. Frames were received and rendered losslessly; this is a report/ACK lifecycle bug, not a GPU-path failure.
@@ -497,6 +525,7 @@ current PRoot:
 ALR runtime v1:
   in-process wrapper + direct syscall for common filesystem/process calls
   V56 measured open/read preload fast path: 6 us vs PRoot 201 us
+  V57 measured stat preload fast path: 2 us vs PRoot 251 us
 
 ALR runtime v2:
   selective raw-syscall patch/trampoline only for calls that bypass libc wrappers

@@ -216,6 +216,8 @@ def test_guest_path_preload_is_source_built_fast_path_shim():
     assert "RTLD_NEXT" not in source
     assert "openat" in source
     assert "fstatat" in source
+    assert "__xstat" in source
+    assert "__fxstatat" in source
     assert "libalr_path_preload.so" in build_script
 
 
