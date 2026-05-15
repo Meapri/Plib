@@ -17,6 +17,7 @@ required=(
   "docs/architecture.md"
   "docs/build-environment.md"
   "docs/poc-roadmap.md"
+  "docs/rootfs-extraction-safety.md"
   "rootfs/manifests/debian-arm64-bookworm-slim.json"
 )
 
