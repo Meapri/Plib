@@ -7,11 +7,11 @@ MAIN = ROOT / "app/src/main/java/dev/chanwoo/androlinux/MainActivity.kt"
 
 def test_debug_apk_version_code_is_bumped_for_device_update():
     text = BUILD.read_text()
-    assert "versionCode = 75" in text
-    assert 'versionName = "0.4.75-installed-procaddr"' in text
+    assert "versionCode = 76" in text
+    assert 'versionName = "0.4.76-installed-gui"' in text
 
 
 def test_main_activity_starts_with_visible_build_stamp_before_summary():
     text = MAIN.read_text()
-    assert "build: 0.4.75-installed-procaddr" in text
-    assert text.index("build: 0.4.75-installed-procaddr") < text.index("execution summary")
+    assert "build: 0.4.76-installed-gui" in text
+    assert text.index("build: 0.4.76-installed-gui") < text.index("execution summary")

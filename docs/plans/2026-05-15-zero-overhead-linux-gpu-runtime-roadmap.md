@@ -1103,7 +1103,29 @@ surface gles shim vs native average ratio pct=99
 
 Next implementation batch:
 
+Latest V76 installed-package Wayland/X11 GUI evidence:
+
+```text
+build: 0.4.76-installed-gui
+ALR INSTALLED PACKAGE WAYLAND GUI GPU BRIDGE EXECUTION: PASS
+ALR INSTALLED PACKAGE X11 GUI GPU BRIDGE EXECUTION: PASS
+rootfs installed alr wayland gui client exists=true executable=true bytes=706896
+rootfs installed alr x11 gui client exists=true executable=true bytes=706896
+alr installed package wayland gui ipc received frames=4
+alr installed package x11 gui ipc received frames=4
+alr installed package wayland gui ipc lossless=true
+alr installed package x11 gui ipc lossless=true
+alr installed package wayland gui ipc client handoff=ALR STATIC ENTRY HANDOFF: PASS
+alr installed package x11 gui ipc client handoff=ALR STATIC ENTRY HANDOFF: PASS
+installed package compatibility table=script:PASS,gpu-clear-ipc:PASS,gles-demo:PASS,gles-tcp-ack:PASS,gles-procaddr:PASS,wayland:PASS,x11:PASS
+surface gl renderer=Mali-G615 MC2
+surface gpu hardware render=true
+surface gles shim vs native average ratio pct=100
+```
+
+Next implementation batch:
+
 1. Add per-frame ACK timing extraction on the Android side, not only guest-side RTT.
-2. Package installed Wayland and X11 GUI bridge clients, then mark them in the compatibility table from real `.deb` entrypoints.
-3. Split known-fail legacy dpkg/proot diagnostics away from the active ALR summary.
-4. Start a minimal installed Vulkan/WSI discovery probe once GLES installed-package coverage stays stable.
+2. Split known-fail legacy dpkg/proot diagnostics away from the active ALR summary.
+3. Start a minimal installed Vulkan/WSI discovery probe once GLES and GUI installed-package coverage stays stable.
+4. Add a small real toolkit fixture target, likely a tiny GTK/Qt-independent Wayland protocol smoke before pulling in a larger GUI stack.

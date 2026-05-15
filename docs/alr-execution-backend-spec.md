@@ -848,6 +848,35 @@ installed `.deb` application entrypoint. This makes the installed-package GPU
 path cover both direct GLES symbol linkage and dynamic GLES symbol lookup before
 the commands are submitted to the Android-native Surface/EGL renderer.
 
+Current V76 installed-package Wayland/X11 GUI snapshot:
+
+```text
+build: 0.4.76-installed-gui
+ALR INSTALLED PACKAGE WAYLAND GUI GPU BRIDGE EXECUTION: PASS
+ALR INSTALLED PACKAGE X11 GUI GPU BRIDGE EXECUTION: PASS
+rootfs installed alr wayland gui client exists=true executable=true bytes=706896
+rootfs installed alr x11 gui client exists=true executable=true bytes=706896
+alr installed package wayland gui ipc received frames=4
+alr installed package x11 gui ipc received frames=4
+alr installed package wayland gui ipc lossless=true
+alr installed package x11 gui ipc lossless=true
+alr installed package wayland gui ipc client handoff=ALR STATIC ENTRY HANDOFF: PASS
+alr installed package x11 gui ipc client handoff=ALR STATIC ENTRY HANDOFF: PASS
+alr installed package wayland gui ipc stdout=alr-wayland-gpu-client ok
+alr installed package x11 gui ipc stdout=alr-x11-gpu-client ok
+installed package compatibility table=script:PASS,gpu-clear-ipc:PASS,gles-demo:PASS,gles-tcp-ack:PASS,gles-procaddr:PASS,wayland:PASS,x11:PASS
+ALR_GLES_IPC_ACK_SUMMARY requested=60 received=60 avg_us=125401 min_us=43218 max_us=132379
+surface gl renderer=Mali-G615 MC2
+surface gpu hardware render=true
+surface gles shim vs native average ratio pct=100
+```
+
+V76 moves the Wayland and X11 GUI bridge clients into the installed `.deb`
+surface as `/usr/local/bin/alr-package-wayland-gpu-client` and
+`/usr/local/bin/alr-package-x11-gpu-client`. The installed-package compatibility
+table is now backed by real package entrypoints for script, GPU clear, GLES
+stdout, GLES TCP+ACK, GLES procaddr, Wayland, and X11.
+
 Report:
 
 ```text

@@ -207,6 +207,20 @@ class NativeCommandRunner(
             ),
         )
 
+    fun runAlrRuntimeTrampolineInstalledPackageGuiClientIpc(rootfsDir: File, protocol: String, port: Int): NativeCommandResult =
+        runAlrRuntimeTrampoline(
+            rootfsDir,
+            if (protocol == "X11") "/usr/local/bin/alr-package-x11-gpu-client" else "/usr/local/bin/alr-package-wayland-gpu-client",
+            executeEntry = true,
+            timeoutMs = 1500,
+            extraGuestEnvironment = mapOf(
+                "ALR_GUI_BRIDGE_HOST" to "127.0.0.1",
+                "ALR_GUI_BRIDGE_PORT" to port.toString(),
+                "ALR_GUI_BRIDGE_PROTOCOL" to protocol,
+                "ALR_GPU_BRIDGE_TRANSPORT" to "tcp-loopback-gui",
+            ),
+        )
+
     fun runAlrRuntimeTrampolineDpkgVersion(rootfsDir: File): NativeCommandResult =
         runAlrRuntimeTrampolineGlibcRootfsProgram(rootfsDir, "/usr/bin/dpkg", listOf("--version"))
 

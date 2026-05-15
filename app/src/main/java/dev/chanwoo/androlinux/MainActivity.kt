@@ -22,7 +22,7 @@ class MainActivity : Activity() {
 
         val rootfsManifest = RootfsManifest(
             name = "debian-arm64",
-            version = "bookworm-slim-2026-05-gui-gpu-v75",
+            version = "bookworm-slim-2026-05-gui-gpu-v76",
             assets = listOf(
                 RootfsAsset(
                     path = "rootfs.tar.zst",
@@ -228,8 +228,11 @@ class MainActivity : Activity() {
         val guestX11GuiBridgeResult = runGuestGuiBridge(nativeCommandRunner, rootfsStatus.rootfsDir, "X11")
         val alrGuestWaylandGuiBridgeResult = runGuestGuiBridge(nativeCommandRunner, rootfsStatus.rootfsDir, "WAYLAND", useAlr = true)
         val alrGuestX11GuiBridgeResult = runGuestGuiBridge(nativeCommandRunner, rootfsStatus.rootfsDir, "X11", useAlr = true)
+        val alrInstalledPackageWaylandGuiBridgeResult = runGuestGuiBridge(nativeCommandRunner, rootfsStatus.rootfsDir, "WAYLAND", useInstalledPackage = true)
+        val alrInstalledPackageX11GuiBridgeResult = runGuestGuiBridge(nativeCommandRunner, rootfsStatus.rootfsDir, "X11", useInstalledPackage = true)
         val nativeGlesBaselineCommands = buildNativeGlesBaselineCommands(glesShimBenchmarkFrameCount)
-        val guestGuiSurfaceCommands = alrGuestWaylandGuiBridgeResult.commands + alrGuestX11GuiBridgeResult.commands +
+        val guestGuiSurfaceCommands = alrInstalledPackageWaylandGuiBridgeResult.commands + alrInstalledPackageX11GuiBridgeResult.commands +
+            alrGuestWaylandGuiBridgeResult.commands + alrGuestX11GuiBridgeResult.commands +
             guestWaylandGuiBridgeResult.commands + guestX11GuiBridgeResult.commands
         val surfaceGpuCommands = buildList {
             addAll(guestGuiSurfaceCommands)
@@ -301,6 +304,8 @@ class MainActivity : Activity() {
         val rootfsInstalledGpuSmokeFile = File(rootfsStatus.rootfsDir, "usr/local/bin/alr-package-gpu-smoke")
         val rootfsInstalledGlesDemoFile = File(rootfsStatus.rootfsDir, "usr/local/bin/alr-package-gles-demo")
         val rootfsInstalledGlesProcaddrDemoFile = File(rootfsStatus.rootfsDir, "usr/local/bin/alr-package-gles-procaddr-demo")
+        val rootfsInstalledWaylandGuiClientFile = File(rootfsStatus.rootfsDir, "usr/local/bin/alr-package-wayland-gpu-client")
+        val rootfsInstalledX11GuiClientFile = File(rootfsStatus.rootfsDir, "usr/local/bin/alr-package-x11-gpu-client")
         val rootfsDpkgStatusFile = File(rootfsStatus.rootfsDir, "var/lib/dpkg/status")
         val rootfsDevNullFile = File(rootfsStatus.rootfsDir, "dev/null")
         val rootfsDpkgTriggersFile = File(rootfsStatus.rootfsDir, "var/lib/dpkg/triggers/File")
@@ -597,6 +602,20 @@ class MainActivity : Activity() {
             alrGuestX11GuiBridgeResult.commands.size == alrGuestX11GuiBridgeResult.expectedFrames &&
             alrGuestX11GuiBridgeResult.expectedFrames > 0 &&
             alrGuestX11GuiBridgeResult.error == null
+        val alrInstalledPackageWaylandGuiBridgePassed =
+            alrInstalledPackageWaylandGuiBridgeResult.clientResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+                rootfsInstalledWaylandGuiClientFile.isFile &&
+                rootfsInstalledWaylandGuiClientFile.canExecute() &&
+                alrInstalledPackageWaylandGuiBridgeResult.commands.size == alrInstalledPackageWaylandGuiBridgeResult.expectedFrames &&
+                alrInstalledPackageWaylandGuiBridgeResult.expectedFrames > 0 &&
+                alrInstalledPackageWaylandGuiBridgeResult.error == null
+        val alrInstalledPackageX11GuiBridgePassed =
+            alrInstalledPackageX11GuiBridgeResult.clientResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+                rootfsInstalledX11GuiClientFile.isFile &&
+                rootfsInstalledX11GuiClientFile.canExecute() &&
+                alrInstalledPackageX11GuiBridgeResult.commands.size == alrInstalledPackageX11GuiBridgeResult.expectedFrames &&
+                alrInstalledPackageX11GuiBridgeResult.expectedFrames > 0 &&
+                alrInstalledPackageX11GuiBridgeResult.error == null
         val hostGpuHardwareCandidate = hostGpuProbe.lineStartingWith("host gpu hardware candidate=") == "host gpu hardware candidate=true"
 
         val installedPackageCompatibilityTable =
@@ -605,10 +624,10 @@ class MainActivity : Activity() {
                 "gles-demo:${if (alrInstalledPackageGlesDemoPassed) "PASS" else "FAIL"}," +
                 "gles-tcp-ack:${if (alrInstalledPackageGlesIpcBridgePassed) "PASS" else "FAIL"}," +
                 "gles-procaddr:${if (alrInstalledPackageGlesProcaddrDemoPassed) "PASS" else "FAIL"}," +
-                "wayland:not-packaged," +
-                "x11:not-packaged"
+                "wayland:${if (alrInstalledPackageWaylandGuiBridgePassed) "PASS" else "FAIL"}," +
+                "x11:${if (alrInstalledPackageX11GuiBridgePassed) "PASS" else "FAIL"}"
 
-        val executionSummary = "build: 0.4.75-installed-procaddr" +
+        val executionSummary = "build: 0.4.76-installed-gui" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -690,6 +709,8 @@ class MainActivity : Activity() {
             "\nGUEST X11 GUI GPU BRIDGE EXECUTION: ${if (guestX11GuiBridgePassed) "PASS" else "FAIL"}" +
             "\nALR GUEST WAYLAND GUI GPU BRIDGE EXECUTION: ${if (alrGuestWaylandGuiBridgePassed) "PASS" else "FAIL"}" +
             "\nALR GUEST X11 GUI GPU BRIDGE EXECUTION: ${if (alrGuestX11GuiBridgePassed) "PASS" else "FAIL"}" +
+            "\nALR INSTALLED PACKAGE WAYLAND GUI GPU BRIDGE EXECUTION: ${if (alrInstalledPackageWaylandGuiBridgePassed) "PASS" else "FAIL"}" +
+            "\nALR INSTALLED PACKAGE X11 GUI GPU BRIDGE EXECUTION: ${if (alrInstalledPackageX11GuiBridgePassed) "PASS" else "FAIL"}" +
             "\nGUEST GUI GPU SURFACE EXECUTION: PENDING_SURFACE_CALLBACK" +
             "\nANDROID PERMISSION MODEL: ${if (internetPermissionDeclared && networkStatePermissionDeclared && !broadStoragePermissionDeclared) "PASS" else "FAIL"}" +
             "\nidentity numeric root=$identityNumericRoot" +
@@ -737,6 +758,8 @@ class MainActivity : Activity() {
             "\nrootfs installed alr gpu smoke exists=${rootfsInstalledGpuSmokeFile.isFile} executable=${rootfsInstalledGpuSmokeFile.canExecute()} bytes=${rootfsInstalledGpuSmokeFile.length()}" +
             "\nrootfs installed alr gles demo exists=${rootfsInstalledGlesDemoFile.isFile} executable=${rootfsInstalledGlesDemoFile.canExecute()} bytes=${rootfsInstalledGlesDemoFile.length()}" +
             "\nrootfs installed alr gles procaddr demo exists=${rootfsInstalledGlesProcaddrDemoFile.isFile} executable=${rootfsInstalledGlesProcaddrDemoFile.canExecute()} bytes=${rootfsInstalledGlesProcaddrDemoFile.length()}" +
+            "\nrootfs installed alr wayland gui client exists=${rootfsInstalledWaylandGuiClientFile.isFile} executable=${rootfsInstalledWaylandGuiClientFile.canExecute()} bytes=${rootfsInstalledWaylandGuiClientFile.length()}" +
+            "\nrootfs installed alr x11 gui client exists=${rootfsInstalledX11GuiClientFile.isFile} executable=${rootfsInstalledX11GuiClientFile.canExecute()} bytes=${rootfsInstalledX11GuiClientFile.length()}" +
             "\ninstalled package compatibility table=$installedPackageCompatibilityTable" +
             "\nrootfs dpkg status exists=${rootfsDpkgStatusFile.isFile} bytes=${rootfsDpkgStatusFile.length()}" +
             "\nrootfs /dev/null placeholder exists=${rootfsDevNullFile.isFile} bytes=${rootfsDevNullFile.length()}" +
@@ -891,6 +914,18 @@ class MainActivity : Activity() {
             "\nalr guest x11 gui ipc raw=${alrGuestX11GuiBridgeResult.rawLines.joinToString("|")}" +
             "\nalr guest x11 gui ipc error=${alrGuestX11GuiBridgeResult.error ?: "none"}" +
             "\nalr guest x11 gui ipc client handoff=${alrGuestX11GuiBridgeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr installed package wayland gui ipc received frames=${alrInstalledPackageWaylandGuiBridgeResult.commands.size}" +
+            "\nalr installed package wayland gui ipc lossless=${alrInstalledPackageWaylandGuiBridgeResult.expectedFrames > 0 && alrInstalledPackageWaylandGuiBridgeResult.expectedFrames == alrInstalledPackageWaylandGuiBridgeResult.commands.size}" +
+            "\nalr installed package wayland gui ipc raw=${alrInstalledPackageWaylandGuiBridgeResult.rawLines.joinToString("|")}" +
+            "\nalr installed package wayland gui ipc error=${alrInstalledPackageWaylandGuiBridgeResult.error ?: "none"}" +
+            "\nalr installed package wayland gui ipc client handoff=${alrInstalledPackageWaylandGuiBridgeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr installed package wayland gui ipc stdout=${alrInstalledPackageWaylandGuiBridgeResult.clientResult.stdout.alrHandoffStdoutText()}" +
+            "\nalr installed package x11 gui ipc received frames=${alrInstalledPackageX11GuiBridgeResult.commands.size}" +
+            "\nalr installed package x11 gui ipc lossless=${alrInstalledPackageX11GuiBridgeResult.expectedFrames > 0 && alrInstalledPackageX11GuiBridgeResult.expectedFrames == alrInstalledPackageX11GuiBridgeResult.commands.size}" +
+            "\nalr installed package x11 gui ipc raw=${alrInstalledPackageX11GuiBridgeResult.rawLines.joinToString("|")}" +
+            "\nalr installed package x11 gui ipc error=${alrInstalledPackageX11GuiBridgeResult.error ?: "none"}" +
+            "\nalr installed package x11 gui ipc client handoff=${alrInstalledPackageX11GuiBridgeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr installed package x11 gui ipc stdout=${alrInstalledPackageX11GuiBridgeResult.clientResult.stdout.alrHandoffStdoutText()}" +
             "\nsurface gpu command source frames=${surfaceGpuCommands.size}" +
             "\nproot dpkg-split --version exit=${prootDpkgSplitVersionResult.exitCode}" +
             "\nproot dpkg-split --version stdout=${prootDpkgSplitVersionResult.stdout}" +
@@ -1296,6 +1331,8 @@ class MainActivity : Activity() {
             resultBlock("proot guest x11 gui ipc client", guestX11GuiBridgeResult.clientResult) +
             resultBlock("alr guest wayland gui ipc client", alrGuestWaylandGuiBridgeResult.clientResult) +
             resultBlock("alr guest x11 gui ipc client", alrGuestX11GuiBridgeResult.clientResult) +
+            resultBlock("alr installed package wayland gui ipc client", alrInstalledPackageWaylandGuiBridgeResult.clientResult) +
+            resultBlock("alr installed package x11 gui ipc client", alrInstalledPackageX11GuiBridgeResult.clientResult) +
             optionalResultBlock("proot hello verbose on failure", prootHelloVerboseResult)
 
         val report = executionSummary + "\n\n--- verbose report ---\n" + verboseReport
@@ -1541,6 +1578,7 @@ class MainActivity : Activity() {
         rootfsDir: File,
         protocol: String,
         useAlr: Boolean = false,
+        useInstalledPackage: Boolean = false,
     ): GuestGpuIpcBridgeResult {
         val host = "127.0.0.1"
         val server = ServerSocket(0, 1, InetAddress.getByName(host)).apply { soTimeout = 3000 }
@@ -1589,7 +1627,9 @@ class MainActivity : Activity() {
                 errors += error.javaClass.simpleName + ": " + (error.message ?: "unknown")
             }
         }
-        val clientResult = if (useAlr) {
+        val clientResult = if (useInstalledPackage) {
+            nativeCommandRunner.runAlrRuntimeTrampolineInstalledPackageGuiClientIpc(rootfsDir, protocol, port)
+        } else if (useAlr) {
             nativeCommandRunner.runAlrRuntimeTrampolineGuestGuiClientIpc(rootfsDir, protocol, port)
         } else {
             nativeCommandRunner.runProotRootfsGuestGuiClientIpc(rootfsDir, protocol, port)

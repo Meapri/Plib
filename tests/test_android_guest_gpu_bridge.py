@@ -96,6 +96,8 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "alr installed package gles procaddr draw command count" in text
     assert "installed package compatibility table=" in text
     assert "gles-procaddr:" in text
+    assert "wayland:${if (alrInstalledPackageWaylandGuiBridgePassed)" in text
+    assert "x11:${if (alrInstalledPackageX11GuiBridgePassed)" in text
     assert "alr installed package gles ipc draw frames" in text
     assert "alr installed package gles ipc ack frames" in text
     assert "alr installed package gles ipc ack raw" in text
@@ -106,6 +108,11 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "ALR GUEST GLES SHIM SMOKE EXECUTION" in text
     assert "ALR GUEST WAYLAND GUI GPU BRIDGE EXECUTION" in text
     assert "ALR GUEST X11 GUI GPU BRIDGE EXECUTION" in text
+    assert "ALR INSTALLED PACKAGE WAYLAND GUI GPU BRIDGE EXECUTION" in text
+    assert "ALR INSTALLED PACKAGE X11 GUI GPU BRIDGE EXECUTION" in text
+    assert "runAlrRuntimeTrampolineInstalledPackageGuiClientIpc" in runner
+    assert "alr installed package wayland gui ipc received frames" in text
+    assert "alr installed package x11 gui ipc received frames" in text
     assert "alr guest gles shim smoke path rewrite" in text
     assert "GUEST EGL INIT VIA SHIM EXECUTION:" in text
     assert "GUEST EGL CONTEXT VIA SHIM EXECUTION:" in text

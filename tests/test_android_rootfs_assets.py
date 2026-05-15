@@ -9,7 +9,7 @@ PAYLOAD = ROOT / "app" / "src" / "main" / "assets" / "rootfs" / "payloads" / "ti
 def test_android_assets_include_rootfs_manifest_and_payload():
     assert MANIFEST.is_file()
     assert PAYLOAD.is_file()
-    assert PAYLOAD.stat().st_size == 35491840
+    assert PAYLOAD.stat().st_size == 35829760
 
 
 def test_android_asset_manifest_matches_host_manifest():
@@ -307,12 +307,16 @@ def test_tiny_rootfs_contains_local_deb_install_smoke_package():
             gpu_script = data_archive.extractfile("./usr/local/bin/alr-package-gpu-smoke").read()
             gles_demo = data_archive.extractfile("./usr/local/bin/alr-package-gles-demo").read()
             gles_procaddr_demo = data_archive.extractfile("./usr/local/bin/alr-package-gles-procaddr-demo").read()
+            wayland_gui = data_archive.extractfile("./usr/local/bin/alr-package-wayland-gpu-client").read()
+            x11_gui = data_archive.extractfile("./usr/local/bin/alr-package-x11-gpu-client").read()
         assert b"ALR_SMOKE_PACKAGE_SCRIPT=1" in script
         assert b"ALR_SMOKE_ARCH=$(dpkg --print-architecture" in script
         assert b"ALR_SMOKE_ENV_ARCH=$(/usr/bin/env dpkg --print-architecture" in script
         assert gpu_script.startswith(b"\x7fELF")
         assert gles_demo.startswith(b"\x7fELF")
         assert gles_procaddr_demo.startswith(b"\x7fELF")
+        assert wayland_gui.startswith(b"\x7fELF")
+        assert x11_gui.startswith(b"\x7fELF")
         assert archive.extractfile("./usr/bin/dpkg-deb").read(4) == b"\x7fELF"
         assert archive.extractfile("./bin/tar").read(4) == b"\x7fELF"
         dpkg_deb = archive.extractfile("./usr/bin/dpkg-deb").read()
