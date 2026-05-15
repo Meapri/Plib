@@ -19,6 +19,7 @@ std::string build_report(const StaticEntryTransferContext& context) {
     out << "\nalr transfer stack mapped=" << (context.stack_mapped ? "true" : "false");
     out << "\nalr transfer entry address=" << hex_value(context.entry_address);
     out << "\nalr transfer initial sp address=" << hex_value(context.initial_sp_address);
+    out << "\nalr transfer stack pointers rebased=" << (context.stack.pointers_rebased ? "true" : "false");
     out << "\nalr transfer fixed vaddr required=" << (context.fixed_vaddr_required ? "true" : "false");
     out << "\nalr transfer cleanup done=" << (context.cleanup_done ? "true" : "false");
     out << "\nalr transfer image unmapped=" << (context.image.unmapped ? "true" : "false");
@@ -88,6 +89,7 @@ std::string build_static_entry_transfer_skip_report() {
         "alr transfer stack mapped=false\n"
         "alr transfer entry address=0x0\n"
         "alr transfer initial sp address=0x0\n"
+        "alr transfer stack pointers rebased=false\n"
         "alr transfer fixed vaddr required=true\n"
         "alr transfer cleanup done=false\n"
         "alr transfer image unmapped=false\n"

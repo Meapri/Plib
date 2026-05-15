@@ -23,9 +23,15 @@ struct EntryStackPlan {
     std::uint64_t stack_size = 0;
     std::uint64_t initial_sp_vaddr = 0;
     std::uint64_t entry_vaddr = 0;
+    std::uint64_t program_header_vaddr = 0;
+    std::uint64_t program_header_entry_size = 0;
+    std::uint64_t program_header_count = 0;
+    std::uint64_t page_size = 0;
     std::uint32_t argc = 0;
     std::uint32_t env_count = 0;
     std::uint32_t auxv_pair_count = 0;
+    std::vector<std::string> argv;
+    std::vector<std::string> env;
     std::vector<unsigned char> image;
     std::string report;
 };
@@ -38,6 +44,7 @@ struct EntryStackRuntimeMapping {
     std::uintptr_t mapped_base = 0;
     std::uint64_t mapped_size = 0;
     std::uintptr_t initial_sp_address = 0;
+    bool pointers_rebased = false;
     std::string report;
 };
 

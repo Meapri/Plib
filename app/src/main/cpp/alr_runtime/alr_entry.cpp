@@ -60,6 +60,8 @@ std::string build_report(const EntryStackPlan& plan) {
     out << "\nalr entry stack size=" << plan.stack_size;
     out << "\nalr entry initial sp=" << hex_value(plan.initial_sp_vaddr);
     out << "\nalr entry vaddr=" << hex_value(plan.entry_vaddr);
+    out << "\nalr entry phdr=" << hex_value(plan.program_header_vaddr);
+    out << "\nalr entry pagesz=" << plan.page_size;
     out << "\nalr entry argc=" << plan.argc;
     out << "\nalr entry envc=" << plan.env_count;
     out << "\nalr entry auxv pairs=" << plan.auxv_pair_count;
@@ -76,6 +78,7 @@ std::string build_report(const EntryStackRuntimeMapping& mapping) {
     out << "\nalr transfer stack base=" << hex_value(mapping.mapped_base);
     out << "\nalr transfer stack size=" << mapping.mapped_size;
     out << "\nalr transfer initial sp address=" << hex_value(mapping.initial_sp_address);
+    out << "\nalr transfer stack pointers rebased=" << (mapping.pointers_rebased ? "true" : "false");
     out << "\nalr transfer stack unmapped=" << (mapping.unmapped ? "true" : "false");
     if (!mapping.error.empty()) {
         out << "\nalr transfer stack error=" << mapping.error;
@@ -88,6 +91,85 @@ bool valid_stack_bounds(const EntryStackInput& input) {
         input.stack_size <= 8 * 1024 * 1024 &&
         input.stack_top_vaddr > input.stack_size &&
         (input.stack_top_vaddr % 16) == 0;
+}
+
+void populate_entry_stack_image(EntryStackPlan& plan, const std::uint64_t stack_top_vaddr) {
+    plan.image.assign(static_cast<std::size_t>(plan.stack_size), 0);
+    std::uint64_t cursor = plan.stack_size;
+    const std::uint64_t stack_base_vaddr = stack_top_vaddr - plan.stack_size;
+
+    auto push_bytes = [&](const void* data, std::uint64_t size, std::uint64_t alignment) -> std::uint64_t {
+        if (size > cursor) {
+            throw std::runtime_error("entry stack string area overflow");
+        }
+        cursor = align_down(cursor - size, alignment);
+        if (cursor + size > plan.image.size()) {
+            throw std::runtime_error("entry stack write overflow");
+        }
+        std::memcpy(plan.image.data() + cursor, data, static_cast<std::size_t>(size));
+        return stack_base_vaddr + cursor;
+    };
+
+    std::vector<std::uint64_t> argv_ptrs;
+    argv_ptrs.reserve(plan.argv.size());
+    std::vector<std::uint64_t> env_ptrs;
+    env_ptrs.reserve(plan.env.size());
+
+    for (auto iter = plan.env.rbegin(); iter != plan.env.rend(); ++iter) {
+        env_ptrs.push_back(push_bytes(iter->c_str(), iter->size() + 1, 1));
+    }
+    std::reverse(env_ptrs.begin(), env_ptrs.end());
+    for (auto iter = plan.argv.rbegin(); iter != plan.argv.rend(); ++iter) {
+        argv_ptrs.push_back(push_bytes(iter->c_str(), iter->size() + 1, 1));
+    }
+    std::reverse(argv_ptrs.begin(), argv_ptrs.end());
+
+    const std::array<unsigned char, 16> random_bytes{
+        0x41, 0x4c, 0x52, 0x2d, 0x73, 0x74, 0x61, 0x63,
+        0x6b, 0x2d, 0x72, 0x61, 0x6e, 0x64, 0x30, 0x31,
+    };
+    const std::uint64_t random_vaddr = push_bytes(random_bytes.data(), random_bytes.size(), 16);
+
+    std::vector<std::pair<std::uint64_t, std::uint64_t>> auxv{
+        {kAtPhdr, plan.program_header_vaddr},
+        {kAtPhent, plan.program_header_entry_size},
+        {kAtPhnum, plan.program_header_count},
+        {kAtPagesz, plan.page_size},
+        {kAtBase, 0},
+        {kAtFlags, 0},
+        {kAtEntry, plan.entry_vaddr},
+        {kAtUid, 0},
+        {kAtEuid, 0},
+        {kAtGid, 0},
+        {kAtEgid, 0},
+        {kAtSecure, 0},
+        {kAtRandom, random_vaddr},
+        {kAtNull, 0},
+    };
+    plan.auxv_pair_count = static_cast<std::uint32_t>(auxv.size());
+
+    std::vector<std::uint64_t> words;
+    words.reserve(1 + argv_ptrs.size() + 1 + env_ptrs.size() + 1 + auxv.size() * 2);
+    words.push_back(argv_ptrs.size());
+    words.insert(words.end(), argv_ptrs.begin(), argv_ptrs.end());
+    words.push_back(0);
+    words.insert(words.end(), env_ptrs.begin(), env_ptrs.end());
+    words.push_back(0);
+    for (const auto& [key, value] : auxv) {
+        words.push_back(key);
+        words.push_back(value);
+    }
+
+    const std::uint64_t words_size = words.size() * sizeof(std::uint64_t);
+    if (words_size > cursor) {
+        throw std::runtime_error("entry stack pointer area overflow");
+    }
+    cursor = align_down(cursor - words_size, 16);
+    for (std::size_t i = 0; i < words.size(); ++i) {
+        write_u64(plan.image, cursor + i * sizeof(std::uint64_t), words[i]);
+    }
+    plan.stack_top_vaddr = stack_top_vaddr;
+    plan.initial_sp_vaddr = stack_base_vaddr + cursor;
 }
 
 }  // namespace
@@ -112,8 +194,14 @@ EntryStackPlan build_static_entry_stack_plan(
     plan.stack_top_vaddr = input.stack_top_vaddr;
     plan.stack_size = input.stack_size;
     plan.entry_vaddr = elf_plan.entry;
+    plan.program_header_vaddr = elf_plan.program_header_vaddr;
+    plan.program_header_entry_size = elf_plan.program_header_entry_size;
+    plan.program_header_count = elf_plan.program_header_count;
+    plan.page_size = image_plan.page_size;
     plan.argc = static_cast<std::uint32_t>(input.argv.size());
     plan.env_count = static_cast<std::uint32_t>(input.env.size());
+    plan.argv = input.argv;
+    plan.env = input.env;
 
     if (!elf_plan.valid || elf_plan.status != ElfLoadPlanStatus::StaticExecutable) {
         plan.error = "ELF is not a static executable";
@@ -138,82 +226,8 @@ EntryStackPlan build_static_entry_stack_plan(
         return plan;
     }
 
-    plan.image.assign(static_cast<std::size_t>(input.stack_size), 0);
-    std::uint64_t cursor = input.stack_size;
-    const std::uint64_t stack_base_vaddr = input.stack_top_vaddr - input.stack_size;
-
-    auto push_bytes = [&](const void* data, std::uint64_t size, std::uint64_t alignment) -> std::uint64_t {
-        if (size > cursor) {
-            throw std::runtime_error("entry stack string area overflow");
-        }
-        cursor = align_down(cursor - size, alignment);
-        if (cursor + size > plan.image.size()) {
-            throw std::runtime_error("entry stack write overflow");
-        }
-        std::memcpy(plan.image.data() + cursor, data, static_cast<std::size_t>(size));
-        return stack_base_vaddr + cursor;
-    };
-
-    std::vector<std::uint64_t> argv_ptrs;
-    argv_ptrs.reserve(input.argv.size());
-    std::vector<std::uint64_t> env_ptrs;
-    env_ptrs.reserve(input.env.size());
-
     try {
-        for (auto iter = input.env.rbegin(); iter != input.env.rend(); ++iter) {
-            env_ptrs.push_back(push_bytes(iter->c_str(), iter->size() + 1, 1));
-        }
-        std::reverse(env_ptrs.begin(), env_ptrs.end());
-        for (auto iter = input.argv.rbegin(); iter != input.argv.rend(); ++iter) {
-            argv_ptrs.push_back(push_bytes(iter->c_str(), iter->size() + 1, 1));
-        }
-        std::reverse(argv_ptrs.begin(), argv_ptrs.end());
-
-        const std::array<unsigned char, 16> random_bytes{
-            0x41, 0x4c, 0x52, 0x2d, 0x73, 0x74, 0x61, 0x63,
-            0x6b, 0x2d, 0x72, 0x61, 0x6e, 0x64, 0x30, 0x31,
-        };
-        const std::uint64_t random_vaddr = push_bytes(random_bytes.data(), random_bytes.size(), 16);
-
-        std::vector<std::pair<std::uint64_t, std::uint64_t>> auxv{
-            {kAtPhdr, elf_plan.program_header_vaddr},
-            {kAtPhent, elf_plan.program_header_entry_size},
-            {kAtPhnum, elf_plan.program_header_count},
-            {kAtPagesz, image_plan.page_size},
-            {kAtBase, 0},
-            {kAtFlags, 0},
-            {kAtEntry, elf_plan.entry},
-            {kAtUid, 0},
-            {kAtEuid, 0},
-            {kAtGid, 0},
-            {kAtEgid, 0},
-            {kAtSecure, 0},
-            {kAtRandom, random_vaddr},
-            {kAtNull, 0},
-        };
-        plan.auxv_pair_count = static_cast<std::uint32_t>(auxv.size());
-
-        std::vector<std::uint64_t> words;
-        words.reserve(1 + argv_ptrs.size() + 1 + env_ptrs.size() + 1 + auxv.size() * 2);
-        words.push_back(argv_ptrs.size());
-        words.insert(words.end(), argv_ptrs.begin(), argv_ptrs.end());
-        words.push_back(0);
-        words.insert(words.end(), env_ptrs.begin(), env_ptrs.end());
-        words.push_back(0);
-        for (const auto& [key, value] : auxv) {
-            words.push_back(key);
-            words.push_back(value);
-        }
-
-        const std::uint64_t words_size = words.size() * sizeof(std::uint64_t);
-        if (words_size > cursor) {
-            throw std::runtime_error("entry stack pointer area overflow");
-        }
-        cursor = align_down(cursor - words_size, 16);
-        for (std::size_t i = 0; i < words.size(); ++i) {
-            write_u64(plan.image, cursor + i * sizeof(std::uint64_t), words[i]);
-        }
-        plan.initial_sp_vaddr = stack_base_vaddr + cursor;
+        populate_entry_stack_image(plan, input.stack_top_vaddr);
         plan.valid = true;
     } catch (const std::exception& exc) {
         plan.error = exc.what();
@@ -258,8 +272,19 @@ EntryStackRuntimeMapping map_entry_stack_for_transfer(const EntryStackPlan& plan
 
     mapping.mapped = true;
     mapping.mapped_base = reinterpret_cast<std::uintptr_t>(mapped);
-    mapping.initial_sp_address = mapping.mapped_base + (plan.initial_sp_vaddr - stack_base_vaddr);
-    std::memcpy(mapped, plan.image.data(), plan.image.size());
+    const std::uint64_t runtime_stack_top = mapping.mapped_base + mapping.mapped_size;
+    EntryStackPlan runtime_plan = plan;
+    try {
+        populate_entry_stack_image(runtime_plan, runtime_stack_top);
+    } catch (const std::exception& exc) {
+        mapping.error = exc.what();
+        unmap_entry_stack_runtime_mapping(mapping);
+        mapping.report = build_report(mapping);
+        return mapping;
+    }
+    mapping.initial_sp_address = runtime_plan.initial_sp_vaddr;
+    std::memcpy(mapped, runtime_plan.image.data(), runtime_plan.image.size());
+    mapping.pointers_rebased = true;
     if (::mprotect(mapped, static_cast<std::size_t>(plan.stack_size), PROT_READ | PROT_WRITE) == 0) {
         mapping.protected_stack = true;
     } else {
