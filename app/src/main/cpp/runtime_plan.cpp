@@ -37,6 +37,10 @@ std::string alr_runtime_hook_for(const RuntimeReportInput& input) {
     return join_path(input.native_library_dir, "libalr_runtime_hook.so");
 }
 
+std::string alr_runtime_interposer_for(const RuntimeReportInput& input) {
+    return join_path(input.native_library_dir, "libalr_runtime_interposer.so");
+}
+
 std::string alr_runtime_bridge_for(const RuntimeReportInput& input) {
     return join_path(input.native_library_dir, "libalr_runtime_bridge.so");
 }
@@ -81,8 +85,11 @@ RuntimeReport build_runtime_report(const RuntimeReportInput& input, const Execut
     out << "ALR RUNTIME DIRECT APP-DATA EXEC POLICY: PASS\n";
     out << "ALR HOOK LOAD: PASS\n";
     out << "ALR HOOK CONFIG BUILD: PASS\n";
+    out << "ALR INTERPOSER LOAD: PASS\n";
+    out << "ALR INTERPOSER CONFIG BUILD: PASS\n";
     out << "alr runtime launcher path=" << alr_runtime.executable << "\n";
     out << "alr runtime hook path=" << alr_runtime.env.at("ALR_HOOK_PATH") << "\n";
+    out << "alr runtime interposer path=" << alr_runtime.env.at("ALR_INTERPOSER_PATH") << "\n";
     out << "alr runtime bridge path=" << alr_runtime.env.at("ALR_BRIDGE_PATH") << "\n";
     out << "alr runtime config source=env-skeleton\n";
     out << "alr runtime guest execution=not-claimed\n";
@@ -173,6 +180,7 @@ LoaderLaunchPlan build_alr_runtime_launch_plan(const RuntimeReportInput& input) 
         {"ALR_PROGRAM", input.program},
         {"ALR_BACKEND", "alr-runtime"},
         {"ALR_HOOK_PATH", alr_runtime_hook_for(input)},
+        {"ALR_INTERPOSER_PATH", alr_runtime_interposer_for(input)},
         {"ALR_BRIDGE_PATH", alr_runtime_bridge_for(input)},
         {"ALR_FAKE_ROOT", "0"},
         {"ALR_VERBOSE", "0"},

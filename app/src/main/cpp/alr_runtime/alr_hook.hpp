@@ -9,9 +9,9 @@ namespace alr::runtime {
 
 struct PathHookSmokeResult {
     PathTranslation translation;
-    bool opened;
-    bool stated;
-    long long size_bytes;
+    bool opened = false;
+    bool stated = false;
+    long long size_bytes = -1;
     std::string first_bytes;
     std::string error;
     std::string report;

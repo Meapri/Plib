@@ -25,8 +25,10 @@ def test_alr_runtime_launch_plan_is_declared_and_implemented():
     assert "build_alr_runtime_launch_plan" in header
     assert "libalr_runtime_launcher.so" in source
     assert "libalr_runtime_hook.so" in source
+    assert "libalr_runtime_interposer.so" in source
     assert "libalr_runtime_bridge.so" in source
     assert "ALR HOOK LOAD: PASS" in source
+    assert "ALR INTERPOSER LOAD: PASS" in source
     assert '"--dry-run"' in source
     assert "guest execution is not implemented yet" in source
 

@@ -448,6 +448,7 @@ Java_dev_chanwoo_androlinux_MainActivity_nativeLibraryProbe(
     append_dlopen_probe(out, join_path(dir, "libproot-loader.so"), "libproot-loader.so");
     append_dlopen_probe(out, join_path(dir, "libalr_runtime_launcher.so"), "libalr_runtime_launcher.so");
     append_dlopen_probe(out, join_path(dir, "libalr_runtime_hook.so"), "libalr_runtime_hook.so");
+    append_dlopen_probe(out, join_path(dir, "libalr_runtime_interposer.so"), "libalr_runtime_interposer.so");
     return env->NewStringUTF(out.str().c_str());
 }
 

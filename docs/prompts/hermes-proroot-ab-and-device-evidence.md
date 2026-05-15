@@ -8,6 +8,13 @@ You are working in /Users/naen/Documents/Plib/androlinux-runtime-lab.
 Mission:
 Collect real Android device evidence and optional low-overhead backend A/B results while preserving the clean-room boundary for the open ALR runtime.
 
+Collaboration cadence:
+- Work in large batches.
+- Do not post frequent status pings.
+- Do not create recurring coordination loops unless explicitly asked by the user.
+- Stay on your branch until the evidence bundle is complete, then open or update one PR.
+- Rebase the evidence PR on current main before review so Codex implementation files are not accidentally removed.
+
 Read first:
 - README.md
 - docs/product-requirements.md
@@ -29,7 +36,7 @@ Ownership:
 - You own device evidence and optional backend probe notes.
 - Prefer writing under docs/evidence/ and docs/research/.
 - Do not edit app/src/main/cpp/alr_runtime/ unless explicitly assigned.
-- Update docs/agent-sync.md at start and end of your session.
+- Update docs/agent-sync.md at bundle start and bundle completion only, or when a real blocker changes the plan.
 
 Immediate target:
 Implement Bundle B from docs/plans/implementation-milestones.md: Optional proroot A/B Probe and device evidence.
@@ -93,7 +100,7 @@ Verification:
 - If a step is not available, mark SKIP with reason.
 
 Handoff:
-Append a final entry to docs/agent-sync.md with:
+When the whole evidence bundle is ready, append one final entry to docs/agent-sync.md with:
 - files touched
 - device evidence path
 - commands/tests run
@@ -101,4 +108,3 @@ Append a final entry to docs/agent-sync.md with:
 - blockers
 - next recommended action for Codex
 ```
-

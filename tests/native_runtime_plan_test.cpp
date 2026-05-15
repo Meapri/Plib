@@ -25,7 +25,10 @@ int main() {
         text.find("ALR RUNTIME DIRECT APP-DATA EXEC POLICY: PASS") != std::string::npos &&
         text.find("ALR HOOK LOAD: PASS") != std::string::npos &&
         text.find("ALR HOOK CONFIG BUILD: PASS") != std::string::npos &&
+        text.find("ALR INTERPOSER LOAD: PASS") != std::string::npos &&
+        text.find("ALR INTERPOSER CONFIG BUILD: PASS") != std::string::npos &&
         text.find("alr runtime launcher path=/data/app/pkg/lib/arm64/libalr_runtime_launcher.so") != std::string::npos &&
+        text.find("alr runtime interposer path=/data/app/pkg/lib/arm64/libalr_runtime_interposer.so") != std::string::npos &&
         text.find("alr runtime guest execution=not-claimed") != std::string::npos &&
         text.find("LOW-OVERHEAD BACKEND PROBE FRAMEWORK: PASS") != std::string::npos &&
         text.find("OPTIONAL RUNTIME BACKEND AVAILABLE: SKIP") != std::string::npos &&
@@ -60,6 +63,7 @@ int main() {
         alr_runtime.argv[7] == "--dry-run" &&
         alr_runtime.env.at("ALR_BACKEND") == "alr-runtime" &&
         alr_runtime.env.at("ALR_HOOK_PATH") == "/data/app/pkg/lib/arm64/libalr_runtime_hook.so" &&
+        alr_runtime.env.at("ALR_INTERPOSER_PATH") == "/data/app/pkg/lib/arm64/libalr_runtime_interposer.so" &&
         alr_runtime.env.at("ALR_BRIDGE_PATH") == "/data/app/pkg/lib/arm64/libalr_runtime_bridge.so" &&
         alr_runtime.env.at("ALR_FAKE_ROOT") == "0";
 

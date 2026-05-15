@@ -197,3 +197,54 @@ Blockers:
 Next recommended action:
 - Open a PR for Issue #7.
 - Hermes can use the new hook report lines as APK/device smoke assertions while continuing Issue #1 and Issue #3 evidence work.
+
+## 2026-05-15 - Codex - Bundle E Implementation
+
+Branch/worktree:
+- `codex/alr-interposer-scaffold` at `/Users/naen/Documents/Plib/androlinux-runtime-lab`
+
+Touched files:
+- `docs/agent-coordination.md`
+- `docs/plans/parallel-workstreams.md`
+- `docs/prompts/hermes-proroot-ab-and-device-evidence.md`
+- `app/src/main/cpp/CMakeLists.txt`
+- `app/src/main/cpp/alr_runtime/alr_hook.hpp`
+- `app/src/main/cpp/alr_runtime/alr_hook.cpp`
+- `app/src/main/cpp/alr_runtime/alr_interposer.hpp`
+- `app/src/main/cpp/alr_runtime/alr_interposer.cpp`
+- `app/src/main/cpp/alr_runtime_interposer.cpp`
+- `app/src/main/cpp/runtime_plan.cpp`
+- `app/src/main/cpp/runtime_report.cpp`
+- `scripts/test-native-core.sh`
+- `tests/native_alr_runtime_interposer_test.cpp`
+- `tests/native_runtime_plan_test.cpp`
+- `tests/test_alr_runtime_interposer_sources.py`
+- `tests/test_alr_runtime_launcher_sources.py`
+
+What changed:
+- Switched agent collaboration docs to large-batch handoffs instead of frequent sync pings.
+- Added a packaged `libalr_runtime_interposer.so` scaffold.
+- Added clean-room interposer smoke logic that resolves guest absolute and relative paths through ALR rootfs translation, then performs direct translated-path `stat`/`open` checks.
+- Added report lines for `ALR INTERPOSER LOAD`, `ALR INTERPOSER CONFIG BUILD`, `ALR INTERPOSER STAT PATH`, and `ALR INTERPOSER OPEN PATH`.
+- Initialized hook/interposer result structs defensively so absent/missing-file paths report deterministic FAIL/errno instead of reading uninitialized booleans.
+- Still does not claim full guest execution, LD_PRELOAD coverage, syscall emulation, or performance wins.
+
+Commands/tests:
+- `/Users/naen/.venvs/plib-py313/bin/python -m pytest tests -q` -> PASS, 152 passed.
+- `scripts/test-native-core.sh` -> PASS.
+- `JAVA_HOME=/Users/naen/.jdks/jdk-17.0.19+10/Contents/Home ./gradlew :app:assembleDebug --no-daemon` -> PASS.
+- `unzip -l app/build/outputs/apk/debug/app-debug.apk | rg 'libalr_runtime_(launcher|hook|interposer)'` -> PASS.
+
+Evidence:
+- Debug APK: `app/build/outputs/apk/debug/app-debug.apk`
+- APK sha256: `cf23a5c3c70f0b19dfdd068d1ae650a6626d6650a80fef5dd46f2d2862bb453a`
+- APK contains `libalr_runtime_launcher.so`, `libalr_runtime_hook.so`, and `libalr_runtime_interposer.so` for `arm64-v8a`, `armeabi-v7a`, `x86`, and `x86_64`.
+
+Blockers:
+- None for Bundle E source/build verification.
+- Runtime preload behavior still needs a later bundle with a real guest process path and device evidence before any execution/performance claim.
+
+Next recommended action:
+- Open a PR for Issue #9.
+- Next Codex implementation bundle should connect the interposer scaffold to a controlled guest process launch path or config serialization layer.
+- Hermes should keep working in one large evidence bundle and rebase PR #5 before integration.
