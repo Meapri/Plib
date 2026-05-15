@@ -433,3 +433,51 @@ Coordination:
 Blockers:
 - None for Bundle I source/build verification.
 - Static hello still needs the next packaged trampoline/entry path before Android device PASS can be claimed.
+
+## 2026-05-15 - Codex - Packaged Trampoline Implementation
+
+Branch/worktree:
+- `codex/alr-packaged-trampoline` at `/Users/naen/Documents/Plib/androlinux-runtime-lab`
+
+Touched files:
+- `app/build.gradle.kts`
+- `app/src/main/cpp/CMakeLists.txt`
+- `app/src/main/cpp/alr_runtime/alr_launch.hpp`
+- `app/src/main/cpp/alr_runtime/alr_launch.cpp`
+- `app/src/main/cpp/alr_runtime/alr_trampoline.hpp`
+- `app/src/main/cpp/alr_runtime/alr_trampoline.cpp`
+- `app/src/main/cpp/alr_runtime_trampoline.cpp`
+- `app/src/main/cpp/runtime_plan.cpp`
+- `scripts/test-native-core.sh`
+- `tests/native_alr_runtime_trampoline_test.cpp`
+- `tests/native_runtime_plan_test.cpp`
+- `tests/test_alr_runtime_trampoline_sources.py`
+- `tests/test_android_loader_plan_report.py`
+
+What changed:
+- Added a packaged ALR trampoline executable that is built as `alr-runtime-trampoline` and copied into the APK as `libalr_runtime_trampoline.so`.
+- Added clean trampoline report plumbing for availability, config handoff, policy preflight, and static hello attempt status.
+- Added `ALR_TRAMPOLINE_PATH` to the ALR runtime launch plan and report.
+- Kept direct writable rootfs exec blocked by default.
+- Host-native tests prove trampoline config handoff and packaged-command preflight plumbing with a safe fixture.
+- `ALR STATIC HELLO VIA TRAMPOLINE` still reports `SKIP`; this bundle does not claim guest entry execution or Android device PASS.
+
+Commands/tests:
+- `/Users/naen/.venvs/plib-py313/bin/python -m pytest tests -q` -> PASS, 168 passed.
+- `scripts/test-native-core.sh` -> PASS.
+- `CXX=clang++ scripts/test-native-core.sh` -> PASS.
+- `JAVA_HOME=/Users/naen/.jdks/jdk-17.0.19+10/Contents/Home ./gradlew :app:assembleDebug --no-daemon` -> PASS.
+- `unzip -l app/build/outputs/apk/debug/app-debug.apk | rg 'libalr_runtime_trampoline|libalr_runtime_(launcher|hook|interposer)|libalr_loader|libalr_test_command'` -> PASS.
+
+Evidence:
+- Debug APK: `app/build/outputs/apk/debug/app-debug.apk`
+- APK sha256: `2bbd5ad8350d9cd0a91aecf4462724689e261a2386152986d4df73e3b92a22d0`
+- APK contains `libalr_runtime_trampoline.so` for `arm64-v8a`, `armeabi-v7a`, `x86`, and `x86_64`.
+
+Coordination:
+- Hermes can treat the new trampoline report lines as device evidence targets after rebasing onto this bundle.
+- Codex still owns the clean-room ALR implementation path; Hermes should keep optional backend/device findings black-box.
+
+Blockers:
+- No Android device PASS is claimed yet.
+- The next Codex implementation step is a real static AArch64 entry trampoline/loader rather than report-only preflight.

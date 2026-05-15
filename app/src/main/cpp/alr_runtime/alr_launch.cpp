@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "alr_runtime/alr_elf.hpp"
+#include "alr_runtime/alr_trampoline.hpp"
 
 namespace alr::runtime {
 namespace {
@@ -65,9 +66,11 @@ std::string hello_status_for_attempt(std::string_view requested_program, const L
 
 std::string build_report(std::string_view requested_program, const LaunchAttemptResult& result) {
     std::ostringstream out;
-    const std::string elf_report = result.resolution.resolved && result.resolution.kind == ExecutableKind::Elf
-        ? build_elf_load_plan(result.resolution.translation.host_path).report
-        : std::string{
+    const auto elf_plan = result.resolution.resolved && result.resolution.kind == ExecutableKind::Elf
+        ? build_elf_load_plan(result.resolution.translation.host_path)
+        : ElfLoadPlan{};
+    const std::string elf_report = elf_plan.report.empty()
+        ? std::string{
             "ALR ELF LOAD PLAN: SKIP\n"
             "ALR ELF STATIC HELLO CANDIDATE: SKIP\n"
             "alr elf class=none\n"
@@ -78,11 +81,25 @@ std::string build_report(std::string_view requested_program, const LaunchAttempt
             "alr elf min vaddr=0x0\n"
             "alr elf max vaddr=0x0\n"
             "alr elf interp=none\n"
-            "alr elf load segments=0"};
+            "alr elf load segments=0"}
+        : elf_plan.report;
+    const std::string trampoline_report = result.trampoline.report.empty()
+        ? std::string{
+            "ALR TRAMPOLINE AVAILABLE: SKIP\n"
+            "ALR TRAMPOLINE CONFIG HANDOFF: SKIP\n"
+            "ALR TRAMPOLINE POLICY PREFLIGHT: SKIP\n"
+            "ALR STATIC HELLO VIA TRAMPOLINE: SKIP\n"
+            "alr trampoline path=none\n"
+            "alr trampoline exit=not-run\n"
+            "alr trampoline stdout=\n"
+            "alr trampoline stderr="}
+        : std::string{
+            result.trampoline.report};
     out << "ALR LAUNCH ATTEMPT: " << status_for_attempt(result);
     out << "\nALR LAUNCH MODE: " << (result.policy_blocked ? "policy-preflight" : "direct-host-exec");
     out << "\nALR LOW-OVERHEAD RUNTIME HELLO EXECUTION: " << hello_status_for_attempt(requested_program, result);
     out << "\n" << elf_report;
+    out << "\n" << trampoline_report;
     out << "\nalr launch exit=" << result.exit_code;
     out << "\nalr launch stdout=" << result.stdout_text;
     out << "\nalr launch stderr=" << result.stderr_text;
@@ -114,6 +131,15 @@ LaunchAttemptResult attempt_guest_launch(
     if (!policy.allow_direct_host_exec) {
         result.policy_blocked = true;
         result.error = "direct rootfs host exec disabled by ALR policy";
+        const auto elf_plan = result.resolution.kind == ExecutableKind::Elf
+            ? build_elf_load_plan(result.resolution.translation.host_path)
+            : ElfLoadPlan{};
+        result.trampoline = attempt_packaged_trampoline(
+            config,
+            requested_program,
+            result.resolution,
+            elf_plan,
+            policy.trampoline);
         result.report = build_report(requested_program, result);
         return result;
     }

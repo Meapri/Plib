@@ -6,11 +6,13 @@
 
 #include "alr_runtime/alr_config.hpp"
 #include "alr_runtime/alr_exec.hpp"
+#include "alr_runtime/alr_trampoline.hpp"
 
 namespace alr::runtime {
 
 struct LaunchAttemptPolicy {
     bool allow_direct_host_exec = false;
+    TrampolineAttemptPolicy trampoline;
 };
 
 struct LaunchAttemptResult {
@@ -21,6 +23,7 @@ struct LaunchAttemptResult {
     std::string stdout_text;
     std::string stderr_text;
     std::string error;
+    TrampolineAttemptResult trampoline;
     std::string report;
 };
 
