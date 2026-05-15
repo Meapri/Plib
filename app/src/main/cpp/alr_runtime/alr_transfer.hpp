@@ -15,7 +15,9 @@ struct StaticEntryTransferContext {
     bool cleanup_done = false;
     bool jump_ready = false;
     bool fixed_vaddr_required = true;
+    bool fixed_image_mapped = false;
     std::string error;
+    std::string fixed_image_error;
     std::uintptr_t entry_address = 0;
     std::uintptr_t initial_sp_address = 0;
     StaticImageRuntimeMapping image;

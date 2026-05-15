@@ -21,9 +21,13 @@ std::string build_report(const StaticEntryTransferContext& context) {
     out << "\nalr transfer initial sp address=" << hex_value(context.initial_sp_address);
     out << "\nalr transfer stack pointers rebased=" << (context.stack.pointers_rebased ? "true" : "false");
     out << "\nalr transfer fixed vaddr required=" << (context.fixed_vaddr_required ? "true" : "false");
+    out << "\nalr transfer fixed image mapped=" << (context.fixed_image_mapped ? "true" : "false");
     out << "\nalr transfer cleanup done=" << (context.cleanup_done ? "true" : "false");
     out << "\nalr transfer image unmapped=" << (context.image.unmapped ? "true" : "false");
     out << "\nalr transfer stack unmapped=" << (context.stack.unmapped ? "true" : "false");
+    if (!context.fixed_image_error.empty()) {
+        out << "\nalr transfer fixed image error=" << context.fixed_image_error;
+    }
     if (!context.error.empty()) {
         out << "\nalr transfer error=" << context.error;
     }
@@ -48,7 +52,12 @@ StaticEntryTransferContext prepare_static_entry_transfer_context(
         return context;
     }
 
-    context.image = map_static_image_for_transfer(host_path, image_plan);
+    context.image = map_static_image_fixed_for_transfer(host_path, image_plan);
+    context.fixed_image_mapped = context.image.mapped && context.image.fixed_address;
+    if (!context.fixed_image_mapped) {
+        context.fixed_image_error = context.image.error;
+        context.image = map_static_image_for_transfer(host_path, image_plan);
+    }
     context.image_mapped = context.image.mapped;
     if (!context.image_mapped) {
         context.error = context.image.error.empty() ? "static image transfer mapping failed" : context.image.error;
@@ -68,6 +77,7 @@ StaticEntryTransferContext prepare_static_entry_transfer_context(
     context.entry_address = context.image.entry_address;
     context.initial_sp_address = context.stack.initial_sp_address;
     context.prepared = true;
+    context.jump_ready = context.fixed_image_mapped && context.stack.pointers_rebased;
     context.report = build_report(context);
     return context;
 }
@@ -91,6 +101,7 @@ std::string build_static_entry_transfer_skip_report() {
         "alr transfer initial sp address=0x0\n"
         "alr transfer stack pointers rebased=false\n"
         "alr transfer fixed vaddr required=true\n"
+        "alr transfer fixed image mapped=false\n"
         "alr transfer cleanup done=false\n"
         "alr transfer image unmapped=false\n"
         "alr transfer stack unmapped=false";

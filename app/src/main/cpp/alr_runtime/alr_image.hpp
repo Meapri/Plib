@@ -50,6 +50,7 @@ struct StaticImageLoadResult {
 struct StaticImageRuntimeMapping {
     bool mapped = false;
     bool protected_segments = false;
+    bool fixed_address = false;
     bool unmapped = false;
     std::string error;
     std::uintptr_t mapped_base = 0;
@@ -64,6 +65,7 @@ std::string build_static_image_skip_report();
 StaticImageLoadResult load_static_image_for_preflight(const std::string& host_path, const StaticImagePlan& plan);
 std::string build_static_image_load_skip_report();
 StaticImageRuntimeMapping map_static_image_for_transfer(const std::string& host_path, const StaticImagePlan& plan);
+StaticImageRuntimeMapping map_static_image_fixed_for_transfer(const std::string& host_path, const StaticImagePlan& plan);
 void unmap_static_image_runtime_mapping(StaticImageRuntimeMapping& mapping);
 
 }  // namespace alr::runtime

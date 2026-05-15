@@ -135,6 +135,7 @@ std::string build_report(const StaticImageRuntimeMapping& result) {
     out << "\nalr transfer image base=" << hex_value(result.mapped_base);
     out << "\nalr transfer image size=" << result.mapped_size;
     out << "\nalr transfer entry address=" << hex_value(result.entry_address);
+    out << "\nalr transfer image fixed address=" << (result.fixed_address ? "true" : "false");
     out << "\nalr transfer loaded segments=" << result.loaded_segment_count;
     out << "\nalr transfer image unmapped=" << (result.unmapped ? "true" : "false");
     if (!result.error.empty()) {
@@ -405,6 +406,102 @@ StaticImageRuntimeMapping map_static_image_for_transfer(const std::string& host_
     }
     result.report = build_report(result);
     return result;
+}
+
+StaticImageRuntimeMapping map_static_image_fixed_for_transfer(const std::string& host_path, const StaticImagePlan& plan) {
+    StaticImageRuntimeMapping result;
+    (void)host_path;
+    result.mapped_size = plan.image_size;
+    if (!plan.valid || !plan.entry_ready) {
+        result.error = plan.error.empty() ? "static image plan is not entry-ready" : plan.error;
+        result.report = build_report(result);
+        return result;
+    }
+    if (plan.image_size == 0 || plan.image_size > static_cast<std::uint64_t>(std::numeric_limits<std::size_t>::max())) {
+        result.error = "static image size is not mappable";
+        result.report = build_report(result);
+        return result;
+    }
+    if (plan.image_min_vaddr > static_cast<std::uint64_t>(std::numeric_limits<std::uintptr_t>::max())) {
+        result.error = "static image fixed address is not representable";
+        result.report = build_report(result);
+        return result;
+    }
+
+#if defined(MAP_FIXED_NOREPLACE)
+    const int fd = ::open(host_path.c_str(), O_RDONLY | O_CLOEXEC);
+    if (fd < 0) {
+        result.error = errno_message("open fixed transfer image");
+        result.report = build_report(result);
+        return result;
+    }
+
+    void* requested = reinterpret_cast<void*>(static_cast<std::uintptr_t>(plan.image_min_vaddr));
+    void* mapped = ::mmap(
+        requested,
+        static_cast<std::size_t>(plan.image_size),
+        PROT_READ | PROT_WRITE,
+        MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE,
+        -1,
+        0);
+    if (mapped == MAP_FAILED) {
+        const int saved_errno = errno;
+        ::close(fd);
+        errno = saved_errno;
+        result.error = errno_message("mmap fixed transfer image");
+        result.report = build_report(result);
+        return result;
+    }
+    if (mapped != requested) {
+        result.error = "mmap fixed transfer image returned an unexpected address";
+        result.mapped = true;
+        result.mapped_base = reinterpret_cast<std::uintptr_t>(mapped);
+        unmap_static_image_runtime_mapping(result);
+        ::close(fd);
+        result.report = build_report(result);
+        return result;
+    }
+
+    result.mapped = true;
+    result.fixed_address = true;
+    result.mapped_base = reinterpret_cast<std::uintptr_t>(mapped);
+    result.entry_address = plan.entry;
+
+    auto* base = static_cast<unsigned char*>(mapped);
+    try {
+        for (const auto& segment : plan.segments) {
+            const std::uint64_t relative = segment.map_vaddr - plan.image_min_vaddr;
+            if (relative > plan.image_size || segment.mem_map_size > plan.image_size - relative) {
+                throw std::runtime_error("fixed transfer image segment falls outside mapped image");
+            }
+            read_exact(
+                fd,
+                base + relative + segment.page_delta,
+                static_cast<std::size_t>(segment.file_size),
+                segment.source_offset);
+            ++result.loaded_segment_count;
+        }
+        for (const auto& segment : plan.segments) {
+            const std::uint64_t relative = segment.map_vaddr - plan.image_min_vaddr;
+            if (::mprotect(base + relative, static_cast<std::size_t>(segment.mem_map_size), mmap_protection(segment.flags)) != 0) {
+                throw std::runtime_error(errno_message("mprotect fixed transfer image segment"));
+            }
+        }
+        result.protected_segments = true;
+    } catch (const std::exception& exc) {
+        result.error = exc.what();
+    }
+    ::close(fd);
+    if (!result.protected_segments) {
+        unmap_static_image_runtime_mapping(result);
+    }
+    result.report = build_report(result);
+    return result;
+#else
+    result.error = "MAP_FIXED_NOREPLACE is unavailable on this host";
+    result.report = build_report(result);
+    return result;
+#endif
 }
 
 void unmap_static_image_runtime_mapping(StaticImageRuntimeMapping& mapping) {
