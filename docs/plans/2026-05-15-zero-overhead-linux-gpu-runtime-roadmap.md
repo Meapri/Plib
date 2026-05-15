@@ -1265,9 +1265,32 @@ surface gpu hardware render=true
 surface gles shim vs native average ratio pct=100
 ```
 
+Latest V84 Vulkan loader-info discovery evidence:
+
+```text
+build: 0.4.84-vulkan-loader-info-smoke
+versionCode=84
+versionName=0.4.84-vulkan-loader-info-smoke
+rootfs_version=bookworm-slim-2026-05-gui-gpu-v84
+rootfs sha256=060298937b387063b5c6fd7dddfcf2459e29e77912e3790f0bb1da8e89197e70
+rootfs size bytes=36116480
+installed alr-package-vulkan-loader-info bytes=7896
+installed alr-package-vulkan-icd-manifest-smoke bytes=7224
+installed alr_vulkan_icd.aarch64.json bytes=120
+installed libvulkan.so.1 bytes=5952
+GUEST VULKAN LOADER INFO SURFACE CLEAR EXECUTION: PASS
+surface vulkan clear request=ALR_VK_SURFACE_CLEAR_REQUEST version=1 red=0.33 green=0.22 blue=0.88 alpha=1.0 tag=guest-vulkan-proxy-clear-0001 source=libvulkan-proxy protocol=binary-frame-v1
+surface vulkan device=Mali-G615 MC2
+surface vulkan present mode=mailbox
+surface vulkan present=ok
+surface vulkan hardware render=true
+surface vulkan render elapsed us=19415
+surface gles shim vs native average ratio pct=100
+```
+
 Next implementation batch:
 
-1. Replace the manifest parser smoke with a real guest Vulkan loader package and prove `vulkaninfo`-style enumeration reaches the proxy.
+1. Replace the loader-info smoke with the real Khronos Vulkan loader or a stricter ABI-compatible loader subset.
 2. Move the binary bridge from loopback TCP to a lower-overhead Unix-domain socket or shared-memory control path.
 3. Split known-fail legacy dpkg/proot diagnostics away from the active ALR summary.
 4. Add a small real toolkit fixture target, likely a tiny GTK/Qt-independent Wayland protocol smoke before pulling in a larger GUI stack.

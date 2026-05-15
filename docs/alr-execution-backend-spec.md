@@ -1100,6 +1100,38 @@ This is still a manifest-level discovery proof rather than a full guest Vulkan
 loader integration, but it removes the hardcoded proxy library name from the
 latest installed Vulkan smoke entrypoint.
 
+Current V84 Vulkan loader-info discovery snapshot:
+
+```text
+build: 0.4.84-vulkan-loader-info-smoke
+versionCode=84
+versionName=0.4.84-vulkan-loader-info-smoke
+rootfs_version=bookworm-slim-2026-05-gui-gpu-v84
+rootfs sha256=060298937b387063b5c6fd7dddfcf2459e29e77912e3790f0bb1da8e89197e70
+rootfs size bytes=36116480
+installed alr-package-vulkan-loader-info bytes=7896
+installed alr-package-vulkan-icd-manifest-smoke bytes=7224
+installed alr_vulkan_icd.aarch64.json bytes=120
+installed libvulkan.so.1 bytes=5952
+GUEST VULKAN LOADER INFO SURFACE CLEAR EXECUTION: PASS
+surface vulkan clear request=ALR_VK_SURFACE_CLEAR_REQUEST version=1 red=0.33 green=0.22 blue=0.88 alpha=1.0 tag=guest-vulkan-proxy-clear-0001 source=libvulkan-proxy protocol=binary-frame-v1
+surface vulkan device=Mali-G615 MC2
+surface vulkan present mode=mailbox
+surface vulkan present=ok
+surface vulkan hardware render=true
+surface vulkan render elapsed us=19415
+surface gles shim vs native average ratio pct=100
+```
+
+V84 adds an installed-package `alr-package-vulkan-loader-info` probe. The guest
+probe selects an ICD manifest through `VK_DRIVER_FILES`/`VK_ICD_FILENAMES`,
+loads `libvulkan.so.1` from the glibc rootfs library path, calls
+`vkEnumerateInstanceVersion`, records vulkaninfo-style manifest/device/feature
+checks, and then reuses the binary bridge for a guest-requested Android Vulkan
+Surface clear. This is still a loader-info smoke rather than the Khronos Vulkan
+loader, but it proves the rootfs packaging and Android runner now exercise the
+same discovery shape a real loader/vulkaninfo path will need.
+
 Report:
 
 ```text

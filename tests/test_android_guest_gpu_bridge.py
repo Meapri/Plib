@@ -20,6 +20,7 @@ def test_rootfs_contains_guest_gpu_ipc_client_and_gles_shim():
             "./usr/bin/alr-vulkan-discovery-client",
             "./usr/bin/alr-vulkan-proxy-smoke",
             "./usr/bin/alr-vulkan-icd-manifest-smoke",
+            "./usr/bin/alr-vulkan-loader-info",
             "./usr/lib/androlinux/libalr_gles_shim.so",
             "./usr/lib/androlinux/libEGL.so",
             "./usr/lib/androlinux/libGLESv2.so",
@@ -108,6 +109,7 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "x11:${if (alrInstalledPackageX11GuiBridgePassed)" in text
     assert "vulkan-discovery:${if (alrInstalledPackageVulkanDiscoveryPassed)" in text
     assert "vulkan-icd:${if (alrInstalledPackageVulkanIcdPassed)" in text
+    assert "vulkan-loader:${if (alrInstalledPackageVulkanLoaderInfoPassed)" in text
     assert "alr installed package gles ipc draw frames" in text
     assert "alr installed package gles ipc ack frames" in text
     assert "alr installed package gles ipc ack raw" in text
@@ -137,6 +139,9 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "alr installed package vulkan icd surface clear request" in text
     assert "alr installed package vulkan icd surface clear accepted" in text
     assert "alr installed package vulkan icd stdout" in text
+    assert "alr installed package vulkan loader info surface clear request" in text
+    assert "alr installed package vulkan loader info surface clear accepted" in text
+    assert "alr installed package vulkan loader info stdout" in text
     assert "alr installed package vulkan discovery ack lines" in text
     assert "alr installed package vulkan discovery stdout" in text
     assert "nativeHostVulkanProbe" in text
@@ -165,6 +170,7 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "surface gles shim vs native average ratio pct=" in text
     assert "ANDROID HOST VULKAN SURFACE EXECUTION:" in text
     assert "GUEST VULKAN SURFACE CLEAR REQUEST EXECUTION:" in text
+    assert "GUEST VULKAN LOADER INFO SURFACE CLEAR EXECUTION:" in text
     assert "surface vulkan clear request source=guest-request" in text
     assert "surface vulkan present=ok" in text
     assert "surface vulkan hardware render=true" in text
@@ -269,6 +275,7 @@ def test_guest_vulkan_discovery_client_is_source_built_ipc_probe():
     proxy_source = (ROOT / "rootfs/guest-src/vulkan/alr_vulkan_proxy.c").read_text()
     proxy_smoke = (ROOT / "rootfs/guest-src/vulkan/alr_vulkan_proxy_smoke.c").read_text()
     icd_smoke = (ROOT / "rootfs/guest-src/vulkan/alr_vulkan_icd_manifest_smoke.c").read_text()
+    loader_info = (ROOT / "rootfs/guest-src/vulkan/alr_vulkan_loader_info.c").read_text()
     icd_manifest = (ROOT / "rootfs/guest-src/vulkan/alr_vulkan_icd_manifest.aarch64.json").read_text()
     build_script = (ROOT / "scripts/build-guest-vulkan-probe.sh").read_text()
     cmake = (ROOT / "app/src/main/cpp/CMakeLists.txt").read_text()
@@ -298,6 +305,12 @@ def test_guest_vulkan_discovery_client_is_source_built_ipc_probe():
     assert "ALR_VK_ICD_LIBRARY_PATH" in icd_smoke
     assert "ALR_VK_ICD_BINARY_BRIDGE ok" in icd_smoke
     assert "ALR_VK_ICD_SURFACE_CLEAR_REQUEST_ACCEPTED ok" in icd_smoke
+    assert "VK_DRIVER_FILES" in loader_info
+    assert "VK_ICD_FILENAMES" in loader_info
+    assert "ALR_VK_LOADER_SELECTED_MANIFEST" in loader_info
+    assert "ALR_VK_LOADER_VULKANINFO_DEVICE_RECORD ok" in loader_info
+    assert "ALR_VK_LOADER_BINARY_BRIDGE ok" in loader_info
+    assert "ALR_VK_LOADER_DONE ok" in loader_info
     assert '"library_path": "libvulkan.so.1"' in icd_manifest
     assert '"api_version": "1.3.247"' in icd_manifest
     assert "-target aarch64-linux-gnu" in build_script
@@ -305,6 +318,7 @@ def test_guest_vulkan_discovery_client_is_source_built_ipc_probe():
     assert "libvulkan.so.1" in build_script
     assert "alr-vulkan-proxy-smoke" in build_script
     assert "alr-vulkan-icd-manifest-smoke" in build_script
+    assert "alr-vulkan-loader-info" in build_script
     assert "vulkan)" in cmake
     assert "#include <vulkan/vulkan.h>" in native_report
     assert "vkCreateInstance" in native_report

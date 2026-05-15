@@ -34,8 +34,8 @@ android {
         applicationId = "dev.chanwoo.androlinux"
         minSdk = 26
         targetSdk = 35
-        versionCode = 83
-        versionName = "0.4.83-vulkan-icd-manifest-smoke"
+        versionCode = 84
+        versionName = "0.4.84-vulkan-loader-info-smoke"
         ndkVersion = "27.2.12479018"
 
         externalNativeBuild {

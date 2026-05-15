@@ -625,6 +625,27 @@ ALR_VK_ICD_BINARY_BRIDGE ok
 GUEST VULKAN ICD MANIFEST SURFACE CLEAR EXECUTION: PASS
 ```
 
+Build `0.4.84-vulkan-loader-info-smoke` adds the next guest-facing loader
+shape. The installed package contains `/usr/local/bin/alr-package-vulkan-loader-info`;
+the direct rootfs also contains `/usr/bin/alr-vulkan-loader-info`. The probe
+selects the ICD manifest from `VK_DRIVER_FILES`/`VK_ICD_FILENAMES`, loads
+`libvulkan.so.1`, checks `vkEnumerateInstanceVersion`, and sends the clear
+request through the existing binary proxy bridge:
+
+```text
+ALR_VK_LOADER_SELECTED_MANIFEST /usr/share/vulkan/icd.d/alr_vulkan_icd.aarch64.json
+ALR_VK_LOADER_ICD_LIBRARY_PATH libvulkan.so.1
+ALR_VK_LOADER_VULKANINFO_INSTANCE_VERSION ok
+ALR_VK_LOADER_VULKANINFO_DEVICE_RECORD ok
+ALR_VK_LOADER_BINARY_BRIDGE ok
+ALR_VK_LOADER_DONE ok
+GUEST VULKAN LOADER INFO SURFACE CLEAR EXECUTION: PASS
+surface vulkan clear request=ALR_VK_SURFACE_CLEAR_REQUEST ... protocol=binary-frame-v1
+surface vulkan device=Mali-G615 MC2
+surface vulkan present=ok
+surface vulkan hardware render=true
+```
+
 ## Open Questions
 
 - Which transport should replace loopback TCP first: Unix socket, binary TCP, or shared memory?

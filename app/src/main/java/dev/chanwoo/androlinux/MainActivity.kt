@@ -24,7 +24,7 @@ class MainActivity : Activity() {
 
         val rootfsManifest = RootfsManifest(
             name = "debian-arm64",
-            version = "bookworm-slim-2026-05-gui-gpu-v83",
+            version = "bookworm-slim-2026-05-gui-gpu-v84",
             assets = listOf(
                 RootfsAsset(
                     path = "rootfs.tar.zst",
@@ -235,6 +235,7 @@ class MainActivity : Activity() {
         val alrInstalledPackageVulkanDiscoveryBridgeResult = runInstalledPackageVulkanDiscoveryBridge(nativeCommandRunner, rootfsStatus.rootfsDir)
         val alrInstalledPackageVulkanProxyBridgeResult = runInstalledPackageVulkanProxyBridge(nativeCommandRunner, rootfsStatus.rootfsDir)
         val alrInstalledPackageVulkanIcdBridgeResult = runInstalledPackageVulkanIcdBridge(nativeCommandRunner, rootfsStatus.rootfsDir)
+        val alrInstalledPackageVulkanLoaderInfoBridgeResult = runInstalledPackageVulkanLoaderInfoBridge(nativeCommandRunner, rootfsStatus.rootfsDir)
         val nativeGlesBaselineCommands = buildNativeGlesBaselineCommands(glesShimBenchmarkFrameCount)
         val guestGuiSurfaceCommands = alrInstalledPackageWaylandGuiBridgeResult.commands + alrInstalledPackageX11GuiBridgeResult.commands +
             alrGuestWaylandGuiBridgeResult.commands + alrGuestX11GuiBridgeResult.commands +
@@ -315,6 +316,7 @@ class MainActivity : Activity() {
         val rootfsInstalledVulkanDiscoveryClientFile = File(rootfsStatus.rootfsDir, "usr/local/bin/alr-package-vulkan-discovery-client")
         val rootfsInstalledVulkanProxySmokeFile = File(rootfsStatus.rootfsDir, "usr/local/bin/alr-package-vulkan-proxy-smoke")
         val rootfsInstalledVulkanIcdSmokeFile = File(rootfsStatus.rootfsDir, "usr/local/bin/alr-package-vulkan-icd-manifest-smoke")
+        val rootfsInstalledVulkanLoaderInfoFile = File(rootfsStatus.rootfsDir, "usr/local/bin/alr-package-vulkan-loader-info")
         val rootfsInstalledVulkanProxyLibFile = File(rootfsStatus.rootfsDir, "usr/lib/androlinux/libvulkan.so.1")
         val rootfsInstalledVulkanIcdManifestFile = File(rootfsStatus.rootfsDir, "usr/share/vulkan/icd.d/alr_vulkan_icd.aarch64.json")
         val rootfsDpkgStatusFile = File(rootfsStatus.rootfsDir, "var/lib/dpkg/status")
@@ -681,6 +683,25 @@ class MainActivity : Activity() {
                 alrInstalledPackageVulkanIcdBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("ALR_VK_ICD_SURFACE_CLEAR_REQUEST_ACCEPTED ok") &&
                 alrInstalledPackageVulkanIcdBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("ALR_VK_ICD_DONE ok") &&
                 alrInstalledPackageVulkanIcdBridgeResult.error == null
+        val alrInstalledPackageVulkanLoaderInfoPassed =
+            alrInstalledPackageVulkanLoaderInfoBridgeResult.clientResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+                rootfsInstalledVulkanLoaderInfoFile.isFile &&
+                rootfsInstalledVulkanLoaderInfoFile.canExecute() &&
+                rootfsInstalledVulkanIcdManifestFile.isFile &&
+                rootfsInstalledVulkanProxyLibFile.isFile &&
+                alrInstalledPackageVulkanLoaderInfoBridgeResult.clearRequestLine.contains("source=libvulkan-proxy") &&
+                alrInstalledPackageVulkanLoaderInfoBridgeResult.clearRequestLine.contains("protocol=binary-frame-v1") &&
+                alrInstalledPackageVulkanLoaderInfoBridgeResult.clearAcceptedLine.startsWith("ALR_VK_SURFACE_CLEAR_ACCEPTED status=PASS") &&
+                alrInstalledPackageVulkanLoaderInfoBridgeResult.clearAcceptedLine.contains("protocol=binary-frame-v1") &&
+                alrInstalledPackageVulkanLoaderInfoBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains(
+                    "ALR_VK_LOADER_SELECTED_MANIFEST /usr/share/vulkan/icd.d/alr_vulkan_icd.aarch64.json",
+                ) &&
+                alrInstalledPackageVulkanLoaderInfoBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("ALR_VK_LOADER_ICD_LIBRARY_PATH libvulkan.so.1") &&
+                alrInstalledPackageVulkanLoaderInfoBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("ALR_VK_LOADER_VULKANINFO_INSTANCE_VERSION ok") &&
+                alrInstalledPackageVulkanLoaderInfoBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("ALR_VK_LOADER_VULKANINFO_DEVICE_RECORD ok") &&
+                alrInstalledPackageVulkanLoaderInfoBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("ALR_VK_LOADER_BINARY_BRIDGE ok") &&
+                alrInstalledPackageVulkanLoaderInfoBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("ALR_VK_LOADER_DONE ok") &&
+                alrInstalledPackageVulkanLoaderInfoBridgeResult.error == null
 
         val installedPackageCompatibilityTable =
             "script:${if (alrInstalledPackagePreloadExecutionPassed) "PASS" else "FAIL"}," +
@@ -692,9 +713,10 @@ class MainActivity : Activity() {
                 "x11:${if (alrInstalledPackageX11GuiBridgePassed) "PASS" else "FAIL"}," +
                 "vulkan-discovery:${if (alrInstalledPackageVulkanDiscoveryPassed) "PASS" else "FAIL"}," +
                 "vulkan-proxy:${if (alrInstalledPackageVulkanProxyPassed) "PASS" else "FAIL"}," +
-                "vulkan-icd:${if (alrInstalledPackageVulkanIcdPassed) "PASS" else "FAIL"}"
+                "vulkan-icd:${if (alrInstalledPackageVulkanIcdPassed) "PASS" else "FAIL"}," +
+                "vulkan-loader:${if (alrInstalledPackageVulkanLoaderInfoPassed) "PASS" else "FAIL"}"
 
-        val executionSummary = "build: 0.4.83-vulkan-icd-manifest-smoke" +
+        val executionSummary = "build: 0.4.84-vulkan-loader-info-smoke" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -834,6 +856,7 @@ class MainActivity : Activity() {
             "\nrootfs installed alr vulkan discovery client exists=${rootfsInstalledVulkanDiscoveryClientFile.isFile} executable=${rootfsInstalledVulkanDiscoveryClientFile.canExecute()} bytes=${rootfsInstalledVulkanDiscoveryClientFile.length()}" +
             "\nrootfs installed alr vulkan proxy smoke exists=${rootfsInstalledVulkanProxySmokeFile.isFile} executable=${rootfsInstalledVulkanProxySmokeFile.canExecute()} bytes=${rootfsInstalledVulkanProxySmokeFile.length()}" +
             "\nrootfs installed alr vulkan icd smoke exists=${rootfsInstalledVulkanIcdSmokeFile.isFile} executable=${rootfsInstalledVulkanIcdSmokeFile.canExecute()} bytes=${rootfsInstalledVulkanIcdSmokeFile.length()}" +
+            "\nrootfs installed alr vulkan loader info exists=${rootfsInstalledVulkanLoaderInfoFile.isFile} executable=${rootfsInstalledVulkanLoaderInfoFile.canExecute()} bytes=${rootfsInstalledVulkanLoaderInfoFile.length()}" +
             "\nrootfs installed alr vulkan proxy lib exists=${rootfsInstalledVulkanProxyLibFile.isFile} bytes=${rootfsInstalledVulkanProxyLibFile.length()}" +
             "\nrootfs installed alr vulkan icd manifest exists=${rootfsInstalledVulkanIcdManifestFile.isFile} bytes=${rootfsInstalledVulkanIcdManifestFile.length()}" +
             "\ninstalled package compatibility table=$installedPackageCompatibilityTable" +
@@ -1028,6 +1051,13 @@ class MainActivity : Activity() {
             "\nalr installed package vulkan icd error=${alrInstalledPackageVulkanIcdBridgeResult.error ?: "none"}" +
             "\nalr installed package vulkan icd handoff=${alrInstalledPackageVulkanIcdBridgeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
             "\nalr installed package vulkan icd stdout=${alrInstalledPackageVulkanIcdBridgeResult.clientResult.stdout.alrHandoffStdoutText()}" +
+            "\nalr installed package vulkan loader info raw=${alrInstalledPackageVulkanLoaderInfoBridgeResult.rawLines.joinToString("|")}" +
+            "\nalr installed package vulkan loader info surface clear request=${alrInstalledPackageVulkanLoaderInfoBridgeResult.clearRequestLine}" +
+            "\nalr installed package vulkan loader info surface clear accepted=${alrInstalledPackageVulkanLoaderInfoBridgeResult.clearAcceptedLine}" +
+            "\nalr installed package vulkan loader info ack lines=${alrInstalledPackageVulkanLoaderInfoBridgeResult.ackLines.joinToString("|")}" +
+            "\nalr installed package vulkan loader info error=${alrInstalledPackageVulkanLoaderInfoBridgeResult.error ?: "none"}" +
+            "\nalr installed package vulkan loader info handoff=${alrInstalledPackageVulkanLoaderInfoBridgeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr installed package vulkan loader info stdout=${alrInstalledPackageVulkanLoaderInfoBridgeResult.clientResult.stdout.alrHandoffStdoutText()}" +
             "\nsurface gpu command source frames=${surfaceGpuCommands.size}" +
             "\nproot dpkg-split --version exit=${prootDpkgSplitVersionResult.exitCode}" +
             "\nproot dpkg-split --version stdout=${prootDpkgSplitVersionResult.stdout}" +
@@ -1442,6 +1472,7 @@ class MainActivity : Activity() {
             resultBlock("alr installed package vulkan discovery client", alrInstalledPackageVulkanDiscoveryBridgeResult.clientResult) +
             resultBlock("alr installed package vulkan proxy smoke", alrInstalledPackageVulkanProxyBridgeResult.clientResult) +
             resultBlock("alr installed package vulkan icd manifest smoke", alrInstalledPackageVulkanIcdBridgeResult.clientResult) +
+            resultBlock("alr installed package vulkan loader info", alrInstalledPackageVulkanLoaderInfoBridgeResult.clientResult) +
             optionalResultBlock("proot hello verbose on failure", prootHelloVerboseResult)
 
         val report = executionSummary + "\n\n--- verbose report ---\n" + verboseReport
@@ -1465,7 +1496,7 @@ class MainActivity : Activity() {
                     val surfaceReport = nativeRenderGpuSurfaceFrames(holder.surface, encodedFrames)
                     val vulkanSurfaceReport = nativeRenderVulkanSurfaceClear(
                         holder.surface,
-                        alrInstalledPackageVulkanIcdBridgeResult.clearRequestLine,
+                        alrInstalledPackageVulkanLoaderInfoBridgeResult.clearRequestLine,
                     )
                     val executionUpdate = surfaceExecutionUpdate(
                         surfaceReport,
@@ -1475,7 +1506,11 @@ class MainActivity : Activity() {
                         guestGlesShimSwapPassed,
                         guestGlesShimDrawApiPassed,
                     )
-                    val vulkanExecutionUpdate = vulkanSurfaceExecutionUpdate(vulkanSurfaceReport, alrInstalledPackageVulkanIcdPassed)
+                    val vulkanExecutionUpdate = vulkanSurfaceExecutionUpdate(
+                        vulkanSurfaceReport,
+                        alrInstalledPackageVulkanIcdPassed,
+                        alrInstalledPackageVulkanLoaderInfoPassed,
+                    )
                     surfaceStatusView.text =
                         "Linux guest GPU Surface renderer callback complete\n$executionUpdate\n$vulkanExecutionUpdate"
                     view.append(
@@ -1562,6 +1597,14 @@ class MainActivity : Activity() {
     ): GuestVulkanDiscoveryBridgeResult =
         runInstalledPackageVulkanBinaryBridge(rootfsDir) { port ->
             nativeCommandRunner.runAlrRuntimeTrampolineInstalledPackageVulkanIcdManifestSmoke(rootfsDir, port)
+        }
+
+    private fun runInstalledPackageVulkanLoaderInfoBridge(
+        nativeCommandRunner: NativeCommandRunner,
+        rootfsDir: File,
+    ): GuestVulkanDiscoveryBridgeResult =
+        runInstalledPackageVulkanBinaryBridge(rootfsDir) { port ->
+            nativeCommandRunner.runAlrRuntimeTrampolineInstalledPackageVulkanLoaderInfo(rootfsDir, port)
         }
 
     private fun runInstalledPackageVulkanBridge(
@@ -2501,7 +2544,11 @@ class MainActivity : Activity() {
             "\n${surfaceReport.lineStartingWith("surface x11 frames rendered=")}"
     }
 
-    private fun vulkanSurfaceExecutionUpdate(vulkanSurfaceReport: String, icdManifestPassed: Boolean): String {
+    private fun vulkanSurfaceExecutionUpdate(
+        vulkanSurfaceReport: String,
+        icdManifestPassed: Boolean,
+        loaderInfoPassed: Boolean,
+    ): String {
         val clearRequestTag = vulkanSurfaceReport.lineStartingWith("surface vulkan clear request tag=")
         val passed =
             vulkanSurfaceReport.lineStartingWith("surface vulkan clear request source=") ==
@@ -2515,6 +2562,7 @@ class MainActivity : Activity() {
             "\nGUEST VULKAN SURFACE CLEAR REQUEST EXECUTION: ${if (passed) "PASS" else "FAIL"}" +
             "\nGUEST VULKAN PROXY SURFACE CLEAR EXECUTION: ${if (proxySurfacePassed) "PASS" else "FAIL"}" +
             "\nGUEST VULKAN ICD MANIFEST SURFACE CLEAR EXECUTION: ${if (proxySurfacePassed && icdManifestPassed) "PASS" else "FAIL"}" +
+            "\nGUEST VULKAN LOADER INFO SURFACE CLEAR EXECUTION: ${if (proxySurfacePassed && icdManifestPassed && loaderInfoPassed) "PASS" else "FAIL"}" +
             "\n${vulkanSurfaceReport.lineStartingWith("surface vulkan clear request=")}" +
             "\n${vulkanSurfaceReport.lineStartingWith("surface vulkan clear request source=")}" +
             "\n$clearRequestTag" +

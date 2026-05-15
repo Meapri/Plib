@@ -36,7 +36,12 @@ fi
   "$SRC_DIR/alr_vulkan_icd_manifest_smoke.c" \
   -o "$OUT_DIR/alr-vulkan-icd-manifest-smoke"
 
+"$ZIG_BIN" cc -target aarch64-linux-gnu -O2 -s \
+  "$SRC_DIR/alr_vulkan_loader_info.c" \
+  -o "$OUT_DIR/alr-vulkan-loader-info"
+
 file "$OUT_DIR/alr-vulkan-discovery-client"
 file "$OUT_DIR/libvulkan.so.1"
 file "$OUT_DIR/alr-vulkan-proxy-smoke"
 file "$OUT_DIR/alr-vulkan-icd-manifest-smoke"
+file "$OUT_DIR/alr-vulkan-loader-info"
