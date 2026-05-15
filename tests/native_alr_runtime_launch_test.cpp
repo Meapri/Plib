@@ -45,6 +45,14 @@ int main() {
         .env = {
             {"PATH", "/bin"},
         },
+        .binds = {},
+        .hook_path = "",
+        .interposer_path = "",
+        .bridge_path = "",
+        .fake_root = false,
+        .verbose = 0,
+        .trace_path = false,
+        .trace_exec = false,
     };
 
     const auto blocked = alr::runtime::attempt_guest_launch(config, "/bin/hello");

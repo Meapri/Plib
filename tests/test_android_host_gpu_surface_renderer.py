@@ -23,4 +23,5 @@ def test_main_activity_owns_surface_view_and_appends_native_surface_report():
     assert "SurfaceHolder.Callback" in text
     assert "nativeRenderGpuSurface" in text
     assert "HOST GPU SURFACE EXECUTION: PENDING_SURFACE_CALLBACK" in text
+    assert "BACKEND=$graphicsBackendName" in text
     assert "Linux guest Wayland/X11 GUI GPU surface renderer" in text

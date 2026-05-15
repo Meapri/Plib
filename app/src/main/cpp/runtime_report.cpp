@@ -199,6 +199,8 @@ std::string render_to_android_surface_frames(JNIEnv* env, jobject surface_obj, c
     const auto frames = parse_surface_frames(encoded_frames);
     std::ostringstream out;
     out << "host gpu surface renderer=android-surface-egl-gles";
+    out << "\nBACKEND=proot";
+    out << "\nsurface graphics backend=proot";
     out << "\nsurface frame stream protocol=gui-compositor-clear-color-v4";
     out << "\nsurface requested frames=" << frames.size();
     if (surface_obj == nullptr) {
@@ -328,6 +330,7 @@ std::string render_to_android_surface_frames(JNIEnv* env, jobject surface_obj, c
     out << "\nsurface frames rendered=" << rendered;
     out << "\nsurface frames dropped=" << dropped;
     out << "\nsurface frame lossless=" << (dropped == 0 ? "true" : "false");
+    out << "\nSURFACE FRAME LOSSLESS: " << (dropped == 0 ? "true" : "false");
     out << "\nsurface last guest command tag=" << (last_tag.empty() ? "missing" : last_tag);
     out << "\nsurface gl clear error=0x" << std::hex << last_gl_error << std::dec;
     out << "\nsurface egl swap buffers=" << (last_swapped == EGL_TRUE ? "ok" : "fail");

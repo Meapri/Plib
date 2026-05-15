@@ -433,3 +433,68 @@ Coordination:
 Blockers:
 - None for Bundle I source/build verification.
 - Static hello still needs the next packaged trampoline/entry path before Android device PASS can be claimed.
+
+## 2026-05-15 - Hermes - Bundle J Start
+
+Branch/worktree:
+- `hermes/gui-bridge-cleanup` at `/home/ubuntu/work/Plib-hermes-bundle-j-gui`
+
+Touched files:
+- Pending
+
+What changed:
+- Started GitHub Issue #19 / Bundle J: GUI bridge cleanup and backend report labels.
+- Scope is explicitly separate from Codex-owned Bundle I / Issue #17 ALR packaged trampoline work.
+
+Commands/tests:
+- Pending
+
+Evidence:
+- Base includes Codex Bundle H controlled launch attempt on `origin/main`.
+
+Blockers:
+- None known.
+
+Next recommended action:
+- Add backend-name report labels for GUI/GPU evidence while preserving existing host EGL/GLES, Surface, guest GPU IPC, and Wayland/X11-shaped proof strings.
+
+## 2026-05-15 20:32 KST - Hermes - Bundle J Implementation
+
+Branch/worktree:
+- `hermes/gui-bridge-cleanup` at `/home/ubuntu/work/Plib-hermes-bundle-j-gui`
+
+Touched files:
+- `app/src/main/java/dev/chanwoo/androlinux/MainActivity.kt`
+- `app/src/main/cpp/runtime_report.cpp`
+- `tests/test_android_host_gpu_probe.py`
+- `tests/test_android_host_gpu_surface_renderer.py`
+- `tests/test_android_guest_gpu_bridge.py`
+- `tests/native_alr_runtime_exec_test.cpp`
+- `tests/native_alr_runtime_launch_test.cpp`
+- `docs/agent-sync.md`
+
+What changed:
+- Added explicit GUI/GPU backend labels for device evidence: `BACKEND=proot`, `GRAPHICS BACKEND: proot`, host/guest graphics backend summary lines, and `surface graphics backend=proot`.
+- Added an uppercase `SURFACE FRAME LOSSLESS: true/false` Surface renderer line while preserving the existing lowercase `surface frame lossless=` metric.
+- Kept the bundle separate from Codex-owned Bundle I / Issue #17 ALR trampoline work; no ALR trampoline implementation was added.
+- Fixed remaining Linux/aarch64 native-test portability warnings by fully initializing `RuntimeConfig` fixtures in native tests without weakening `-Werror`.
+
+Commands/tests:
+- `python3 -m pytest tests -q` -> PASS (`164 passed in 0.51s`)
+- `scripts/test-native-core.sh` -> PASS (`alr runtime elf native test ok`, launch, hook, and interposer tests included)
+- `./gradlew --no-daemon :app:assembleDebug` -> PASS (`BUILD SUCCESSFUL`)
+- `unzip -l app/build/outputs/apk/debug/app-debug.apk | grep -E 'libalr_runtime_(launcher|hook|interposer)|libalr_loader|libalr_test_command'` -> PASS for `arm64-v8a`, `armeabi-v7a`, `x86`, and `x86_64`
+
+Evidence:
+- Issue: https://github.com/Meapri/Plib/issues/19
+- APK artifact: `app/build/outputs/apk/debug/app-debug.apk`
+- APK SHA-256: `18bf267bcfd4d088580e9e2242b08d2286a7bd888c31f92d31fcf2903552a0a9`
+- APK size: `25791488 bytes`
+
+Blockers:
+- No Android device is attached to this VPS, so new GUI/GPU backend-label report lines still need device evidence before any runtime/GPU PASS claim.
+- Codex Bundle I / Issue #17 remains separate and should not be overwritten by this branch.
+
+Next recommended action:
+- Review/merge this Hermes-owned GUI bridge cleanup PR independently from Codex Bundle I, then capture the new backend-label report lines in the next device evidence bundle.
+

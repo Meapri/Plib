@@ -28,6 +28,9 @@ def test_main_activity_reports_host_gpu_probe_before_verbose_report():
     text = MAIN.read_text()
     assert "nativeHostGpuProbe" in text
     assert "HOST GPU EGL/GLES EXECUTION:" in text
+    assert '"\\nBACKEND=$graphicsBackendName"' in text
+    assert '"\\nGRAPHICS BACKEND: $graphicsBackendName"' in text
+    assert '"\\nHOST GPU GRAPHICS BACKEND: $graphicsBackendName"' in text
     assert "host gpu renderer=" in text
     assert "host gpu vendor=" in text
     assert "host gpu hardware candidate=" in text

@@ -43,6 +43,14 @@ int main() {
         .env = {
             {"PATH", "/usr/bin:/bin"},
         },
+        .binds = {},
+        .hook_path = "",
+        .interposer_path = "",
+        .bridge_path = "",
+        .fake_root = false,
+        .verbose = 0,
+        .trace_path = false,
+        .trace_exec = false,
     };
 
     const auto elf = alr::runtime::resolve_guest_executable(config, "/bin/hello");

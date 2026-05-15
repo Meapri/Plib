@@ -44,6 +44,7 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "GUEST WAYLAND GUI GPU BRIDGE EXECUTION" in text
     assert "GUEST X11 GUI GPU BRIDGE EXECUTION" in text
     assert "GUEST GUI GPU SURFACE EXECUTION" in text
+    assert '"\\nGUEST GUI GRAPHICS BACKEND: $graphicsBackendName"' in text
     assert "runGuestGuiBridge" in text
     assert "ALR_GUI_IPC_ACK" in text
     assert "guest wayland gui ipc seq gaps" in text
@@ -60,6 +61,8 @@ def test_native_surface_renderer_accepts_multi_frame_stream_and_reports_bridge()
     assert "surface frames rendered=" in text
     assert "surface frames dropped=" in text
     assert "surface frame lossless=" in text
+    assert "SURFACE FRAME LOSSLESS: " in text
+    assert "surface graphics backend=proot" in text
     assert "guest gpu ipc bridge hardware render=" in text
     assert "guest gui gpu compositor hardware render=" in text
     assert "guest wayland/x11 gui gpu surface hardware render=" in text

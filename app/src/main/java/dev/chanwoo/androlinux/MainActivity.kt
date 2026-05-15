@@ -229,9 +229,14 @@ class MainActivity : Activity() {
             guestX11GuiBridgeResult.expectedFrames > 0 &&
             guestX11GuiBridgeResult.error == null
         val hostGpuHardwareCandidate = hostGpuProbe.lineStartingWith("host gpu hardware candidate=") == "host gpu hardware candidate=true"
+        val graphicsBackendName = "proot"
 
         val executionSummary = "build: 0.4.45-runtime-probe-scaffold-v45" +
             "\nexecution summary" +
+            "\nBACKEND=$graphicsBackendName" +
+            "\nGRAPHICS BACKEND: $graphicsBackendName" +
+            "\nHOST GPU GRAPHICS BACKEND: $graphicsBackendName" +
+            "\nGUEST GUI GRAPHICS BACKEND: $graphicsBackendName" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL -C EXECUTION: ${if (shellCommandExecutionPassed) "PASS" else "FAIL"}" +
@@ -495,7 +500,7 @@ class MainActivity : Activity() {
                 override fun surfaceCreated(holder: SurfaceHolder) {
                     val encodedFrames = encodeSurfaceFrames(surfaceGpuCommands)
                     val surfaceReport = nativeRenderGpuSurfaceFrames(holder.surface, encodedFrames)
-                    view.append("\n\n--- Linux guest Wayland/X11 GUI GPU surface renderer ---\n$surfaceReport")
+                    view.append("\n\n--- Linux guest Wayland/X11 GUI GPU surface renderer ---\nBACKEND=$graphicsBackendName\n$surfaceReport")
                 }
 
                 override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) = Unit
