@@ -22,7 +22,7 @@ class MainActivity : Activity() {
 
         val rootfsManifest = RootfsManifest(
             name = "debian-arm64",
-            version = "bookworm-slim-2026-05-gui-gpu-v35",
+            version = "bookworm-slim-2026-05-gui-gpu-v40",
             assets = listOf(
                 RootfsAsset(
                     path = "rootfs.tar.zst",
@@ -230,7 +230,7 @@ class MainActivity : Activity() {
             guestX11GuiBridgeResult.error == null
         val hostGpuHardwareCandidate = hostGpuProbe.lineStartingWith("host gpu hardware candidate=") == "host gpu hardware candidate=true"
 
-        val executionSummary = "build: 0.4.22-gui-gpu-proof-v35" +
+        val executionSummary = "build: 0.4.40-gui-gpu-proof-clean-v40" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -342,11 +342,17 @@ class MainActivity : Activity() {
             "\nguest wayland gui ipc expected frames=${guestWaylandGuiBridgeResult.expectedFrames}" +
             "\nguest wayland gui ipc received frames=${guestWaylandGuiBridgeResult.commands.size}" +
             "\nguest wayland gui ipc lossless=${guestWaylandGuiBridgeResult.expectedFrames > 0 && guestWaylandGuiBridgeResult.expectedFrames == guestWaylandGuiBridgeResult.commands.size}" +
+            "\nguest wayland gui ipc seq gaps=${guiSeqGaps(guestWaylandGuiBridgeResult.commands, guestWaylandGuiBridgeResult.expectedFrames)}" +
+            "\nguest wayland gui ipc duplicate seq=${guiDuplicateSeqCount(guestWaylandGuiBridgeResult.commands)}" +
+            "\nguest wayland gui ipc out of order=${guiOutOfOrder(guestWaylandGuiBridgeResult.commands)}" +
             "\nguest wayland gui ipc raw=${guestWaylandGuiBridgeResult.rawLines.joinToString("|")}" +
             "\nguest wayland gui ipc error=${guestWaylandGuiBridgeResult.error ?: "none"}" +
             "\nguest x11 gui ipc expected frames=${guestX11GuiBridgeResult.expectedFrames}" +
             "\nguest x11 gui ipc received frames=${guestX11GuiBridgeResult.commands.size}" +
             "\nguest x11 gui ipc lossless=${guestX11GuiBridgeResult.expectedFrames > 0 && guestX11GuiBridgeResult.expectedFrames == guestX11GuiBridgeResult.commands.size}" +
+            "\nguest x11 gui ipc seq gaps=${guiSeqGaps(guestX11GuiBridgeResult.commands, guestX11GuiBridgeResult.expectedFrames)}" +
+            "\nguest x11 gui ipc duplicate seq=${guiDuplicateSeqCount(guestX11GuiBridgeResult.commands)}" +
+            "\nguest x11 gui ipc out of order=${guiOutOfOrder(guestX11GuiBridgeResult.commands)}" +
             "\nguest x11 gui ipc raw=${guestX11GuiBridgeResult.rawLines.joinToString("|")}" +
             "\nguest x11 gui ipc error=${guestX11GuiBridgeResult.error ?: "none"}" +
             "\nsurface gpu command source frames=${surfaceGpuCommands.size}" +
@@ -594,11 +600,35 @@ class MainActivity : Activity() {
                 server.use { srv ->
                     val socket = srv.accept()
                     socket.use { accepted ->
-                        accepted.soTimeout = 3000
-                        accepted.getInputStream().bufferedReader().useLines { lines ->
-                            lines.forEach { rawLines += it }
+                        accepted.soTimeout = 750
+                        val reader = accepted.getInputStream().bufferedReader()
+                        var expectedFrames = 0
+                        while (true) {
+                            val line = try {
+                                reader.readLine()
+                            } catch (timeout: SocketTimeoutException) {
+                                if (expectedFrames > 0 && rawLines.count { it.startsWith("ALR_GUI_FRAME ") } >= expectedFrames) {
+                                    null
+                                } else {
+                                    throw timeout
+                                }
+                            } ?: break
+                            rawLines += line
+                            if (line.startsWith("ALR_GUI_IPC_HELLO ")) {
+                                expectedFrames = line.substringAfter("frames=", "0")
+                                    .substringBefore(" ")
+                                    .toIntOrNull()
+                                    ?: 0
+                            }
+                            if (expectedFrames > 0 && rawLines.count { it.startsWith("ALR_GUI_FRAME ") } >= expectedFrames) {
+                                break
+                            }
                         }
-                        accepted.getOutputStream().write("ACK protocol=$protocol frames=${rawLines.count { it.startsWith("ALR_GUI_FRAME ") }}\n".toByteArray())
+                        val receivedFrames = rawLines.count { it.startsWith("ALR_GUI_FRAME ") }
+                        val lossless = expectedFrames > 0 && receivedFrames == expectedFrames
+                        val ack = "ALR_GUI_IPC_ACK protocol=$protocol received=$receivedFrames expected=$expectedFrames lossless=$lossless\n"
+                        accepted.getOutputStream().write(ack.toByteArray())
+                        accepted.getOutputStream().flush()
                     }
                 }
             } catch (error: SocketTimeoutException) {
@@ -671,6 +701,18 @@ class MainActivity : Activity() {
 
     private fun encodeSurfaceFrames(commands: List<GuestGpuCommand>): String =
         commands.joinToString(separator = "\n") { "${it.red} ${it.green} ${it.blue} ${it.protocol}-seq${it.seq}-${it.tag}" }
+
+    private fun guiSeqGaps(commands: List<GuestGpuCommand>, expectedFrames: Int): Int {
+        if (expectedFrames <= 0) return 0
+        val seen = commands.map { it.seq }.toSet()
+        return (1..expectedFrames).count { it !in seen }
+    }
+
+    private fun guiDuplicateSeqCount(commands: List<GuestGpuCommand>): Int =
+        commands.groupingBy { it.seq }.eachCount().values.sumOf { (it - 1).coerceAtLeast(0) }
+
+    private fun guiOutOfOrder(commands: List<GuestGpuCommand>): Boolean =
+        commands.map { it.seq }.zipWithNext().any { (left, right) -> right < left }
 
     private fun resultBlock(label: String, result: NativeCommandResult): String =
         "\n\n$label command=${result.command.absolutePath}" +

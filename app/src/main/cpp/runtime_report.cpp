@@ -287,6 +287,9 @@ std::string render_to_android_surface_frames(JNIEnv* env, jobject surface_obj, c
     out << "\nsurface gl renderer=" << renderer;
 
     int rendered = 0;
+    int wayland_rendered = 0;
+    int x11_rendered = 0;
+    int other_rendered = 0;
     GLenum last_gl_error = GL_NO_ERROR;
     EGLBoolean last_swapped = EGL_FALSE;
     std::string last_tag;
@@ -308,9 +311,20 @@ std::string render_to_android_surface_frames(JNIEnv* env, jobject surface_obj, c
             break;
         }
         ++rendered;
+        if (frame.tag.rfind("WAYLAND-", 0) == 0) {
+            ++wayland_rendered;
+        } else if (frame.tag.rfind("X11-", 0) == 0) {
+            ++x11_rendered;
+        } else {
+            ++other_rendered;
+        }
         last_tag = frame.tag;
     }
     const int dropped = static_cast<int>(frames.size()) - rendered;
+    out << "\nsurface wayland frames rendered=" << wayland_rendered;
+    out << "\nsurface x11 frames rendered=" << x11_rendered;
+    out << "\nsurface other frames rendered=" << other_rendered;
+    out << "\nsurface gui total frames rendered=" << (wayland_rendered + x11_rendered);
     out << "\nsurface frames rendered=" << rendered;
     out << "\nsurface frames dropped=" << dropped;
     out << "\nsurface frame lossless=" << (dropped == 0 ? "true" : "false");

@@ -45,12 +45,18 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "GUEST X11 GUI GPU BRIDGE EXECUTION" in text
     assert "GUEST GUI GPU SURFACE EXECUTION" in text
     assert "runGuestGuiBridge" in text
+    assert "ALR_GUI_IPC_ACK" in text
+    assert "guest wayland gui ipc seq gaps" in text
+    assert "guest x11 gui ipc seq gaps" in text
 
 
 def test_native_surface_renderer_accepts_multi_frame_stream_and_reports_bridge():
     text = CPP.read_text()
     assert "parse_surface_frames" in text
     assert "surface requested frames=" in text
+    assert "surface wayland frames rendered=" in text
+    assert "surface x11 frames rendered=" in text
+    assert "surface gui total frames rendered=" in text
     assert "surface frames rendered=" in text
     assert "surface frames dropped=" in text
     assert "surface frame lossless=" in text
