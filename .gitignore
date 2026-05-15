@@ -1,0 +1,8 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.gradle/
+build/
+app/build/
+local.properties
+.DS_Store
