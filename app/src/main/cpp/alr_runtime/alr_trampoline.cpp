@@ -36,6 +36,12 @@ bool is_static_hello_candidate(std::string_view requested_program, const Executa
         elf_plan.status == ElfLoadPlanStatus::StaticExecutable;
 }
 
+std::string image_report_or_skip(const TrampolineAttemptResult& result) {
+    return result.image_plan.report.empty()
+        ? build_static_image_skip_report()
+        : result.image_plan.report;
+}
+
 std::string read_all_from_fd(int fd) {
     std::string out;
     char buffer[512];
@@ -164,7 +170,8 @@ void execute_trampoline(
 
 std::string build_report(const TrampolineAttemptResult& result) {
     std::ostringstream out;
-    out << "ALR TRAMPOLINE AVAILABLE: " << (result.available ? "PASS" : "SKIP");
+    out << image_report_or_skip(result);
+    out << "\nALR TRAMPOLINE AVAILABLE: " << (result.available ? "PASS" : "SKIP");
     out << "\nALR TRAMPOLINE CONFIG HANDOFF: " << (result.config_handoff ? "PASS" : "SKIP");
     out << "\nALR TRAMPOLINE POLICY PREFLIGHT: " << (result.policy_preflight ? "PASS" : "SKIP");
     out << "\nALR STATIC HELLO VIA TRAMPOLINE: " << (result.static_hello_executed ? "PASS" : "SKIP");
@@ -209,7 +216,10 @@ TrampolineAttemptResult attempt_packaged_trampoline(
     }
 
     const bool static_hello_candidate = is_static_hello_candidate(requested_program, resolution, elf_plan);
-    result.policy_preflight = result.config_handoff && static_hello_candidate;
+    result.image_plan = build_static_image_plan(elf_plan);
+    result.image_map_ready = result.image_plan.valid;
+    result.image_entry_ready = result.image_plan.entry_ready;
+    result.policy_preflight = result.config_handoff && static_hello_candidate && result.image_map_ready && result.image_entry_ready;
     if (!policy.allow_trampoline_exec) {
         result.report = build_report(result);
         return result;

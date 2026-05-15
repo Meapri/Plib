@@ -1,6 +1,6 @@
 # Zero-Overhead Linux GPU Runtime Roadmap
 
-> **For Hermes:** Use the android-linux-runtime and writing-plans skills when implementing this roadmap. Work in five-version bundles, deliver APKs at bundle boundaries, and keep device evidence as the source of truth.
+> **Codex-owned workflow:** Work in bounded implementation/evidence bundles, deliver APKs at bundle boundaries, and keep device evidence as the source of truth.
 
 **Goal:** Run real Linux/glibc apps inside a non-root Android APK with minimal execution overhead and Android-native GPU/GUI acceleration.
 

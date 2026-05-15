@@ -38,6 +38,7 @@ def test_trampoline_report_contract_exists():
     assert "TrampolineAttemptPolicy" in header
     assert "ALR TRAMPOLINE PREFLIGHT: PASS" in main
     assert "ALR_TRAMPOLINE_TARGET_HOST_PATH" in source
+    assert "build_static_image_plan" in source
 
 
 def test_launch_report_and_runtime_plan_include_trampoline():
@@ -45,6 +46,7 @@ def test_launch_report_and_runtime_plan_include_trampoline():
     plan = PLAN_CPP.read_text()
     assert "attempt_packaged_trampoline" in launch
     assert "trampoline.report" in launch
+    assert "ALR STATIC IMAGE MAP PLAN: SKIP" in launch
     assert "ALR_TRAMPOLINE_PATH" in plan
     assert "alr runtime trampoline path=" in plan
 

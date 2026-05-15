@@ -2,110 +2,91 @@
 
 ## Purpose
 
-This project can be worked by multiple agents in parallel if each agent has a clear ownership boundary and communicates through durable repo files instead of relying on chat memory.
+Plib is now operated as a Codex-owned project. Earlier multi-agent/Hermes handoffs are historical only and should not be used for new work.
 
-The default split:
+Codex owns:
 
-```text
-Codex:
-  Clean-room ALR implementation, specs, tests, repo integration.
+- clean-room ALR runtime implementation
+- Android GUI/GPU bridge implementation
+- APK/device evidence capture
+- optional backend black-box probes
+- repository integration, tests, issues, and PRs
 
-Hermes:
-  Device evidence, black-box backend probes, Android APK smoke, GUI/GPU runtime observations.
-```
+External agent branches or PRs are not integration sources unless the user explicitly re-enables that workflow. If an old external branch contains a useful behavior, Codex must re-derive and reimplement it from project specs, public docs, tests, and clean black-box evidence.
 
 ## Communication Model
 
-Agents should not need direct live chat with each other. Use the repo as the coordination surface.
+Use the repo as a durable project log, not as an inter-agent chat surface.
 
 Shared files:
 
-- `docs/agent-sync.md`: append-only current status and handoff notes.
-- `docs/plans/parallel-workstreams.md`: workstream ownership and active tasks.
-- `docs/prompts/`: reusable prompts for external agents.
+- `docs/agent-sync.md`: append-only project status and bundle-completion notes.
+- `docs/plans/parallel-workstreams.md`: Codex-owned workstream map.
+- `docs/prompts/`: reusable prompts; external-agent prompts may remain archived but are not active workflow instructions.
 
 Default cadence:
 
-- Use large-batch handoffs, not frequent ping-pong.
-- Give each agent a complete bundle with clear ownership, acceptance checks, and non-goals.
-- Let each agent work independently on its branch until the bundle is reviewable.
-- Merge only at bundle boundaries, after tests/evidence are attached.
-- Avoid recurring coordination comments unless a blocker changes ownership or would invalidate the other agent's work.
+- Work in large implementation/evidence bundles.
+- Open one branch per bundle.
+- Attach tests, APK proof, and claim boundaries in the PR body.
+- Merge only after local verification passes.
+- Do not add frequent status-only commits or coordination comments.
 
 Rules:
 
-- Each agent updates `docs/agent-sync.md` at the start and end of a bundle, not every small work session.
-- Each update must include branch/worktree, touched files, commands run, tests run, and blockers.
-- Do not overwrite another agent's status entry.
-- Do not rewrite another agent's docs or code unless explicitly assigned.
-- Prefer adding a new section or follow-up note over editing an active note written by the other agent.
+- Update `docs/agent-sync.md` at bundle completion or when a real blocker changes the project path.
+- Each update must include branch/worktree, touched files, commands run, tests run, evidence, and blockers.
+- Keep previous historical entries intact.
+- Do not claim Android device behavior from host-only tests.
+- Do not claim performance superiority without a benchmark harness and device evidence.
 
 ## Branching
 
 Recommended branch names:
 
 ```text
-codex/alr-clean-runtime-spec
-codex/alr-runtime-launcher
-codex/alr-path-hook
-
-hermes/proroot-ab-probe
-hermes/device-gpu-evidence
-hermes/apk-smoke-reports
+codex/alr-static-image-plan
+codex/alr-entry-trampoline
+codex/gui-backend-labels
+codex/device-evidence
+codex/optional-backend-probe
 ```
 
-If both agents work in the same local checkout, coordinate before switching branches. Safer option: use separate worktrees.
-
-Example:
-
-```bash
-git worktree add ../androlinux-codex codex/alr-runtime-launcher
-git worktree add ../androlinux-hermes hermes/proroot-ab-probe
-```
+Use one local checkout unless a long-running device/evidence branch genuinely needs isolation.
 
 ## Ownership Boundaries
 
-### Codex-Owned Areas
+### Codex-Owned Implementation Areas
 
-Default write scope:
-
-- `docs/product-requirements.md`
-- `docs/clean-room-protocol.md`
-- `docs/alr-execution-backend-spec.md`
-- `docs/plans/implementation-milestones.md`
 - `app/src/main/cpp/alr_runtime/`
-- future ALR runtime launcher/hook/bridge source files
-- host/native tests for ALR logic
+- `app/src/main/cpp/alr_runtime_*`
+- `app/src/main/cpp/runtime_*`
+- Kotlin app/device evidence surfaces under `app/src/main/java/`
+- ALR, graphics, device, and optional-backend tests
+- specs and plans under `docs/`
 
-Codex should avoid editing:
+### Clean-Room Boundaries
 
-- Device evidence captured by Hermes.
-- APK smoke result logs.
-- Optional external backend binary artifacts unless assigned.
+Codex may use:
 
-### Hermes-Owned Areas
+- project specs and tests
+- public Linux, Android, glibc, ELF, EGL, GLES, Vulkan, Wayland, and X11 documentation
+- compatible open-source projects under their licenses
+- black-box command inputs/outputs from optional external runtimes
 
-Default write scope:
+Codex must not use:
 
-- `docs/evidence/`
-- `docs/research/`
-- optional backend source/version/sha notes
-- device run reports
-- APK smoke output summaries
-- focused fixes for Android-device-only smoke reporting when assigned
+- proprietary disassembly or decompilation as implementation input
+- copied closed-runtime algorithms
+- undocumented private Android APIs as required product dependencies
+- old external-agent implementation diffs as code to transplant without clean review
 
-Hermes should avoid editing:
+## Bundle Entry Format
 
-- ALR runtime implementation internals.
-- Clean-room implementation code based on proprietary runtime behavior.
-- Core specs unless proposing changes through `docs/agent-sync.md`.
-
-## Handoff Entry Format
-
-Append entries to `docs/agent-sync.md` only when a bundle starts, a bundle is ready for review, or a true blocker appears:
+Append entries to `docs/agent-sync.md` when a bundle is merged or a true blocker appears:
 
 ```markdown
-## 2026-05-15 HH:MM KST - <agent> - <workstream>
+## 2026-05-15 HH:MM KST - Codex - <workstream>
 
 Branch/worktree:
 - `<branch or path>`
@@ -120,7 +101,7 @@ Commands/tests:
 - `<command>` -> `<PASS/FAIL/SKIP>`
 
 Evidence:
-- `<device/model/log path/report section>`
+- `<APK hash/device/log/report section>`
 
 Blockers:
 - `<none or concrete blocker>`
@@ -131,10 +112,10 @@ Next recommended action:
 
 ## Conflict Rules
 
-- If both agents need the same file, pause and split the change by section.
-- If Hermes finds a device failure that contradicts Codex specs, Hermes records evidence first; Codex updates specs/tests after reviewing it.
-- If Codex changes expected report strings, Codex updates tests and records the full report-string batch in the PR body or bundle-complete `docs/agent-sync.md` entry so Hermes can adjust device smoke checks in one pass.
-- If a closed/proprietary runtime behavior is involved, Hermes records black-box inputs/outputs only; Codex converts that into clean tests/spec language.
+- If the local worktree contains unrelated user changes, do not overwrite them.
+- If an old external PR is dirty or stale, close it and reimplement needed behavior on a fresh Codex branch.
+- If a device result contradicts a host-side assumption, preserve the device evidence and update specs/tests before continuing.
+- If closed/proprietary runtime behavior is involved, record only black-box input/output facts and convert them into clean tests.
 
 ## Stop Conditions
 
@@ -142,45 +123,6 @@ Stop and ask before proceeding if:
 
 - A task requires modifying proprietary binaries.
 - A task requires copying implementation details from closed binaries.
-- A branch contains unrelated user changes that would be overwritten.
-- Device evidence shows Android policy blocks a planned architecture.
 - Licensing obligations are unclear for a new vendored dependency.
-
-## Best Parallel Split
-
-Run two agents like this:
-
-```text
-Agent 1 / Codex:
-  Build the clean ALR runtime path from docs to tests to source in large implementation bundles.
-
-Agent 2 / Hermes:
-  Build the evidence pipeline in large evidence bundles: device smoke, optional proroot A/B, GPU reports.
-```
-
-This keeps the critical clean-room boundary intact:
-
-```text
-Hermes observes and reports behavior.
-Codex implements from specs and tests.
-```
-
-## Batch Assignment Pattern
-
-Prefer assigning work like this:
-
-```text
-Codex bundle:
-  Owns one implementation milestone end to end.
-  Delivers source, tests, APK build proof, and a PR.
-
-Hermes bundle:
-  Owns one evidence milestone end to end.
-  Delivers dated evidence markdown, logs/screenshots if available, and a PR.
-
-Integration:
-  Rebase once onto current main.
-  Review for clean-room boundaries.
-  Merge the complete bundle.
-  Open the next large bundle only after integration.
-```
+- Android policy blocks the planned architecture on target devices and no clean alternative is obvious.
+- A destructive local/device action could remove user data.

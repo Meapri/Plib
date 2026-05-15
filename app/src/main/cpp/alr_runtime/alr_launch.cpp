@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "alr_runtime/alr_elf.hpp"
+#include "alr_runtime/alr_image.hpp"
 #include "alr_runtime/alr_trampoline.hpp"
 
 namespace alr::runtime {
@@ -85,6 +86,14 @@ std::string build_report(std::string_view requested_program, const LaunchAttempt
         : elf_plan.report;
     const std::string trampoline_report = result.trampoline.report.empty()
         ? std::string{
+            "ALR STATIC IMAGE MAP PLAN: SKIP\n"
+            "ALR STATIC IMAGE ENTRY READY: SKIP\n"
+            "alr image page size=0\n"
+            "alr image entry=0x0\n"
+            "alr image min vaddr=0x0\n"
+            "alr image max vaddr=0x0\n"
+            "alr image size=0\n"
+            "alr image load segments=0\n"
             "ALR TRAMPOLINE AVAILABLE: SKIP\n"
             "ALR TRAMPOLINE CONFIG HANDOFF: SKIP\n"
             "ALR TRAMPOLINE POLICY PREFLIGHT: SKIP\n"

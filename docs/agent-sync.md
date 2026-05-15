@@ -481,3 +481,56 @@ Coordination:
 Blockers:
 - No Android device PASS is claimed yet.
 - The next Codex implementation step is a real static AArch64 entry trampoline/loader rather than report-only preflight.
+
+## 2026-05-15 - Codex - Codex-Only Workflow and Static Image Plan
+
+Branch/worktree:
+- `codex/alr-static-image-plan` at `/Users/naen/Documents/Plib/androlinux-runtime-lab`
+
+Touched files:
+- `README.md`
+- `docs/agent-coordination.md`
+- `docs/plans/parallel-workstreams.md`
+- `docs/plans/2026-05-15-zero-overhead-linux-gpu-runtime-roadmap.md`
+- `docs/prompts/codex-clean-alr-runtime.md`
+- `docs/prompts/hermes-proroot-ab-and-device-evidence.md`
+- `app/src/main/cpp/CMakeLists.txt`
+- `app/src/main/cpp/alr_runtime/alr_elf.hpp`
+- `app/src/main/cpp/alr_runtime/alr_elf.cpp`
+- `app/src/main/cpp/alr_runtime/alr_image.hpp`
+- `app/src/main/cpp/alr_runtime/alr_image.cpp`
+- `app/src/main/cpp/alr_runtime/alr_launch.cpp`
+- `app/src/main/cpp/alr_runtime/alr_trampoline.hpp`
+- `app/src/main/cpp/alr_runtime/alr_trampoline.cpp`
+- `scripts/test-native-core.sh`
+- `tests/native_alr_runtime_elf_test.cpp`
+- `tests/native_alr_runtime_image_test.cpp`
+- `tests/native_runtime_plan_test.cpp`
+- `tests/test_alr_runtime_image_sources.py`
+- `tests/test_alr_runtime_trampoline_sources.py`
+- `tests/test_android_loader_plan_report.py`
+- `tests/test_project_documentation_bundle.py`
+
+What changed:
+- Switched active project workflow from Hermes/Codex parallel ownership to Codex-only ownership.
+- Closed stale/dirty Hermes PRs #5 and #22 without integrating their branches.
+- Kept issue #19 open as Codex-owned future GUI/backend-label work.
+- Added preserved `PT_LOAD` segment details to the ELF load plan.
+- Added a static ELF image mapping plan that computes page-aligned offsets, virtual spans, segment protection strings, and entry-in-segment readiness.
+- Wired static image readiness into trampoline preflight so `ALR TRAMPOLINE POLICY PREFLIGHT` depends on both static ELF classification and image entry readiness.
+- Kept actual guest entry execution disabled; this is still pre-entry loader work.
+
+Commands/tests:
+- `/Users/naen/.venvs/plib-py313/bin/python -m pytest tests -q` -> PASS, 171 passed.
+- `scripts/test-native-core.sh` -> PASS.
+- `CXX=clang++ scripts/test-native-core.sh` -> PASS.
+- `JAVA_HOME=/Users/naen/.jdks/jdk-17.0.19+10/Contents/Home ./gradlew :app:assembleDebug --no-daemon` -> PASS.
+- `unzip -l app/build/outputs/apk/debug/app-debug.apk | rg 'libalr_runtime_trampoline|libalr_runtime_(launcher|hook|interposer)|libalr_loader|libalr_test_command'` -> PASS.
+
+Evidence:
+- Debug APK: `app/build/outputs/apk/debug/app-debug.apk`
+- APK sha256: `5fa6d4ab847cba819ae087ddff25da9bfb4f1c9eb5706f5b5bf5c16c9643e233`
+
+Blockers:
+- No Android device PASS is claimed yet.
+- Next implementation step is actual static image mmap/copy/protect inside the packaged trampoline, then controlled entry transfer after device policy is proven.

@@ -46,6 +46,9 @@ def test_jni_report_includes_alr_runtime_launcher_plan_section():
     assert "ALR ELF LOAD PLAN: " in (ROOT / "app/src/main/cpp/alr_runtime/alr_elf.cpp").read_text()
     assert "ALR ELF STATIC HELLO CANDIDATE: " in (ROOT / "app/src/main/cpp/alr_runtime/alr_elf.cpp").read_text()
     trampoline_source = (ROOT / "app/src/main/cpp/alr_runtime/alr_trampoline.cpp").read_text()
+    image_source = (ROOT / "app/src/main/cpp/alr_runtime/alr_image.cpp").read_text()
+    assert "ALR STATIC IMAGE MAP PLAN: " in image_source
+    assert "ALR STATIC IMAGE ENTRY READY: " in image_source
     assert "ALR TRAMPOLINE AVAILABLE: " in trampoline_source
     assert "ALR TRAMPOLINE CONFIG HANDOFF: " in trampoline_source
     assert "ALR STATIC HELLO VIA TRAMPOLINE: " in trampoline_source

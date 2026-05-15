@@ -40,6 +40,9 @@ int main() {
         text.find("ALR ELF STATIC HELLO CANDIDATE: ") != std::string::npos &&
         text.find("alr elf class=") != std::string::npos &&
         text.find("alr elf load segments=") != std::string::npos &&
+        text.find("ALR STATIC IMAGE MAP PLAN: ") != std::string::npos &&
+        text.find("ALR STATIC IMAGE ENTRY READY: ") != std::string::npos &&
+        text.find("alr image load segments=") != std::string::npos &&
         text.find("ALR TRAMPOLINE AVAILABLE: ") != std::string::npos &&
         text.find("ALR TRAMPOLINE CONFIG HANDOFF: ") != std::string::npos &&
         text.find("ALR STATIC HELLO VIA TRAMPOLINE: ") != std::string::npos &&

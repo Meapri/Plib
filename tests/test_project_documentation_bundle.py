@@ -11,7 +11,7 @@ MILESTONES = ROOT / "docs/plans/implementation-milestones.md"
 AGENT_COORDINATION = ROOT / "docs/agent-coordination.md"
 PARALLEL_WORKSTREAMS = ROOT / "docs/plans/parallel-workstreams.md"
 CODEX_PROMPT = ROOT / "docs/prompts/codex-clean-alr-runtime.md"
-HERMES_PROMPT = ROOT / "docs/prompts/hermes-proroot-ab-and-device-evidence.md"
+ARCHIVED_EXTERNAL_PROMPT = ROOT / "docs/prompts/hermes-proroot-ab-and-device-evidence.md"
 
 
 def test_readme_links_new_planning_bundle():
@@ -77,28 +77,27 @@ def test_implementation_milestones_define_ordered_bundles():
     assert "Stop Conditions" in text
 
 
-def test_agent_coordination_defines_codex_hermes_split():
+def test_agent_coordination_defines_codex_owned_workflow():
     text = AGENT_COORDINATION.read_text()
-    assert "Codex:" in text
-    assert "Hermes:" in text
+    assert "Codex-owned project" in text
+    assert "External agent branches or PRs are not integration sources" in text
     assert "docs/agent-sync.md" in text
-    assert "Handoff Entry Format" in text
+    assert "Bundle Entry Format" in text
 
 
-def test_parallel_workstreams_define_separate_write_scopes():
+def test_workstreams_define_codex_owned_tracks():
     text = PARALLEL_WORKSTREAMS.read_text()
     assert "Workstream A: Clean ALR Runtime" in text
-    assert "Workstream B: Device Evidence and Optional Backend Probe" in text
-    assert "Do not touch by default" in text
+    assert "Workstream B: Android Device Evidence and Optional Backend Probe" in text
+    assert "Workstream C: Android GUI/GPU Bridge" in text
     assert "Shared Contract" in text
 
 
 def test_reusable_agent_prompts_exist():
     codex = CODEX_PROMPT.read_text()
-    hermes = HERMES_PROMPT.read_text()
+    archived = ARCHIVED_EXTERNAL_PROMPT.read_text()
     assert "Mission:" in codex
     assert "Clean-room rules:" in codex
     assert "Bundle C" in codex
-    assert "Mission:" in hermes
-    assert "Clean-room rules:" in hermes
-    assert "Bundle B" in hermes
+    assert "archived" in archived.lower()
+    assert "Codex-owned" in archived

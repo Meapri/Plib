@@ -149,6 +149,14 @@ ElfLoadPlan build_elf_load_plan(const std::string& host_path) {
                 if (segment_end < segment_vaddr) {
                     throw std::runtime_error("ELF PT_LOAD segment address overflow");
                 }
+                plan.load_segments.push_back(ElfLoadSegment{
+                    .offset = static_cast<std::uint64_t>(phdr.p_offset),
+                    .vaddr = segment_vaddr,
+                    .file_size = static_cast<std::uint64_t>(phdr.p_filesz),
+                    .mem_size = static_cast<std::uint64_t>(phdr.p_memsz),
+                    .flags = static_cast<std::uint32_t>(phdr.p_flags),
+                    .align = static_cast<std::uint64_t>(phdr.p_align),
+                });
                 min_vaddr = std::min(min_vaddr, segment_vaddr);
                 max_vaddr = std::max(max_vaddr, segment_end);
             } else if (phdr.p_type == PT_INTERP) {

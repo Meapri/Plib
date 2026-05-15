@@ -24,9 +24,9 @@ Clean-room rules:
 - Implement from project specs, tests, public Linux/Android/glibc docs, and compatible open-source references.
 
 Ownership:
-- You own ALR specs/tests/source.
+- You own ALR specs/tests/source and may also own device/evidence work when the bundle requires it.
 - Prefer editing app/src/main/cpp/alr_runtime/ and ALR-specific tests.
-- Do not edit Hermes device evidence or optional backend artifact notes unless explicitly asked.
+- Preserve clean-room boundaries for device evidence and optional backend artifact notes.
 - Update docs/agent-sync.md at start and end of your session.
 
 Immediate target:
@@ -59,4 +59,3 @@ Append a final entry to docs/agent-sync.md with:
 - blockers
 - next recommended action
 ```
-

@@ -5,6 +5,7 @@ add_library(alr_runtime STATIC
     alr_runtime/alr_config.cpp
     alr_runtime/alr_elf.cpp
     alr_runtime/alr_exec.cpp
+    alr_runtime/alr_image.cpp
     alr_runtime/alr_launch.cpp
     alr_runtime/alr_path.cpp
     alr_runtime/alr_trampoline.cpp

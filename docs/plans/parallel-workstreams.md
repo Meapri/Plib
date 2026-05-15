@@ -1,48 +1,32 @@
-# Parallel Workstreams
+# Codex Workstreams
 
 ## Goal
 
-Run two agents in parallel without contaminating the clean-room implementation or fighting over the same files.
+Track the major Plib workstreams under a single Codex-owned workflow. The work may be split into branches, but responsibility stays with Codex unless the user explicitly changes that again.
 
 ## Workstream A: Clean ALR Runtime
 
-Recommended agent:
-
-- Codex
-
 Mission:
 
-- Turn the ALR execution backend specification into tests and implementation.
-- Keep implementation clean-room.
-- Preserve PRoot fallback.
-
-Primary docs:
-
-- `docs/product-requirements.md`
-- `docs/clean-room-protocol.md`
-- `docs/alr-execution-backend-spec.md`
-- `docs/plans/implementation-milestones.md`
+- Build the clean-room low-overhead Android Linux runtime.
+- Preserve PRoot as a compatibility fallback while ALR matures.
+- Keep guest execution claims conservative until real device evidence exists.
 
 Write scope:
 
 - `app/src/main/cpp/alr_runtime/`
-- future `app/src/main/cpp/alr_runtime_launcher*`
-- future `app/src/main/cpp/alr_runtime_hook*`
+- `app/src/main/cpp/alr_runtime_*`
+- `app/src/main/cpp/runtime_*`
 - ALR-specific host/native tests
 - ALR-specific documentation updates
 
-Do not touch by default:
+Current focus:
 
-- Optional proprietary backend artifacts.
-- Device evidence logs.
-- Hermes-owned smoke reports.
-
-Current large-batch assignment:
-
-1. Own the next ALR implementation bundle end to end on a Codex branch.
-2. Add source, host/native tests, Android packaging coverage, and report strings in the same PR.
-3. Keep guest execution claims conservative until a real guest process path is verified.
-4. Hand off to Hermes only at PR-ready or merged-bundle boundaries.
+1. Static ELF image mapping preflight.
+2. Static AArch64 entry trampoline.
+3. Dynamic glibc loader handoff.
+4. Syscall/path/proc/fd identity coverage.
+5. Performance harness versus PRoot.
 
 Recent completed acceptance:
 
@@ -50,100 +34,93 @@ Recent completed acceptance:
 ALR RUNTIME LAUNCHER AVAILABLE: PASS
 ALR RUNTIME CONFIG BUILD: PASS
 ALR RUNTIME DIRECT APP-DATA EXEC POLICY: PASS
-ALR HOOK LOAD: PASS
-ALR HOOK CONFIG BUILD: PASS
-ALR STAT ROOTFS FILE: PASS
-ALR OPEN ROOTFS FILE: PASS
+ALR ELF LOAD PLAN: PASS
+ALR TRAMPOLINE AVAILABLE: PASS
+ALR TRAMPOLINE CONFIG HANDOFF: PASS
+ALR TRAMPOLINE POLICY PREFLIGHT: PASS
 ```
 
-## Workstream B: Device Evidence and Optional Backend Probe
-
-Recommended agent:
-
-- Hermes
+## Workstream B: Android Device Evidence and Optional Backend Probe
 
 Mission:
 
-- Keep device evidence real.
-- Compare PRoot with optional proroot-class backend through black-box behavior only.
-- Maintain GPU/GUI proof reports.
-
-Primary docs:
-
-- `docs/clean-room-protocol.md`
-- `docs/android-graphics-bridge-spec.md`
-- `docs/plans/implementation-milestones.md`
-- `docs/plans/2026-05-15-zero-overhead-linux-gpu-runtime-roadmap.md`
+- Keep device evidence real and reproducible.
+- Compare PRoot, optional external backends, and ALR through black-box command results.
+- Preserve clean-room boundaries.
 
 Write scope:
 
 - `docs/evidence/`
 - `docs/research/`
+- Android smoke/probe code
+- APK/device run summaries
 - optional backend metadata docs
-- APK smoke result notes
-- narrow Android report fixes only when assigned
 
-Do not touch by default:
+Current focus:
 
-- `app/src/main/cpp/alr_runtime/`
-- ALR clean-room implementation files.
-- Clean-room specs except by proposing changes in `docs/agent-sync.md`.
+1. Re-run APK smoke on current main.
+2. Capture device model, Android version, ABI, APK hash, stdout/stderr, exit code, and elapsed time.
+3. Benchmark PRoot baseline commands.
+4. Add optional backend probes only when a concrete artifact is available and licensing/source metadata is recorded.
 
-Current large-batch assignment:
-
-1. Rebase or recreate the evidence PR on current `main` so implementation files are never deleted by an old baseline.
-2. Own one complete device/evidence bundle at a time.
-3. Capture PRoot baseline, optional backend status, and GUI/GPU bridge evidence in one dated evidence PR.
-4. Include all current Codex report strings in the same evidence pass.
-5. Avoid recurring status comments unless blocked or ready for review.
-
-Acceptance for first bundle:
+Acceptance:
 
 ```text
 PROOT BACKEND EXECUTION: PASS
 OPTIONAL LOW-OVERHEAD BACKEND AVAILABLE: PASS/FAIL/SKIP
 OPTIONAL LOW-OVERHEAD ROOTFS EXECUTION: PASS/FAIL/SKIP
 OPTIONAL LOW-OVERHEAD DPKG LOCAL INSTALL: PASS/FAIL/SKIP
+```
+
+## Workstream C: Android GUI/GPU Bridge
+
+Mission:
+
+- Route Linux GUI/GPU output to Android-owned Surface/EGL/GLES/Vulkan paths.
+- Keep host rendering evidence separate from guest execution evidence.
+- Preserve actual frame/loss/renderer metrics.
+
+Write scope:
+
+- Android Surface/EGL/GLES/Vulkan app code
+- guest GUI/GPU bridge clients and shims
+- graphics reports and tests
+- device evidence for rendered frames
+
+Current focus:
+
+1. Backend report labels.
+2. Surface frame loss and renderer evidence.
+3. Guest GLES shim stability.
+4. Vulkan research path after GLES is stable.
+
+Acceptance:
+
+```text
 HOST GPU EGL/GLES EXECUTION: PASS
-GUEST GUI GPU SURFACE EXECUTION: PASS or known-fail with evidence
+GUEST GUI GPU SURFACE EXECUTION: PASS/FAIL/SKIP/PENDING_SURFACE_CALLBACK
+surface frame lossless=true
+surface graphics backend=<backend>
 ```
 
 ## Shared Contract
 
-Both workstreams must preserve:
+All workstreams must preserve:
 
-- Safe rootfs extraction.
-- No direct writable app-data executable entrypoint policy.
-- Clean guest environment.
-- PRoot fallback.
-- Deterministic report strings.
-- Clean-room boundary.
+- safe rootfs extraction
+- no direct writable app-data executable entrypoint policy
+- clean guest environment
+- PRoot fallback
+- deterministic report strings
+- clean-room boundary
+- honest PASS/FAIL/SKIP report semantics
 
 ## Merge Order
 
 Prefer large complete bundles, not small alternating sync commits:
 
-1. Codex implementation bundle with tests and APK build proof.
-2. Hermes evidence bundle rebased on current `main`.
-3. Integration review for clean-room boundaries and accidental deletions.
-4. Merge the complete bundle.
-5. Open the next large bundle.
-
-## Cross-Agent Questions
-
-Questions should be written into `docs/agent-sync.md` as:
-
-```markdown
-Question for <agent>:
-- <specific question>
-
-Needed by:
-- <date or milestone>
-
-Why it matters:
-- <one sentence>
-```
-
-The other agent answers in a new entry. This is slower than live chat, but far less fragile.
-
-Use this only for blockers. Normal progress should stay inside the agent's branch and PR until the bundle is ready.
+1. Create a Codex branch for one concrete bundle.
+2. Add source, tests, docs, and APK/device proof where relevant.
+3. Run the documented verification commands.
+4. Open a PR with claim boundaries.
+5. Merge after verification, then open the next bundle.

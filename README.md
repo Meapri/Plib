@@ -25,8 +25,8 @@ Start here when changing project direction or implementing a new runtime layer:
 - [ALR execution backend spec](docs/alr-execution-backend-spec.md): staged design for the open low-overhead runtime backend that should eventually outperform PRoot on hot paths.
 - [Android graphics bridge spec](docs/android-graphics-bridge-spec.md): Surface/EGL/GLES/Vulkan bridge target for Linux GUI/GPU output.
 - [Implementation milestones](docs/plans/implementation-milestones.md): five-version bundle plan, acceptance strings, and stop conditions.
-- [Agent coordination](docs/agent-coordination.md): Codex/Hermes ownership boundaries, handoff format, and conflict rules.
-- [Parallel workstreams](docs/plans/parallel-workstreams.md): recommended split for clean ALR runtime work and device/probe evidence work.
+- [Agent coordination](docs/agent-coordination.md): Codex-only ownership, evidence rules, and conflict/stop conditions.
+- [Workstreams](docs/plans/parallel-workstreams.md): Codex-owned runtime, graphics, device evidence, and optional backend tracks.
 
 ## Repository layout
 

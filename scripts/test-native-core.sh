@@ -12,6 +12,7 @@ cxx="${CXX:-g++}"
   app/src/main/cpp/alr_runtime/alr_config.cpp \
   app/src/main/cpp/alr_runtime/alr_elf.cpp \
   app/src/main/cpp/alr_runtime/alr_exec.cpp \
+  app/src/main/cpp/alr_runtime/alr_image.cpp \
   app/src/main/cpp/alr_runtime/alr_launch.cpp \
   app/src/main/cpp/alr_runtime/alr_trampoline.cpp \
   app/src/main/cpp/runtime_plan.cpp \
@@ -26,6 +27,7 @@ cxx="${CXX:-g++}"
   app/src/main/cpp/alr_runtime/alr_config.cpp \
   app/src/main/cpp/alr_runtime/alr_elf.cpp \
   app/src/main/cpp/alr_runtime/alr_exec.cpp \
+  app/src/main/cpp/alr_runtime/alr_image.cpp \
   app/src/main/cpp/alr_runtime/alr_launch.cpp \
   app/src/main/cpp/alr_runtime/alr_trampoline.cpp \
   app/src/main/cpp/runtime_plan.cpp \
@@ -55,9 +57,19 @@ cxx="${CXX:-g++}"
   -Iapp/src/main/cpp \
   tests/native_alr_runtime_elf_test.cpp \
   app/src/main/cpp/alr_runtime/alr_elf.cpp \
+  app/src/main/cpp/alr_runtime/alr_image.cpp \
   -o /tmp/alr-native-runtime-elf-test
 
 /tmp/alr-native-runtime-elf-test
+
+"$cxx" -std=c++20 -Wall -Wextra -Werror \
+  -Iapp/src/main/cpp \
+  tests/native_alr_runtime_image_test.cpp \
+  app/src/main/cpp/alr_runtime/alr_elf.cpp \
+  app/src/main/cpp/alr_runtime/alr_image.cpp \
+  -o /tmp/alr-native-runtime-image-test
+
+/tmp/alr-native-runtime-image-test
 
 "$cxx" -std=c++20 -Wall -Wextra -Werror \
   -Iapp/src/main/cpp \
@@ -66,6 +78,7 @@ cxx="${CXX:-g++}"
   app/src/main/cpp/alr_runtime/alr_config.cpp \
   app/src/main/cpp/alr_runtime/alr_elf.cpp \
   app/src/main/cpp/alr_runtime/alr_exec.cpp \
+  app/src/main/cpp/alr_runtime/alr_image.cpp \
   app/src/main/cpp/alr_runtime/alr_launch.cpp \
   app/src/main/cpp/alr_runtime/alr_trampoline.cpp \
   -o /tmp/alr-native-runtime-trampoline-test
@@ -88,6 +101,7 @@ cxx="${CXX:-g++}"
   app/src/main/cpp/alr_runtime/alr_config.cpp \
   app/src/main/cpp/alr_runtime/alr_elf.cpp \
   app/src/main/cpp/alr_runtime/alr_exec.cpp \
+  app/src/main/cpp/alr_runtime/alr_image.cpp \
   app/src/main/cpp/alr_runtime/alr_launch.cpp \
   app/src/main/cpp/alr_runtime/alr_trampoline.cpp \
   -o /tmp/alr-native-runtime-launch-test

@@ -108,6 +108,9 @@ int main() {
     require(static_plan.machine == "aarch64", "static machine");
     require(static_plan.type == "exec", "static type");
     require(static_plan.load_segment_count == 2, "static load count");
+    require(static_plan.load_segments.size() == 2, "static load segment details");
+    require(static_plan.load_segments[0].vaddr == 0x400000, "first load vaddr");
+    require(static_plan.load_segments[1].mem_size == 0x200, "second load mem size");
     require(static_plan.interpreter.empty(), "static no interp");
     require(static_plan.report.find("ALR ELF LOAD PLAN: PASS") != std::string::npos, "static report");
     require(static_plan.report.find("ALR ELF STATIC HELLO CANDIDATE: PASS") != std::string::npos, "static candidate report");

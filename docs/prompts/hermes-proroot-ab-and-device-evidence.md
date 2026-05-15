@@ -1,6 +1,6 @@
-# Prompt: Hermes Optional Backend and Device Evidence Workstream
+# Archived Prompt: External Optional Backend and Device Evidence Workstream
 
-Use this prompt for Hermes or another external agent doing device evidence, APK smoke, and optional low-overhead backend probing.
+This prompt is archived. The active workflow is Codex-owned; do not start external-agent/Hermes work from this prompt unless the user explicitly re-enables that collaboration model.
 
 ```text
 You are working in /Users/naen/Documents/Plib/androlinux-runtime-lab.

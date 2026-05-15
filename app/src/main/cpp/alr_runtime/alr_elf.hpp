@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace alr::runtime {
 
@@ -31,6 +32,7 @@ struct ElfLoadPlan {
     std::uint64_t min_vaddr = 0;
     std::uint64_t max_vaddr = 0;
     std::uint32_t load_segment_count = 0;
+    std::vector<ElfLoadSegment> load_segments;
     std::string interpreter;
     std::string report;
 };
