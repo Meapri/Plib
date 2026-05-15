@@ -3,6 +3,9 @@
 #include <sstream>
 #include <string>
 
+#include "alr_runtime/alr_config.hpp"
+#include "alr_runtime/alr_exec.hpp"
+
 extern "C" const char* alr_runtime_launcher_status() {
     return "ALR RUNTIME LAUNCHER AVAILABLE: PASS";
 }
@@ -32,10 +35,27 @@ extern "C" const char* alr_runtime_launcher_build_report(
         .program = program == nullptr ? "" : program,
     };
     const auto launch = alr::build_alr_runtime_launch_plan(input);
+    const auto config = alr::runtime::RuntimeConfig{
+        .package_name = input.package_name,
+        .rootfs_dir = launch.env.at("ALR_ROOTFS"),
+        .cwd = "/",
+        .program = input.program,
+        .env = launch.env,
+        .binds = {},
+        .hook_path = launch.env.at("ALR_HOOK_PATH"),
+        .interposer_path = launch.env.at("ALR_INTERPOSER_PATH"),
+        .bridge_path = launch.env.at("ALR_BRIDGE_PATH"),
+        .fake_root = false,
+        .verbose = 0,
+        .trace_path = false,
+        .trace_exec = false,
+    };
+    const auto resolution = alr::runtime::resolve_guest_executable(config, input.program);
     std::ostringstream out;
     out << "ALR RUNTIME LAUNCHER AVAILABLE: PASS";
     out << "\nALR RUNTIME CONFIG BUILD: PASS";
     out << "\nALR RUNTIME DIRECT APP-DATA EXEC POLICY: PASS";
+    out << "\n" << resolution.report;
     out << "\ncan execute guest=no";
     out << "\nlauncher executable=" << launch.executable;
     out << "\nrootfs=" << launch.env.at("ALR_ROOTFS");

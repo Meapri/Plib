@@ -10,6 +10,7 @@ cxx="${CXX:-g++}"
   tests/native_runtime_plan_test.cpp \
   app/src/main/cpp/alr_runtime/alr_path.cpp \
   app/src/main/cpp/alr_runtime/alr_config.cpp \
+  app/src/main/cpp/alr_runtime/alr_exec.cpp \
   app/src/main/cpp/runtime_plan.cpp \
   -o /tmp/alr-native-runtime-plan-test
 
@@ -20,6 +21,7 @@ cxx="${CXX:-g++}"
   tests/native_backend_policy_test.cpp \
   app/src/main/cpp/alr_runtime/alr_path.cpp \
   app/src/main/cpp/alr_runtime/alr_config.cpp \
+  app/src/main/cpp/alr_runtime/alr_exec.cpp \
   app/src/main/cpp/runtime_plan.cpp \
   -o /tmp/alr-native-backend-policy-test
 
@@ -42,6 +44,15 @@ cxx="${CXX:-g++}"
   -o /tmp/alr-native-runtime-config-test
 
 /tmp/alr-native-runtime-config-test
+
+"$cxx" -std=c++20 -Wall -Wextra -Werror \
+  -Iapp/src/main/cpp \
+  tests/native_alr_runtime_exec_test.cpp \
+  app/src/main/cpp/alr_runtime/alr_path.cpp \
+  app/src/main/cpp/alr_runtime/alr_exec.cpp \
+  -o /tmp/alr-native-runtime-exec-test
+
+/tmp/alr-native-runtime-exec-test
 
 "$cxx" -std=c++20 -Wall -Wextra -Werror \
   -Iapp/src/main/cpp \

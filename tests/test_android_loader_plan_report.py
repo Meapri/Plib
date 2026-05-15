@@ -36,6 +36,10 @@ def test_jni_report_includes_alr_runtime_launcher_plan_section():
     assert "ALR RUNTIME LAUNCHER AVAILABLE: PASS" in plan
     assert "ALR RUNTIME CONFIG BUILD: PASS" in plan
     assert "ALR CONFIG SERIALIZE: PASS" in plan
+    exec_source = (ROOT / "app/src/main/cpp/alr_runtime/alr_exec.cpp").read_text()
+    assert "ALR EXEC RESOLVE: " in exec_source
+    assert "ALR EXEC STRATEGY: " in exec_source
+    assert "exec_resolution.report" in plan
     assert "ALR RUNTIME DIRECT APP-DATA EXEC POLICY: PASS" in plan
 
 
