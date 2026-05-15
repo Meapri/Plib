@@ -2,6 +2,7 @@ package dev.chanwoo.androlinux
 
 import android.app.Activity
 import android.os.Bundle
+import android.widget.ScrollView
 import android.widget.TextView
 import java.io.File
 
@@ -28,7 +29,18 @@ class MainActivity : Activity() {
         val prootCandidateResult = nativeCommandRunner.runProotCandidateSmokeTest()
         val prootHelloResult = nativeCommandRunner.runProotRootfsProgram(rootfsStatus.rootfsDir, "/bin/hello")
 
-        val report = nativeRuntimeReport(
+        val executionSummary = "execution summary" +
+            "\nrootfs verified=${rootfsStatus.verified} extracted=${rootfsStatus.extracted}" +
+            "\nnative smoke exit=${nativeCommandResult.exitCode}" +
+            "\nnative smoke stdout=${nativeCommandResult.stdout}" +
+            "\nproot --version exit=${prootCandidateResult.exitCode}" +
+            "\nproot --version stdout=${prootCandidateResult.stdout}" +
+            "\nproot --version stderr=${prootCandidateResult.stderr}" +
+            "\nproot hello exit=${prootHelloResult.exitCode}" +
+            "\nproot hello stdout=${prootHelloResult.stdout}" +
+            "\nproot hello stderr=${prootHelloResult.stderr}"
+
+        val verboseReport = nativeRuntimeReport(
             packageName,
             applicationInfo.nativeLibraryDir,
             filesDir.absolutePath,
@@ -55,12 +67,15 @@ class MainActivity : Activity() {
             "\nproot hello stdout=${prootHelloResult.stdout}" +
             "\nproot hello stderr=${prootHelloResult.stderr}"
 
+        val report = executionSummary + "\n\n--- verbose report ---\n" + verboseReport
+
         val view = TextView(this).apply {
             text = report
             textSize = 14f
             setPadding(32, 32, 32, 32)
+            setTextIsSelectable(true)
         }
-        setContentView(view)
+        setContentView(ScrollView(this).apply { addView(view) })
     }
 
     private external fun nativeRuntimeReport(
