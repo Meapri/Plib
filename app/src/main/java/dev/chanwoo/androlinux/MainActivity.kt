@@ -103,7 +103,7 @@ class MainActivity : Activity() {
             prootIdResult.stdout.contains("gid=0(root)")
         val identityNssExecutionPassed = identityNumericRoot && identityNamedRoot
 
-        val executionSummary = "build: 0.4.1-nss-files-smoke" +
+        val executionSummary = "build: 0.4.2-raw-nss-identity" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -114,6 +114,7 @@ class MainActivity : Activity() {
             "\nIDENTITY NSS EXECUTION: ${if (identityNssExecutionPassed) "PASS" else "FAIL"}" +
             "\nidentity numeric root=$identityNumericRoot" +
             "\nidentity named root=$identityNamedRoot" +
+            "\nidentity proot mode=raw -r" +
             "\nguest env leaked android vars=$guestEnvLeakedAndroidVars" +
             "\nrootfs verified=${rootfsStatus.verified} extracted=${rootfsStatus.extracted}" +
             "\nrootfs /bin/hello exists=${rootfsHelloFile.isFile} executable=${rootfsHelloFile.canExecute()} bytes=${rootfsHelloFile.length()}" +

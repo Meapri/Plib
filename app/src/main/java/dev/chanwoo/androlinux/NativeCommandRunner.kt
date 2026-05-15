@@ -55,7 +55,7 @@ class NativeCommandRunner(
         runProotRootfsCommand(rootfsDir, program, rootId = true)
 
     fun runProotRootfsIdAsRoot(rootfsDir: File): NativeCommandResult =
-        runProotRootfsProgramAsRoot(rootfsDir, "/usr/bin/id")
+        runProotRootfsCommand(rootfsDir, "/usr/bin/id", rootId = true, rawRootfs = true)
 
     fun runProotRootfsProgramVerbose(rootfsDir: File, program: String): NativeCommandResult =
         runProotRootfsCommand(rootfsDir, program, verbose = "9")
@@ -72,10 +72,11 @@ class NativeCommandRunner(
         arguments: List<String> = emptyList(),
         verbose: String = "-1",
         rootId: Boolean = false,
+        rawRootfs: Boolean = false,
     ): NativeCommandResult =
         runPackagedCommand(
             "libalr_proot.so",
-            listOf("-R", rootfsDir.absolutePath) +
+            listOf(if (rawRootfs) "-r" else "-R", rootfsDir.absolutePath) +
                 (if (rootId) listOf("-0") else emptyList()) +
                 listOf("-w", "/", program) + arguments,
             prootEnvironment(verbose = verbose, rootfsDir = rootfsDir, program = program),

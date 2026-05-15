@@ -103,3 +103,10 @@ def test_main_activity_reports_identity_nss_smoke_result():
     assert "proot id exit=" in text
     assert "proot id stdout=" in text
     assert "proot id stderr=" in text
+
+
+def test_identity_nss_smoke_uses_raw_rootfs_to_avoid_host_etc_binds():
+    text = RUNNER.read_text()
+    assert "runProotRootfsIdAsRoot" in text
+    assert "rawRootfs = true" in text
+    assert 'if (rawRootfs) "-r" else "-R"' in text
