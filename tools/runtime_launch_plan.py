@@ -52,7 +52,7 @@ def build_launch_plan(
             "-R",
             rootfs_dir,
             "-w",
-            "/root",
+            "/",
             program,
         ]
     else:

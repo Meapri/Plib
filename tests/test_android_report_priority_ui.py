@@ -11,7 +11,8 @@ def test_main_activity_places_execution_summary_before_verbose_report():
     assert summary_index < verbose_index
     assert "rootfs verified=${rootfsStatus.verified}" in text
     assert "proot --version exit=${prootCandidateResult.exitCode}" in text
-    assert "proot hello exit=${prootHelloResult.exitCode}" in text
+    assert "ROOTFS EXECUTION: ${if (rootfsExecutionPassed) \"PASS\" else \"FAIL\"}" in text
+    assert "proot hello quiet exit=${prootHelloResult.exitCode}" in text
 
 
 def test_main_activity_uses_scrollable_selectable_report_text():

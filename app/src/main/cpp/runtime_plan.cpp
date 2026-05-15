@@ -62,7 +62,7 @@ RuntimeReport build_runtime_report(const RuntimeReportInput& input, const Execut
     out << "execution backend: " << backend.name << "\n";
     out << "can execute: " << (backend.can_execute ? "yes" : "no") << "\n";
     out << "backend reason: " << backend.reason << "\n\n";
-    out << "PoC 1 policy: execute packaged native loader only; keep rootfs writable data separate.";
+    out << "Runtime policy: rootfs files stay in app-private writable storage; execution enters through packaged native backends.";
     report.text = out.str();
     return report;
 }
@@ -101,7 +101,7 @@ LoaderLaunchPlan build_proot_launch_plan(const RuntimeReportInput& input) {
         "-R",
         rootfs_dir,
         "-w",
-        "/root",
+        "/",
         input.program,
     };
     plan.env = {
@@ -112,7 +112,7 @@ LoaderLaunchPlan build_proot_launch_plan(const RuntimeReportInput& input) {
         {"PROOT_LOADER", proot_loader_for(input)},
         {"PROOT_TMP_DIR", proot_tmp_dir_for(input)},
         {"PROOT_NO_SECCOMP", "1"},
-        {"PROOT_VERBOSE", "9"},
+        {"PROOT_VERBOSE", "-1"},
         {"LD_LIBRARY_PATH", input.native_library_dir},
         {"HOME", "/root"},
         {"TMPDIR", "/tmp"},
@@ -141,8 +141,8 @@ ExecutionBackend select_execution_backend(ExecutionBackendKind kind) {
             return {
                 .kind = kind,
                 .name = "proot",
-                .can_execute = false,
-                .reason = "planned backend; requires packaged proot/proot-rs binary and Android policy validation",
+                .can_execute = true,
+                .reason = "packaged PRoot backend validated for static arm64 ELF smoke execution inside app-private rootfs",
             };
         case ExecutionBackendKind::GlibcLoader:
             return {

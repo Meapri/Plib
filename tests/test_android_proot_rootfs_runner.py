@@ -11,13 +11,12 @@ def test_native_command_runner_can_attempt_proot_rootfs_program():
     assert '"-R"' in text
     assert '"-w"' in text
     assert '"/"' in text
-    assert "runProotRootfsProgramQuiet" in text
+    assert "runProotRootfsProgramVerbose" in text
 
 
 def test_main_activity_reports_proot_hello_attempt_result():
     text = MAIN.read_text()
-    assert "proot hello exit=" in text
-    assert "proot hello stdout=" in text
-    assert "proot hello stderr=" in text
+    assert "ROOTFS EXECUTION:" in text
     assert "proot hello quiet exit=" in text
     assert "proot hello quiet stdout=" in text
+    assert "proot hello verbose on failure" in text

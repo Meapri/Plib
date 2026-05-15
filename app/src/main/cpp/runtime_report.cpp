@@ -79,7 +79,7 @@ Java_dev_chanwoo_androlinux_MainActivity_nativeRuntimeReport(
         .rootfs_name = jstring_to_string(env, rootfs_name),
         .program = jstring_to_string(env, program),
     };
-    const auto report = alr::build_runtime_report(input);
+    const auto report = alr::build_runtime_report(input, alr::select_execution_backend(alr::ExecutionBackendKind::Proot));
     const auto launch = alr::build_loader_launch_plan(input);
     const auto proot = alr::build_proot_launch_plan(input);
 

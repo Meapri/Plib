@@ -17,7 +17,7 @@ def test_proot_launch_plan_uses_packaged_proot_from_native_library_dir():
         "-R",
         "/data/user/0/dev.chanwoo.androlinux/files/rootfs/debian-arm64",
         "-w",
-        "/root",
+        "/",
         "/bin/hello",
     ]
     assert plan.env["PROOT_NO_SECCOMP"] == "1"

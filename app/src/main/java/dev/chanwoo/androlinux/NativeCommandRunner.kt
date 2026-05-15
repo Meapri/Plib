@@ -52,17 +52,17 @@ class NativeCommandRunner(
         runPackagedCommand(
             "libalr_proot.so",
             listOf("-R", rootfsDir.absolutePath, "-w", "/", program),
-            prootEnvironment(verbose = "9"),
-        )
-
-    fun runProotRootfsProgramQuiet(rootfsDir: File, program: String): NativeCommandResult =
-        runPackagedCommand(
-            "libalr_proot.so",
-            listOf("-R", rootfsDir.absolutePath, "-w", "/", program),
             prootEnvironment(verbose = "-1"),
         )
 
-    private fun prootEnvironment(verbose: String = "9"): Map<String, String> {
+    fun runProotRootfsProgramVerbose(rootfsDir: File, program: String): NativeCommandResult =
+        runPackagedCommand(
+            "libalr_proot.so",
+            listOf("-R", rootfsDir.absolutePath, "-w", "/", program),
+            prootEnvironment(verbose = "9"),
+        )
+
+    private fun prootEnvironment(verbose: String = "-1"): Map<String, String> {
         prootTmpDir.mkdirs()
         return mapOf(
             "PROOT_LOADER" to File(nativeLibraryDir, "libproot-loader.so").absolutePath,
