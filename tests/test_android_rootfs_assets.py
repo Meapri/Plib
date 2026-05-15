@@ -9,7 +9,7 @@ PAYLOAD = ROOT / "app" / "src" / "main" / "assets" / "rootfs" / "payloads" / "ti
 def test_android_assets_include_rootfs_manifest_and_payload():
     assert MANIFEST.is_file()
     assert PAYLOAD.is_file()
-    assert PAYLOAD.stat().st_size == 9359360
+    assert PAYLOAD.stat().st_size == 9431040
 
 
 def test_android_asset_manifest_matches_host_manifest():
@@ -131,6 +131,7 @@ def test_tiny_rootfs_contains_identity_nss_files_and_id_binary():
             "./usr/bin/id",
             "./lib/aarch64-linux-gnu/libselinux.so.1",
             "./lib/aarch64-linux-gnu/libpcre2-8.so.0",
+            "./lib/aarch64-linux-gnu/libnss_files.so.2",
         ]
         for member in expected:
             assert member in names
@@ -144,6 +145,7 @@ def test_tiny_rootfs_contains_identity_nss_files_and_id_binary():
         assert archive.extractfile("./usr/bin/id").read(4) == b"\x7fELF"
         assert archive.extractfile("./lib/aarch64-linux-gnu/libselinux.so.1").read(4) == b"\x7fELF"
         assert archive.extractfile("./lib/aarch64-linux-gnu/libpcre2-8.so.0").read(4) == b"\x7fELF"
+        assert archive.extractfile("./lib/aarch64-linux-gnu/libnss_files.so.2").read(4) == b"\x7fELF"
 
 
 def test_real_distro_id_requests_rootfs_loader():

@@ -97,6 +97,9 @@ def test_main_activity_reports_identity_nss_smoke_result():
     assert "rootfs /usr/bin/id exists=" in text
     assert "rootfs libselinux exists=" in text
     assert "rootfs libpcre2 exists=" in text
+    assert "rootfs libnss_files exists=" in text
+    assert "identity numeric root=" in text
+    assert "identity named root=" in text
     assert "proot id exit=" in text
     assert "proot id stdout=" in text
     assert "proot id stderr=" in text

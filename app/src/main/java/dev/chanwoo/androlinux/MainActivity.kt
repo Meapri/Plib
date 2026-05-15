@@ -67,6 +67,7 @@ class MainActivity : Activity() {
         val rootfsIdFile = File(rootfsStatus.rootfsDir, "usr/bin/id")
         val rootfsLibselinuxFile = File(rootfsStatus.rootfsDir, "lib/aarch64-linux-gnu/libselinux.so.1")
         val rootfsLibpcre2File = File(rootfsStatus.rootfsDir, "lib/aarch64-linux-gnu/libpcre2-8.so.0")
+        val rootfsLibnssFilesFile = File(rootfsStatus.rootfsDir, "lib/aarch64-linux-gnu/libnss_files.so.2")
         val rootfsExecutionPassed = prootHelloResult.exitCode == 0 &&
             prootHelloResult.stdout.contains("hello from static arm64 rootfs")
         val shellScriptExecutionPassed = prootScriptResult.exitCode == 0 &&
@@ -95,11 +96,14 @@ class MainActivity : Activity() {
             prootDashResult.stdout.contains("ALR_ROOTFS=") &&
             prootDashResult.stdout.contains("PATH=") &&
             !guestEnvLeakedAndroidVars
-        val identityNssExecutionPassed = prootIdResult.exitCode == 0 &&
-            prootIdResult.stdout.contains("uid=0(root)") &&
+        val identityNumericRoot = prootIdResult.exitCode == 0 &&
+            prootIdResult.stdout.contains("uid=0") &&
+            prootIdResult.stdout.contains("gid=0")
+        val identityNamedRoot = prootIdResult.stdout.contains("uid=0(root)") &&
             prootIdResult.stdout.contains("gid=0(root)")
+        val identityNssExecutionPassed = identityNumericRoot && identityNamedRoot
 
-        val executionSummary = "build: 0.4.0-identity-nss-smoke" +
+        val executionSummary = "build: 0.4.1-nss-files-smoke" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -108,6 +112,8 @@ class MainActivity : Activity() {
             "\nDISTRO USERLAND EXECUTION: ${if (distroUserlandExecutionPassed) "PASS" else "FAIL"}" +
             "\nCLEAN GUEST ENVIRONMENT: ${if (!guestEnvLeakedAndroidVars) "PASS" else "FAIL"}" +
             "\nIDENTITY NSS EXECUTION: ${if (identityNssExecutionPassed) "PASS" else "FAIL"}" +
+            "\nidentity numeric root=$identityNumericRoot" +
+            "\nidentity named root=$identityNamedRoot" +
             "\nguest env leaked android vars=$guestEnvLeakedAndroidVars" +
             "\nrootfs verified=${rootfsStatus.verified} extracted=${rootfsStatus.extracted}" +
             "\nrootfs /bin/hello exists=${rootfsHelloFile.isFile} executable=${rootfsHelloFile.canExecute()} bytes=${rootfsHelloFile.length()}" +
@@ -125,6 +131,7 @@ class MainActivity : Activity() {
             "\nrootfs /usr/bin/id exists=${rootfsIdFile.isFile} executable=${rootfsIdFile.canExecute()} bytes=${rootfsIdFile.length()}" +
             "\nrootfs libselinux exists=${rootfsLibselinuxFile.isFile} executable=${rootfsLibselinuxFile.canExecute()} bytes=${rootfsLibselinuxFile.length()}" +
             "\nrootfs libpcre2 exists=${rootfsLibpcre2File.isFile} executable=${rootfsLibpcre2File.canExecute()} bytes=${rootfsLibpcre2File.length()}" +
+            "\nrootfs libnss_files exists=${rootfsLibnssFilesFile.isFile} executable=${rootfsLibnssFilesFile.canExecute()} bytes=${rootfsLibnssFilesFile.length()}" +
             "\nnative smoke exit=${nativeCommandResult.exitCode}" +
             "\nnative smoke stdout=${nativeCommandResult.stdout}" +
             "\nproot --version exit=${prootCandidateResult.exitCode}" +
