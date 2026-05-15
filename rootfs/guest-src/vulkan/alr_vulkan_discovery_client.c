@@ -86,21 +86,39 @@ int main(void) {
     shutdown(fd, SHUT_WR);
 
     char buffer[1024];
+    char response[8192];
+    size_t response_len = 0;
+    memset(response, 0, sizeof(response));
     ssize_t read_count = 0;
-    int saw_ack = 0;
     while ((read_count = read(fd, buffer, sizeof(buffer) - 1)) > 0) {
         buffer[read_count] = '\0';
         fputs(buffer, stdout);
-        if (strstr(buffer, "ALR_VK_DISCOVERY_ACK status=PASS") != 0) {
-            saw_ack = 1;
+        if (response_len < sizeof(response) - 1) {
+            size_t copy_len = (size_t)read_count;
+            if (copy_len > sizeof(response) - 1 - response_len) {
+                copy_len = sizeof(response) - 1 - response_len;
+            }
+            memcpy(response + response_len, buffer, copy_len);
+            response_len += copy_len;
+            response[response_len] = '\0';
         }
     }
     close(fd);
 
-    if (!saw_ack) {
+    if (strstr(response, "ALR_VK_DISCOVERY_ACK status=PASS") == 0) {
         fprintf(stderr, "ALR_VK_DISCOVERY_ERROR missing-pass-ack\n");
         return 5;
     }
+    if (strstr(response, "ALR_VK_DEVICE_RECORD ") == 0) {
+        fprintf(stderr, "ALR_VK_DISCOVERY_ERROR missing-device-record\n");
+        return 6;
+    }
+    if (strstr(response, "ALR_VK_FEATURE_RECORD ") == 0) {
+        fprintf(stderr, "ALR_VK_DISCOVERY_ERROR missing-feature-record\n");
+        return 7;
+    }
+    printf("ALR_VK_DISCOVERY_DEVICE_RECORD ok\n");
+    printf("ALR_VK_DISCOVERY_FEATURE_RECORD ok\n");
     printf("ALR_VK_DISCOVERY_DONE ok\n");
     return 0;
 }

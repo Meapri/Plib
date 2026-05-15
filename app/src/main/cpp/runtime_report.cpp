@@ -189,9 +189,9 @@ std::string build_host_vulkan_probe_report() {
     VkApplicationInfo app_info{};
     app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     app_info.pApplicationName = "PlibVulkanProbe";
-    app_info.applicationVersion = VK_MAKE_VERSION(0, 4, 77);
+    app_info.applicationVersion = VK_MAKE_VERSION(0, 4, 78);
     app_info.pEngineName = "Plib";
-    app_info.engineVersion = VK_MAKE_VERSION(0, 4, 77);
+    app_info.engineVersion = VK_MAKE_VERSION(0, 4, 78);
     app_info.apiVersion = VK_API_VERSION_1_0;
 
     VkInstanceCreateInfo instance_info{};
@@ -226,12 +226,19 @@ std::string build_host_vulkan_probe_report() {
 
     VkPhysicalDeviceProperties properties{};
     vkGetPhysicalDeviceProperties(devices[0], &properties);
+    VkPhysicalDeviceFeatures features{};
+    vkGetPhysicalDeviceFeatures(devices[0], &features);
     out << "\nhost vulkan device=" << properties.deviceName;
     out << "\nhost vulkan api version=" << vulkan_api_version_string(properties.apiVersion);
     out << "\nhost vulkan driver version=" << properties.driverVersion;
     out << "\nhost vulkan vendor id=0x" << std::hex << properties.vendorID << std::dec;
     out << "\nhost vulkan device id=0x" << std::hex << properties.deviceID << std::dec;
     out << "\nhost vulkan device type=" << vulkan_device_type_name(properties.deviceType);
+    out << "\nhost vulkan max image dimension 2d=" << properties.limits.maxImageDimension2D;
+    out << "\nhost vulkan max memory allocation count=" << properties.limits.maxMemoryAllocationCount;
+    out << "\nhost vulkan feature robust buffer access=" << (features.robustBufferAccess ? "true" : "false");
+    out << "\nhost vulkan feature geometry shader=" << (features.geometryShader ? "true" : "false");
+    out << "\nhost vulkan feature sampler anisotropy=" << (features.samplerAnisotropy ? "true" : "false");
 
     uint32_t queue_family_count = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(devices[0], &queue_family_count, nullptr);

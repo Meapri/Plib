@@ -319,6 +319,8 @@ def test_tiny_rootfs_contains_local_deb_install_smoke_package():
         assert wayland_gui.startswith(b"\x7fELF")
         assert x11_gui.startswith(b"\x7fELF")
         assert vulkan_discovery.startswith(b"\x7fELF")
+        assert b"ALR_VK_DEVICE_RECORD" in vulkan_discovery
+        assert b"ALR_VK_DISCOVERY_DEVICE_RECORD ok" in vulkan_discovery
         assert archive.extractfile("./usr/bin/dpkg-deb").read(4) == b"\x7fELF"
         assert archive.extractfile("./bin/tar").read(4) == b"\x7fELF"
         dpkg_deb = archive.extractfile("./usr/bin/dpkg-deb").read()

@@ -903,6 +903,29 @@ enumerate a physical device, find a graphics queue family, and create a logical
 device. This is intentionally discovery-only, not yet a Vulkan ICD or WSI
 present path, but it proves the process split needed for a future Vulkan proxy.
 
+Current V78 Vulkan device-record bridge snapshot:
+
+```text
+build: 0.4.78-vulkan-device-records
+HOST VULKAN DISCOVERY EXECUTION: PASS
+ALR INSTALLED PACKAGE VULKAN DISCOVERY EXECUTION: PASS
+alr installed package vulkan discovery ack=ALR_VK_DISCOVERY_ACK status=PASS physical_devices=1 hardware=true device=Mali-G615_MC2
+alr installed package vulkan discovery device record=ALR_VK_DEVICE_RECORD name=Mali-G615_MC2 api=1.3.247 type=integrated-gpu physical_devices=1 queue_families=1 graphics_queue=0
+alr installed package vulkan discovery feature record=ALR_VK_FEATURE_RECORD robust_buffer_access=true geometry_shader=true sampler_anisotropy=true max_image_2d=16384 max_memory_allocations=16384
+rootfs installed alr vulkan discovery client exists=true executable=true bytes=6952
+installed package compatibility table=script:PASS,gpu-clear-ipc:PASS,gles-demo:PASS,gles-tcp-ack:PASS,gles-procaddr:PASS,wayland:PASS,x11:PASS,vulkan-discovery:PASS
+surface gl renderer=Mali-G615 MC2
+surface gles shim vs native average ratio pct=99
+alr installed package vulkan discovery stdout=... ALR_VK_DISCOVERY_DEVICE_RECORD ok ... ALR_VK_DISCOVERY_FEATURE_RECORD ok
+```
+
+V78 promotes the Vulkan bridge from a single PASS ACK to structured Android
+device and feature records. The guest now fails the installed-package Vulkan
+probe unless the host returns both `ALR_VK_DEVICE_RECORD` and
+`ALR_VK_FEATURE_RECORD`. This is still a discovery/data-plane contract rather
+than a Vulkan command stream, but it gives the future ICD/proxy path concrete
+device, queue, feature, and limit fields to negotiate against.
+
 Report:
 
 ```text

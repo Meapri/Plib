@@ -1123,17 +1123,20 @@ surface gpu hardware render=true
 surface gles shim vs native average ratio pct=100
 ```
 
-Latest V77 installed-package Vulkan discovery evidence:
+Latest V78 Vulkan device-record bridge evidence:
 
 ```text
-build: 0.4.77-installed-vulkan-discovery
+build: 0.4.78-vulkan-device-records
 HOST VULKAN DISCOVERY EXECUTION: PASS
 ALR INSTALLED PACKAGE VULKAN DISCOVERY EXECUTION: PASS
-rootfs installed alr vulkan discovery client exists=true executable=true bytes=6312
+rootfs installed alr vulkan discovery client exists=true executable=true bytes=6952
 alr installed package vulkan discovery raw=ALR_VK_DISCOVERY_HELLO version=1 request=instance-device
 alr installed package vulkan discovery ack=ALR_VK_DISCOVERY_ACK status=PASS physical_devices=1 hardware=true device=Mali-G615_MC2
+alr installed package vulkan discovery device record=ALR_VK_DEVICE_RECORD name=Mali-G615_MC2 api=1.3.247 type=integrated-gpu physical_devices=1 queue_families=1 graphics_queue=0
+alr installed package vulkan discovery feature record=ALR_VK_FEATURE_RECORD robust_buffer_access=true geometry_shader=true sampler_anisotropy=true max_image_2d=16384 max_memory_allocations=16384
+alr installed package vulkan discovery ack lines=ALR_VK_DISCOVERY_ACK status=PASS physical_devices=1 hardware=true device=Mali-G615_MC2|ALR_VK_DEVICE_RECORD name=Mali-G615_MC2 api=1.3.247 type=integrated-gpu physical_devices=1 queue_families=1 graphics_queue=0|ALR_VK_FEATURE_RECORD robust_buffer_access=true geometry_shader=true sampler_anisotropy=true max_image_2d=16384 max_memory_allocations=16384
 alr installed package vulkan discovery handoff=ALR STATIC ENTRY HANDOFF: PASS
-alr installed package vulkan discovery stdout=alr guest vulkan discovery client ok
+alr installed package vulkan discovery stdout=alr guest vulkan discovery client ok ... ALR_VK_DISCOVERY_DEVICE_RECORD ok ... ALR_VK_DISCOVERY_FEATURE_RECORD ok
 host vulkan device=host vulkan device=Mali-G615 MC2
 host vulkan hardware candidate=host vulkan hardware candidate=true
 installed package compatibility table=script:PASS,gpu-clear-ipc:PASS,gles-demo:PASS,gles-tcp-ack:PASS,gles-procaddr:PASS,wayland:PASS,x11:PASS,vulkan-discovery:PASS
@@ -1144,7 +1147,7 @@ surface gles shim vs native average ratio pct=99
 
 Next implementation batch:
 
-1. Add Vulkan bridge request/response schema beyond discovery: instance info, physical device properties, queue family, and feature bits as structured records.
-2. Add a host-side Android Vulkan Surface clear proof, then connect it to the guest discovery client as the first WSI-shaped command.
+1. Add a host-side Android Vulkan Surface clear proof, then connect it to the guest discovery client as the first WSI-shaped command.
+2. Replace the text Vulkan record stream with a bounded binary schema once command submission begins.
 3. Split known-fail legacy dpkg/proot diagnostics away from the active ALR summary.
 4. Add a small real toolkit fixture target, likely a tiny GTK/Qt-independent Wayland protocol smoke before pulling in a larger GUI stack.

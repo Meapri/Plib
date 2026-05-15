@@ -119,6 +119,9 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "alr installed package wayland gui ipc received frames" in text
     assert "alr installed package x11 gui ipc received frames" in text
     assert "alr installed package vulkan discovery ack" in text
+    assert "alr installed package vulkan discovery device record" in text
+    assert "alr installed package vulkan discovery feature record" in text
+    assert "alr installed package vulkan discovery ack lines" in text
     assert "alr installed package vulkan discovery stdout" in text
     assert "nativeHostVulkanProbe" in text
     assert "host vulkan hardware candidate=" in text
@@ -248,6 +251,10 @@ def test_guest_vulkan_discovery_client_is_source_built_ipc_probe():
 
     assert "ALR_VK_DISCOVERY_HELLO" in source
     assert "ALR_VK_DISCOVERY_ACK status=PASS" in source
+    assert "ALR_VK_DEVICE_RECORD" in source
+    assert "ALR_VK_FEATURE_RECORD" in source
+    assert "ALR_VK_DISCOVERY_DEVICE_RECORD ok" in source
+    assert "ALR_VK_DISCOVERY_FEATURE_RECORD ok" in source
     assert "ALR_VK_BRIDGE_HOST" in source
     assert "ALR_VK_BRIDGE_PORT" in source
     assert "-target aarch64-linux-gnu" in build_script
@@ -256,7 +263,9 @@ def test_guest_vulkan_discovery_client_is_source_built_ipc_probe():
     assert "#include <vulkan/vulkan.h>" in native_report
     assert "vkCreateInstance" in native_report
     assert "vkEnumeratePhysicalDevices" in native_report
+    assert "vkGetPhysicalDeviceFeatures" in native_report
     assert "vkCreateDevice" in native_report
+    assert "host vulkan feature robust buffer access=" in native_report
 
 
 def test_guest_syscall_bench_is_source_built_fixture():

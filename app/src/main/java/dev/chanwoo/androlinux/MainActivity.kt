@@ -22,7 +22,7 @@ class MainActivity : Activity() {
 
         val rootfsManifest = RootfsManifest(
             name = "debian-arm64",
-            version = "bookworm-slim-2026-05-gui-gpu-v77",
+            version = "bookworm-slim-2026-05-gui-gpu-v78",
             assets = listOf(
                 RootfsAsset(
                     path = "rootfs.tar.zst",
@@ -629,7 +629,13 @@ class MainActivity : Activity() {
                 rootfsInstalledVulkanDiscoveryClientFile.canExecute() &&
                 alrInstalledPackageVulkanDiscoveryBridgeResult.rawLines.any { it.startsWith("ALR_VK_DISCOVERY_HELLO ") } &&
                 alrInstalledPackageVulkanDiscoveryBridgeResult.ackLine.startsWith("ALR_VK_DISCOVERY_ACK status=PASS") &&
+                alrInstalledPackageVulkanDiscoveryBridgeResult.deviceRecordLine.startsWith("ALR_VK_DEVICE_RECORD ") &&
+                alrInstalledPackageVulkanDiscoveryBridgeResult.featureRecordLine.startsWith("ALR_VK_FEATURE_RECORD ") &&
                 alrInstalledPackageVulkanDiscoveryBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("ALR_VK_DISCOVERY_ACK status=PASS") &&
+                alrInstalledPackageVulkanDiscoveryBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("ALR_VK_DEVICE_RECORD ") &&
+                alrInstalledPackageVulkanDiscoveryBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("ALR_VK_FEATURE_RECORD ") &&
+                alrInstalledPackageVulkanDiscoveryBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("ALR_VK_DISCOVERY_DEVICE_RECORD ok") &&
+                alrInstalledPackageVulkanDiscoveryBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("ALR_VK_DISCOVERY_FEATURE_RECORD ok") &&
                 alrInstalledPackageVulkanDiscoveryBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("ALR_VK_DISCOVERY_DONE ok") &&
                 alrInstalledPackageVulkanDiscoveryBridgeResult.error == null
 
@@ -643,7 +649,7 @@ class MainActivity : Activity() {
                 "x11:${if (alrInstalledPackageX11GuiBridgePassed) "PASS" else "FAIL"}," +
                 "vulkan-discovery:${if (alrInstalledPackageVulkanDiscoveryPassed) "PASS" else "FAIL"}"
 
-        val executionSummary = "build: 0.4.77-installed-vulkan-discovery" +
+        val executionSummary = "build: 0.4.78-vulkan-device-records" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -951,6 +957,9 @@ class MainActivity : Activity() {
             "\nalr installed package vulkan discovery port=${alrInstalledPackageVulkanDiscoveryBridgeResult.port}" +
             "\nalr installed package vulkan discovery raw=${alrInstalledPackageVulkanDiscoveryBridgeResult.rawLines.joinToString("|")}" +
             "\nalr installed package vulkan discovery ack=${alrInstalledPackageVulkanDiscoveryBridgeResult.ackLine}" +
+            "\nalr installed package vulkan discovery device record=${alrInstalledPackageVulkanDiscoveryBridgeResult.deviceRecordLine}" +
+            "\nalr installed package vulkan discovery feature record=${alrInstalledPackageVulkanDiscoveryBridgeResult.featureRecordLine}" +
+            "\nalr installed package vulkan discovery ack lines=${alrInstalledPackageVulkanDiscoveryBridgeResult.ackLines.joinToString("|")}" +
             "\nalr installed package vulkan discovery error=${alrInstalledPackageVulkanDiscoveryBridgeResult.error ?: "none"}" +
             "\nalr installed package vulkan discovery handoff=${alrInstalledPackageVulkanDiscoveryBridgeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
             "\nalr installed package vulkan discovery stdout=${alrInstalledPackageVulkanDiscoveryBridgeResult.clientResult.stdout.alrHandoffStdoutText()}" +
@@ -1443,6 +1452,9 @@ class MainActivity : Activity() {
         val port: Int,
         val rawLines: List<String>,
         val ackLine: String,
+        val deviceRecordLine: String,
+        val featureRecordLine: String,
+        val ackLines: List<String>,
         val hostProbe: String,
         val error: String?,
         val clientResult: NativeCommandResult,
@@ -1467,8 +1479,33 @@ class MainActivity : Activity() {
         val deviceName = hostProbe.lineStartingWith("host vulkan device=")
             .substringAfter("=", "unknown")
             .replace(Regex("\\s+"), "_")
+        val apiVersion = hostProbe.lineStartingWith("host vulkan api version=")
+            .substringAfter("=", "unknown")
+        val deviceType = hostProbe.lineStartingWith("host vulkan device type=")
+            .substringAfter("=", "unknown")
+        val queueFamilyCount = hostProbe.lineStartingWith("host vulkan queue family count=")
+            .substringAfter("=", "0")
+        val graphicsQueueFamily = hostProbe.lineStartingWith("host vulkan graphics queue family=")
+            .substringAfter("=", "-1")
+        val maxImage2d = hostProbe.lineStartingWith("host vulkan max image dimension 2d=")
+            .substringAfter("=", "0")
+        val maxMemoryAllocationCount = hostProbe.lineStartingWith("host vulkan max memory allocation count=")
+            .substringAfter("=", "0")
+        val robustBufferAccess = hostProbe.lineStartingWith("host vulkan feature robust buffer access=")
+            .substringAfter("=", "unknown")
+        val geometryShader = hostProbe.lineStartingWith("host vulkan feature geometry shader=")
+            .substringAfter("=", "unknown")
+        val samplerAnisotropy = hostProbe.lineStartingWith("host vulkan feature sampler anisotropy=")
+            .substringAfter("=", "unknown")
         val status = if (physicalDevices > 0 && hardware && createDeviceOk) "PASS" else "FAIL"
         val ackLine = "ALR_VK_DISCOVERY_ACK status=$status physical_devices=$physicalDevices hardware=$hardware device=$deviceName"
+        val deviceRecordLine =
+            "ALR_VK_DEVICE_RECORD name=$deviceName api=$apiVersion type=$deviceType " +
+                "physical_devices=$physicalDevices queue_families=$queueFamilyCount graphics_queue=$graphicsQueueFamily"
+        val featureRecordLine =
+            "ALR_VK_FEATURE_RECORD robust_buffer_access=$robustBufferAccess geometry_shader=$geometryShader " +
+                "sampler_anisotropy=$samplerAnisotropy max_image_2d=$maxImage2d max_memory_allocations=$maxMemoryAllocationCount"
+        val ackLines = listOf(ackLine, deviceRecordLine, featureRecordLine)
         val acceptThread = thread(name = "alr-vulkan-discovery-bridge", start = true) {
             try {
                 server.use { srv ->
@@ -1484,7 +1521,7 @@ class MainActivity : Activity() {
                             } ?: break
                             rawLines += line
                         }
-                        accepted.getOutputStream().write((ackLine + "\n").toByteArray())
+                        accepted.getOutputStream().write((ackLines.joinToString("\n") + "\n").toByteArray())
                         accepted.getOutputStream().flush()
                     }
                 }
@@ -1505,6 +1542,9 @@ class MainActivity : Activity() {
             port = port,
             rawLines = rawLines.toList(),
             ackLine = ackLine,
+            deviceRecordLine = deviceRecordLine,
+            featureRecordLine = featureRecordLine,
+            ackLines = ackLines,
             hostProbe = hostProbe,
             error = errors.firstOrNull(),
             clientResult = clientResult,
