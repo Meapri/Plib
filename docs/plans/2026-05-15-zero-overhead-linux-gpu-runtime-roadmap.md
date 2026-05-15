@@ -272,6 +272,25 @@ added `realpath`/`canonicalize_file_name`, `mkstemp`/`mkstemp64`, and
 them, and query the cache without falling back to the global ptrace path rewrite
 loop.
 
+Latest V65 preload dpkg install evidence:
+
+```text
+build: 0.4.65-preload-dpkg-install
+ALR DPKG LOCAL INSTALL PRELOAD EXECUTION: PASS
+alr dpkg -i local deb preload handoff=ALR STATIC ENTRY HANDOFF: PASS
+alr dpkg -i local deb preload execve loader rewrites=alr handoff execve loader rewrite count=5
+alr dpkg -i local deb preload traced processes=alr handoff traced process count=10
+alr dpkg -i local deb preload stdout=Selecting previously unselected package alr-smoke.\n(Reading database ... 0 files and directories currently installed.)\nPreparing to unpack .../alr-smoke_1.0_arm64.deb ...\nUnpacking alr-smoke (1.0) ...\nSetting up alr-smoke (1.0) ...
+```
+
+The V65 result moves from read-only package-manager cache queries into a real
+local `.deb` install. This path uses the preload filesystem layer for hot file
+operations plus ALR execve loader rewriting for helper programs such as
+`dpkg-split`, `dpkg-deb`, `tar`, and `rm`. The preload shim now also covers
+`mkdir`, `unlink`, `rmdir`, fake-root identity, and fake-root ownership changes
+so package extraction and dpkg status updates can complete inside the Android
+app-private rootfs.
+
 Known issue:
 
 - V35 summary says `GUEST WAYLAND GUI GPU BRIDGE EXECUTION: FAIL` and `GUEST X11 GUI GPU BRIDGE EXECUTION: FAIL` because ACK writing happens after socket input is closed. Frames were received and rendered losslessly; this is a report/ACK lifecycle bug, not a GPU-path failure.

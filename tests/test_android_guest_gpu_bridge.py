@@ -232,6 +232,11 @@ def test_guest_path_preload_is_source_built_fast_path_shim():
     assert "canonicalize_file_name" in source
     assert "mkstemp" in source
     assert "renameat" in source
+    assert "mkdirat" in source
+    assert "unlinkat" in source
+    assert "rmdir" in source
+    assert "ALR_PRELOAD_FAKE_ROOT" in source
+    assert "fchownat" in source
     assert "libalr_path_preload.so" in build_script
 
 

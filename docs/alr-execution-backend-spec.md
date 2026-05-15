@@ -347,6 +347,23 @@ files, `mkstemp` cache temp-file creation, and `rename` cache commit path while
 keeping the ALR global path-rewrite loop disabled for policy, stats, and
 package-name cache queries.
 
+Current V65 preload dpkg install snapshot:
+
+```text
+build: 0.4.65-preload-dpkg-install
+ALR DPKG LOCAL INSTALL PRELOAD EXECUTION: PASS
+alr dpkg -i local deb preload handoff=ALR STATIC ENTRY HANDOFF: PASS
+alr dpkg -i local deb preload execve loader rewrites=alr handoff execve loader rewrite count=5
+alr dpkg -i local deb preload traced processes=alr handoff traced process count=10
+alr dpkg -i local deb preload stdout=Selecting previously unselected package alr-smoke.\n(Reading database ... 0 files and directories currently installed.)\nPreparing to unpack .../alr-smoke_1.0_arm64.deb ...\nUnpacking alr-smoke (1.0) ...\nSetting up alr-smoke (1.0) ...
+```
+
+The v65 snapshot proves a local `.deb` install through the hybrid low-overhead
+path: preload handles filesystem/fakeroot hot paths while ALR tracing remains
+available for the colder helper `execve` chain and loader rewrite. This is the
+first package-manager mutation evidence that completes successfully inside the
+normal non-root Android app sandbox.
+
 ### ALR Exec v3: Identity and Procfs
 
 Required behavior:

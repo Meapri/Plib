@@ -338,6 +338,21 @@ class NativeCommandRunner(
             pathRewriteIdleSyscallLimit = 256,
         )
 
+    fun runAlrRuntimeTrampolineDpkgInstallLocalSmokePreload(rootfsDir: File): NativeCommandResult =
+        runAlrRuntimeTrampolineGlibcRootfsProgram(
+            rootfsDir,
+            "/usr/bin/dpkg",
+            listOf("-i", "/var/cache/apt/archives/alr-smoke_1.0_arm64.deb"),
+            timeoutMs = 10000,
+            virtualRootIdentity = true,
+            pathRewrite = true,
+            pathRewriteLimit = 4096,
+            pathRewriteIdleSyscallLimit = 512,
+            extraGuestEnvironment = preloadPathFastPathEnvironment(rootfsDir) + mapOf(
+                "ALR_PRELOAD_FAKE_ROOT" to "1",
+            ),
+        )
+
     private fun glibcLibraryPath(rootfsDir: File): String =
         listOf(
             File(rootfsDir, "lib/aarch64-linux-gnu").absolutePath,

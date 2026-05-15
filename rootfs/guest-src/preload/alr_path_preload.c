@@ -50,6 +50,11 @@ static const char* alr_canonical_rootfs(void) {
     return canonical_rootfs;
 }
 
+static int alr_preload_fake_root_enabled(void) {
+    const char* enabled = getenv("ALR_PRELOAD_FAKE_ROOT");
+    return enabled != NULL && strcmp(enabled, "1") == 0;
+}
+
 static const char* alr_rewrite_path(const char* path, char* buffer, size_t buffer_size) {
     const char* rootfs = getenv("ALR_ROOTFS");
     if (path == NULL || path[0] != '/' || rootfs == NULL || rootfs[0] == '\0') {
@@ -494,3 +499,75 @@ int renameat2(int old_dirfd, const char* old_path, int new_dirfd, const char* ne
     );
 }
 #endif
+
+int mkdir(const char* path, mode_t mode) {
+    char rewritten[4096];
+    return (int)syscall(SYS_mkdirat, AT_FDCWD, alr_rewrite_path(path, rewritten, sizeof(rewritten)), mode);
+}
+
+int mkdirat(int dirfd, const char* path, mode_t mode) {
+    char rewritten[4096];
+    return (int)syscall(SYS_mkdirat, dirfd, alr_rewrite_path(path, rewritten, sizeof(rewritten)), mode);
+}
+
+int unlink(const char* path) {
+    char rewritten[4096];
+    return (int)syscall(SYS_unlinkat, AT_FDCWD, alr_rewrite_path(path, rewritten, sizeof(rewritten)), 0);
+}
+
+int unlinkat(int dirfd, const char* path, int flags) {
+    char rewritten[4096];
+    return (int)syscall(SYS_unlinkat, dirfd, alr_rewrite_path(path, rewritten, sizeof(rewritten)), flags);
+}
+
+int rmdir(const char* path) {
+    char rewritten[4096];
+    return (int)syscall(SYS_unlinkat, AT_FDCWD, alr_rewrite_path(path, rewritten, sizeof(rewritten)), AT_REMOVEDIR);
+}
+
+uid_t getuid(void) {
+    return alr_preload_fake_root_enabled() ? 0 : (uid_t)syscall(SYS_getuid);
+}
+
+uid_t geteuid(void) {
+    return alr_preload_fake_root_enabled() ? 0 : (uid_t)syscall(SYS_geteuid);
+}
+
+gid_t getgid(void) {
+    return alr_preload_fake_root_enabled() ? 0 : (gid_t)syscall(SYS_getgid);
+}
+
+gid_t getegid(void) {
+    return alr_preload_fake_root_enabled() ? 0 : (gid_t)syscall(SYS_getegid);
+}
+
+int chown(const char* path, uid_t owner, gid_t group) {
+    if (alr_preload_fake_root_enabled()) {
+        return 0;
+    }
+    char rewritten[4096];
+    return (int)syscall(SYS_fchownat, AT_FDCWD, alr_rewrite_path(path, rewritten, sizeof(rewritten)), owner, group, 0);
+}
+
+int lchown(const char* path, uid_t owner, gid_t group) {
+    if (alr_preload_fake_root_enabled()) {
+        return 0;
+    }
+    char rewritten[4096];
+    return (int)syscall(SYS_fchownat, AT_FDCWD, alr_rewrite_path(path, rewritten, sizeof(rewritten)), owner, group, AT_SYMLINK_NOFOLLOW);
+}
+
+int fchown(int fd, uid_t owner, gid_t group) {
+    if (alr_preload_fake_root_enabled()) {
+        return 0;
+    }
+    return (int)syscall(SYS_fchownat, fd, "", owner, group, AT_EMPTY_PATH);
+}
+
+int fchownat(int dirfd, const char* path, uid_t owner, gid_t group, int flags) {
+    if (alr_preload_fake_root_enabled()) {
+        return 0;
+    }
+    char rewritten[4096];
+    return (int)syscall(SYS_fchownat, dirfd, alr_rewrite_path(path, rewritten, sizeof(rewritten)), owner, group, flags);
+}

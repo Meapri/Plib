@@ -22,7 +22,7 @@ class MainActivity : Activity() {
 
         val rootfsManifest = RootfsManifest(
             name = "debian-arm64",
-            version = "bookworm-slim-2026-05-gui-gpu-v63",
+            version = "bookworm-slim-2026-05-gui-gpu-v65",
             assets = listOf(
                 RootfsAsset(
                     path = "rootfs.tar.zst",
@@ -161,6 +161,7 @@ class MainActivity : Activity() {
             syscallBenchSpawnCount,
         )
         val alrDpkgInstallLocalResult = nativeCommandRunner.runAlrRuntimeTrampolineDpkgInstallLocalSmoke(rootfsStatus.rootfsDir)
+        val alrDpkgInstallLocalPreloadResult = nativeCommandRunner.runAlrRuntimeTrampolineDpkgInstallLocalSmokePreload(rootfsStatus.rootfsDir)
         val prootDpkgInstallLocalResult = nativeCommandRunner.runProotRootfsDpkgInstallLocalSmoke(rootfsStatus.rootfsDir)
         val prootInstalledPackageSmokeResult = nativeCommandRunner.runProotRootfsInstalledPackageSmoke(rootfsStatus.rootfsDir)
         val prootGuestGpuClientResult = nativeCommandRunner.runProotRootfsGuestGpuClient(rootfsStatus.rootfsDir)
@@ -424,11 +425,19 @@ class MainActivity : Activity() {
         val alrDpkgInstallLocalGuestOutput =
             alrDpkgInstallLocalResult.stdout.alrHandoffStdoutText() + "\n" +
                 alrDpkgInstallLocalResult.stdout.alrHandoffStderrText()
+        val alrDpkgInstallLocalPreloadGuestOutput =
+            alrDpkgInstallLocalPreloadResult.stdout.alrHandoffStdoutText() + "\n" +
+                alrDpkgInstallLocalPreloadResult.stdout.alrHandoffStderrText()
         val alrDpkgLocalInstallExecutionPassed = alrDpkgInstallLocalResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
             !alrDpkgInstallLocalGuestOutput.contains("dpkg: error") &&
             (alrDpkgInstallLocalGuestOutput.contains("Setting up alr-smoke") ||
                 alrDpkgInstallLocalGuestOutput.contains("alr-smoke (1.0)") ||
                 alrDpkgInstallLocalGuestOutput.contains("Selecting previously unselected package alr-smoke"))
+        val alrDpkgLocalInstallPreloadExecutionPassed = alrDpkgInstallLocalPreloadResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+            !alrDpkgInstallLocalPreloadGuestOutput.contains("dpkg: error") &&
+            (alrDpkgInstallLocalPreloadGuestOutput.contains("Setting up alr-smoke") ||
+                alrDpkgInstallLocalPreloadGuestOutput.contains("alr-smoke (1.0)") ||
+                alrDpkgInstallLocalPreloadGuestOutput.contains("Selecting previously unselected package alr-smoke"))
         val dpkgLocalInstallExecutionPassed = prootDpkgInstallLocalResult.exitCode == 0 &&
             !prootDpkgInstallLocalResult.stderr.contains("dpkg: error") &&
             (prootDpkgInstallLocalResult.stdout.contains("Setting up alr-smoke") ||
@@ -531,7 +540,7 @@ class MainActivity : Activity() {
             alrGuestX11GuiBridgeResult.error == null
         val hostGpuHardwareCandidate = hostGpuProbe.lineStartingWith("host gpu hardware candidate=") == "host gpu hardware candidate=true"
 
-        val executionSummary = "build: 0.4.64-preload-apt-cache-state" +
+        val executionSummary = "build: 0.4.65-preload-dpkg-install" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -575,6 +584,7 @@ class MainActivity : Activity() {
             "\nPROOT SYSCALL FSMETA BENCH EXECUTION: ${if (prootSyscallFsMetaBenchmarkPassed) "PASS" else "FAIL"}" +
             "\nPROOT SYSCALL SPAWN BENCH EXECUTION: ${if (prootSyscallSpawnBenchmarkPassed) "PASS" else "FAIL"}" +
             "\nALR DPKG LOCAL INSTALL EXECUTION: ${if (alrDpkgLocalInstallExecutionPassed) "PASS" else "FAIL"}" +
+            "\nALR DPKG LOCAL INSTALL PRELOAD EXECUTION: ${if (alrDpkgLocalInstallPreloadExecutionPassed) "PASS" else "FAIL"}" +
             "\nDPKG LOCAL INSTALL EXECUTION: ${if (dpkgLocalInstallExecutionPassed) "PASS" else "FAIL"}" +
             "\nINSTALLED PACKAGE EXECUTION: ${if (installedPackageExecutionPassed) "PASS" else "FAIL"}" +
             "\nHOST GPU EGL/GLES EXECUTION: ${if (hostGpuHardwareCandidate) "PASS" else "FAIL"}" +
@@ -1014,6 +1024,13 @@ class MainActivity : Activity() {
             "\nalr dpkg -i local deb path rewrite=${alrDpkgInstallLocalResult.stdout.lineStartingWith("alr handoff path rewrite count=")}" +
             "\nalr dpkg -i local deb stdout=${alrDpkgInstallLocalResult.stdout.alrHandoffStdoutText()}" +
             "\nalr dpkg -i local deb stderr=${alrDpkgInstallLocalResult.stdout.alrHandoffStderrText()}" +
+            "\nalr dpkg -i local deb preload handoff=${alrDpkgInstallLocalPreloadResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr dpkg -i local deb preload execve attempts=${alrDpkgInstallLocalPreloadResult.stdout.lineStartingWith("alr handoff execve attempt count=")}" +
+            "\nalr dpkg -i local deb preload execve loader rewrites=${alrDpkgInstallLocalPreloadResult.stdout.lineStartingWith("alr handoff execve loader rewrite count=")}" +
+            "\nalr dpkg -i local deb preload traced processes=${alrDpkgInstallLocalPreloadResult.stdout.lineStartingWith("alr handoff traced process count=")}" +
+            "\nalr dpkg -i local deb preload path rewrite=${alrDpkgInstallLocalPreloadResult.stdout.lineStartingWith("alr handoff path rewrite count=")}" +
+            "\nalr dpkg -i local deb preload stdout=${alrDpkgInstallLocalPreloadResult.stdout.alrHandoffStdoutText()}" +
+            "\nalr dpkg -i local deb preload stderr=${alrDpkgInstallLocalPreloadResult.stdout.alrHandoffStderrText()}" +
             "\nproot dpkg -i local deb exit=${prootDpkgInstallLocalResult.exitCode}" +
             "\nproot dpkg -i local deb stdout=${prootDpkgInstallLocalResult.stdout}" +
             "\nproot dpkg -i local deb stderr=${prootDpkgInstallLocalResult.stderr}" +
@@ -1119,6 +1136,7 @@ class MainActivity : Activity() {
             resultBlock("alr syscall fsmeta preload benchmark", alrSyscallFsMetaPreloadBenchmarkResult) +
             resultBlock("alr syscall spawn benchmark", alrSyscallSpawnBenchmarkResult) +
             resultBlock("alr dpkg -i local deb", alrDpkgInstallLocalResult) +
+            resultBlock("alr dpkg -i local deb preload", alrDpkgInstallLocalPreloadResult) +
             resultBlock("proot dpkg -i local deb", prootDpkgInstallLocalResult) +
             resultBlock("proot installed package smoke", prootInstalledPackageSmokeResult) +
             resultBlock("proot guest gpu client", prootGuestGpuClientResult) +
