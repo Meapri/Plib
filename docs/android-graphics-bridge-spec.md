@@ -177,14 +177,15 @@ Report:
 surface frames submitted=<n>
 surface frames rendered=<n>
 surface frames dropped=0
-surface render elapsed us=1356722
-surface average frame render us=15417
-surface gles shim render elapsed us=548132
-surface gles shim average frame render us=16121
+surface gles shim render elapsed us=563352
+surface gles shim average frame render us=16095
+surface gles shim draw frames rendered=34
+surface gles shim draw render elapsed us=507139
+surface gles shim draw average frame render us=14915
 surface native gles frames rendered=32
-surface native gles render elapsed us=490015
-surface native gles average frame render us=15312
-surface gles shim vs native average ratio pct=105
+surface native gles render elapsed us=349889
+surface native gles average frame render us=10934
+surface gles shim vs native average ratio pct=147
 surface gpu hardware render=true
 ```
 
@@ -508,7 +509,7 @@ GUEST EGL SWAP VIA ANDROID SURFACE: PASS
 GUEST GLES HARDWARE RENDER: PASS
 ```
 
-Current device evidence from build `0.4.49-gles-native-ratio`:
+Current device evidence from build `0.4.50-gles-triangle-draw`:
 
 ```text
 GUEST GLES SHIM SMOKE EXECUTION: PASS
@@ -519,9 +520,12 @@ GUEST GLES CLEAR VIA SHIM EXECUTION: PASS
 GUEST EGL SWAP COMMAND VIA SHIM EXECUTION: PASS
 GUEST GLES SHIM FRAME WORKLOAD EXECUTION: PASS
 ALR GUEST GLES SHIM FRAME WORKLOAD EXECUTION: PASS
+GUEST GLES DRAW VIA SHIM EXECUTION: PASS
+ALR GUEST GLES DRAW VIA SHIM EXECUTION: PASS
 GUEST EGL INIT VIA SHIM UPDATE: PASS
 GUEST EGL CONTEXT VIA SHIM UPDATE: PASS
 GUEST GLES CLEAR VIA SHIM UPDATE: PASS
+GUEST GLES DRAW VIA SHIM UPDATE: PASS
 GUEST EGL SWAP VIA ANDROID SURFACE UPDATE: PASS
 GUEST GLES HARDWARE RENDER UPDATE: PASS
 ALR_GLES_API_STEP eglGetDisplay ok
@@ -532,21 +536,27 @@ ALR_GLES_API_STEP eglMakeCurrent ok
 ALR_GLES_API_STEP glViewport ok
 ALR_GLES_API_STEP glClearColor ok
 ALR_GLES_API_STEP glClear ok
+ALR_GLES_API_STEP glUseProgram ok
+ALR_GLES_API_STEP glEnableVertexAttribArray ok
+ALR_GLES_API_STEP glVertexAttribPointer ok
+ALR_GLES_API_STEP glDrawArrays ok
 ALR_GLES_API_STEP eglSwapBuffers ok
-surface frames rendered=88
+surface frames rendered=123
 surface frames dropped=0
-surface render elapsed us=1356722
-surface average frame render us=15417
-surface gles shim render elapsed us=548132
-surface gles shim average frame render us=16121
+surface gles shim render elapsed us=563352
+surface gles shim average frame render us=16095
+surface gles shim draw frames rendered=34
+surface gles shim draw render elapsed us=507139
+surface gles shim draw average frame render us=14915
 surface native gles frames rendered=32
-surface native gles render elapsed us=490015
-surface native gles average frame render us=15312
-surface gles shim vs native average ratio pct=105
+surface native gles render elapsed us=349889
+surface native gles average frame render us=10934
+surface gles shim vs native average ratio pct=147
 surface gpu hardware render=true
-surface gles shim frames rendered=34
+surface gles shim frames rendered=35
 guest egl swap via android surface=true
 guest gles hardware render=true
+guest gles draw via android surface=true
 ```
 
 ### Vulkan MVP

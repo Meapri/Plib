@@ -26,6 +26,7 @@ def test_rootfs_contains_guest_gpu_ipc_client_and_gles_shim():
         assert "gles-shim-smoke" in payload
         assert "gles-shim-api-subset" in payload
         assert "gles-frame-workload" in payload
+        assert "gles-triangle-draw-workload" in payload
         assert "surface-present" in payload
         assert "timing" in payload
         gui_payload = archive.extractfile("./usr/share/androlinux/gui-gpu-bridge.txt").read().decode()
@@ -49,6 +50,8 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "GUEST GLES SHIM SMOKE EXECUTION" in text
     assert "GUEST GLES SHIM FRAME WORKLOAD EXECUTION:" in text
     assert "ALR GUEST GLES SHIM FRAME WORKLOAD EXECUTION:" in text
+    assert "GUEST GLES DRAW VIA SHIM EXECUTION:" in text
+    assert "ALR GUEST GLES DRAW VIA SHIM EXECUTION:" in text
     assert "GUEST GPU MULTI-FRAME SURFACE EXECUTION" in text
     assert "guest gpu ipc received frames" in text
     assert "guest gpu ipc lossless" in text
@@ -78,6 +81,9 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "surface render elapsed us=" in text
     assert "surface average frame render us=" in text
     assert "surface gles shim average frame render us=" in text
+    assert "surface gles shim draw frames rendered=" in text
+    assert "surface gles shim draw average frame render us=" in text
+    assert "guest gles draw via android surface=" in text
     assert "native gles baseline frame workload commands=" in text
     assert "buildNativeGlesBaselineCommands" in text
     assert "surface native gles frames rendered=" in text
@@ -85,6 +91,8 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "surface gles shim vs native average ratio pct=" in text
     assert "runProotRootfsGuestGlesShimBenchmark" in runner
     assert "runAlrRuntimeTrampolineGuestGlesShimBenchmark" in runner
+    assert "runProotRootfsGuestGlesShimDrawBenchmark" in runner
+    assert "runAlrRuntimeTrampolineGuestGlesShimDrawBenchmark" in runner
     assert "hasGlesApiSteps" in text
     assert "alrHandoffStdoutText" in text
 
@@ -107,6 +115,10 @@ def test_guest_gles_shim_is_source_built_api_subset():
         "alr_egl_swap_buffers",
         "alr_egl_destroy_context",
         "alr_egl_terminate",
+        "alr_gl_use_program",
+        "alr_gl_enable_vertex_attrib_array",
+        "alr_gl_vertex_attrib_pointer",
+        "alr_gl_draw_arrays",
     ]:
         assert symbol in shim_source
     assert "ALR_GLES_API_STEP %s %s" in smoke_source
@@ -114,8 +126,11 @@ def test_guest_gles_shim_is_source_built_api_subset():
     assert '"eglSwapBuffers"' in smoke_source
     assert "ALR_GLES_SHIM_FRAME_COUNT" in smoke_source
     assert "ALR_GLES_FRAME_WORKLOAD requested=%d submitted=%d" in smoke_source
+    assert "ALR_GLES_DRAW_FRAME_COUNT" in smoke_source
+    assert "ALR_GLES_DRAW_WORKLOAD requested=%d submitted=%d" in smoke_source
     assert "ALR_GLES_COMPAT_SUBMIT" in smoke_source
     assert "ALR_GLES_SHIM_COMMAND ALR_GPU_CLEAR" in shim_source
+    assert "ALR_GLES_SHIM_COMMAND ALR_GPU_DRAW_TRIANGLE" in shim_source
     assert "-target aarch64-linux-gnu" in build_script
     assert "-Wl,-rpath,/usr/lib/androlinux" in build_script
 
@@ -153,10 +168,13 @@ def test_native_surface_renderer_accepts_multi_frame_stream_and_reports_bridge()
     assert "surface average frame render us=" in text
     assert "surface gles shim render elapsed us=" in text
     assert "surface gles shim average frame render us=" in text
+    assert "surface gles shim draw render elapsed us=" in text
+    assert "surface gles shim draw average frame render us=" in text
     assert "surface native gles frames rendered=" in text
     assert "surface native gles render elapsed us=" in text
     assert "surface native gles average frame render us=" in text
     assert "surface gles shim vs native average ratio pct=" in text
+    assert "guest gles draw via android surface=" in text
     assert "surface gui total frames rendered=" in text
     assert "surface frames rendered=" in text
     assert "surface frames dropped=" in text

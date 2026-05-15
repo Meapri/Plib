@@ -55,6 +55,67 @@ std::string safe_gl_string(GLenum name) {
     return reinterpret_cast<const char*>(value);
 }
 
+GLuint compile_surface_shader(GLenum type, const char* source, std::ostringstream& out, const char* label) {
+    const GLuint shader = glCreateShader(type);
+    if (shader == 0) {
+        out << "\nsurface triangle shader " << label << "=fail create";
+        return 0;
+    }
+    glShaderSource(shader, 1, &source, nullptr);
+    glCompileShader(shader);
+    GLint compiled = GL_FALSE;
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
+    if (compiled != GL_TRUE) {
+        out << "\nsurface triangle shader " << label << "=fail compile";
+        glDeleteShader(shader);
+        return 0;
+    }
+    return shader;
+}
+
+GLuint create_surface_triangle_program(std::ostringstream& out) {
+    static const char* vertex_shader_source =
+        "attribute vec2 aPosition;\n"
+        "void main() {\n"
+        "  gl_Position = vec4(aPosition, 0.0, 1.0);\n"
+        "}\n";
+    static const char* fragment_shader_source =
+        "precision mediump float;\n"
+        "uniform vec4 uColor;\n"
+        "void main() {\n"
+        "  gl_FragColor = uColor;\n"
+        "}\n";
+    const GLuint vertex_shader = compile_surface_shader(GL_VERTEX_SHADER, vertex_shader_source, out, "vertex");
+    if (vertex_shader == 0) return 0;
+    const GLuint fragment_shader = compile_surface_shader(GL_FRAGMENT_SHADER, fragment_shader_source, out, "fragment");
+    if (fragment_shader == 0) {
+        glDeleteShader(vertex_shader);
+        return 0;
+    }
+    const GLuint program = glCreateProgram();
+    if (program == 0) {
+        out << "\nsurface triangle program=fail create";
+        glDeleteShader(vertex_shader);
+        glDeleteShader(fragment_shader);
+        return 0;
+    }
+    glAttachShader(program, vertex_shader);
+    glAttachShader(program, fragment_shader);
+    glBindAttribLocation(program, 0, "aPosition");
+    glLinkProgram(program);
+    glDeleteShader(vertex_shader);
+    glDeleteShader(fragment_shader);
+    GLint linked = GL_FALSE;
+    glGetProgramiv(program, GL_LINK_STATUS, &linked);
+    if (linked != GL_TRUE) {
+        out << "\nsurface triangle program=fail link";
+        glDeleteProgram(program);
+        return 0;
+    }
+    out << "\nsurface triangle program=ok";
+    return program;
+}
+
 std::string lower_copy(std::string value) {
     std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) {
         return static_cast<char>(std::tolower(c));
@@ -201,7 +262,7 @@ std::string render_to_android_surface_frames(JNIEnv* env, jobject surface_obj, c
     const auto render_started = std::chrono::steady_clock::now();
     std::ostringstream out;
     out << "host gpu surface renderer=android-surface-egl-gles";
-    out << "\nsurface frame stream protocol=gui-compositor-clear-color-v4";
+    out << "\nsurface frame stream protocol=gui-compositor-clear-color-and-triangle-v5";
     out << "\nsurface requested frames=" << frames.size();
     if (surface_obj == nullptr) {
         out << "\nsurface render=fail reason=null-surface";
@@ -292,18 +353,45 @@ std::string render_to_android_surface_frames(JNIEnv* env, jobject surface_obj, c
     int wayland_rendered = 0;
     int x11_rendered = 0;
     int gles_shim_rendered = 0;
+    int gles_shim_draw_rendered = 0;
     int native_gles_rendered = 0;
     int other_rendered = 0;
     long long gles_shim_elapsed_us = 0;
+    long long gles_shim_draw_elapsed_us = 0;
     long long native_gles_elapsed_us = 0;
+    GLuint triangle_program = 0;
+    GLint triangle_color_location = -1;
     GLenum last_gl_error = GL_NO_ERROR;
     EGLBoolean last_swapped = EGL_FALSE;
     std::string last_tag;
     for (size_t i = 0; i < frames.size(); ++i) {
         const auto& frame = frames[i];
         const auto frame_started = std::chrono::steady_clock::now();
-        glClearColor(frame.red, frame.green, frame.blue, 1.0F);
-        glClear(GL_COLOR_BUFFER_BIT);
+        const bool draw_triangle = frame.tag.rfind("GLES_DRAW-", 0) == 0;
+        if (draw_triangle) {
+            if (triangle_program == 0) {
+                triangle_program = create_surface_triangle_program(out);
+                triangle_color_location = triangle_program == 0 ? -1 : glGetUniformLocation(triangle_program, "uColor");
+            }
+            static const GLfloat vertices[] = {
+                0.0F, 0.72F,
+                -0.68F, -0.58F,
+                0.68F, -0.58F,
+            };
+            glClearColor(0.03F, 0.04F, 0.06F, 1.0F);
+            glClear(GL_COLOR_BUFFER_BIT);
+            if (triangle_program != 0 && triangle_color_location >= 0) {
+                glUseProgram(triangle_program);
+                glUniform4f(triangle_color_location, frame.red, frame.green, frame.blue, 1.0F);
+                glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, vertices);
+                glEnableVertexAttribArray(0);
+                glDrawArrays(GL_TRIANGLES, 0, 3);
+                glDisableVertexAttribArray(0);
+            }
+        } else {
+            glClearColor(frame.red, frame.green, frame.blue, 1.0F);
+            glClear(GL_COLOR_BUFFER_BIT);
+        }
         last_gl_error = glGetError();
         last_swapped = eglSwapBuffers(display, egl_surface);
         const auto frame_elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>(
@@ -329,6 +417,9 @@ std::string render_to_android_surface_frames(JNIEnv* env, jobject surface_obj, c
         } else if (frame.tag.rfind("GLES-", 0) == 0) {
             ++gles_shim_rendered;
             gles_shim_elapsed_us += frame_elapsed_us;
+        } else if (frame.tag.rfind("GLES_DRAW-", 0) == 0) {
+            ++gles_shim_draw_rendered;
+            gles_shim_draw_elapsed_us += frame_elapsed_us;
         } else if (frame.tag.rfind("NATIVE_GLES-", 0) == 0) {
             ++native_gles_rendered;
             native_gles_elapsed_us += frame_elapsed_us;
@@ -344,6 +435,7 @@ std::string render_to_android_surface_frames(JNIEnv* env, jobject surface_obj, c
     out << "\nsurface wayland frames rendered=" << wayland_rendered;
     out << "\nsurface x11 frames rendered=" << x11_rendered;
     out << "\nsurface gles shim frames rendered=" << gles_shim_rendered;
+    out << "\nsurface gles shim draw frames rendered=" << gles_shim_draw_rendered;
     out << "\nsurface native gles frames rendered=" << native_gles_rendered;
     out << "\nsurface other frames rendered=" << other_rendered;
     out << "\nsurface gui total frames rendered=" << (wayland_rendered + x11_rendered);
@@ -353,9 +445,12 @@ std::string render_to_android_surface_frames(JNIEnv* env, jobject surface_obj, c
     out << "\nsurface render elapsed ms=" << (render_elapsed_us / 1000);
     out << "\nsurface average frame render us=" << (rendered > 0 ? render_elapsed_us / rendered : 0);
     const long long gles_avg_us = gles_shim_rendered > 0 ? gles_shim_elapsed_us / gles_shim_rendered : 0;
+    const long long gles_draw_avg_us = gles_shim_draw_rendered > 0 ? gles_shim_draw_elapsed_us / gles_shim_draw_rendered : 0;
     const long long native_gles_avg_us = native_gles_rendered > 0 ? native_gles_elapsed_us / native_gles_rendered : 0;
     out << "\nsurface gles shim render elapsed us=" << gles_shim_elapsed_us;
     out << "\nsurface gles shim average frame render us=" << gles_avg_us;
+    out << "\nsurface gles shim draw render elapsed us=" << gles_shim_draw_elapsed_us;
+    out << "\nsurface gles shim draw average frame render us=" << gles_draw_avg_us;
     out << "\nsurface native gles render elapsed us=" << native_gles_elapsed_us;
     out << "\nsurface native gles average frame render us=" << native_gles_avg_us;
     out << "\nsurface gles shim vs native average ratio pct=" << (native_gles_avg_us > 0 ? (gles_avg_us * 100) / native_gles_avg_us : 0);
@@ -369,9 +464,13 @@ std::string render_to_android_surface_frames(JNIEnv* env, jobject surface_obj, c
     out << "\nguest gui gpu compositor hardware render=" << (!software && rendered == static_cast<int>(frames.size()) && rendered > 0 ? "true" : "false");
     out << "\nguest wayland/x11 gui gpu surface hardware render=" << (!software && rendered == static_cast<int>(frames.size()) && rendered > 0 ? "true" : "false");
     out << "\nguest gpu bridge hardware render=" << (!software && rendered > 0 ? "true" : "false");
-    out << "\nguest egl swap via android surface=" << (!software && gles_shim_rendered > 0 && last_swapped == EGL_TRUE ? "true" : "false");
-    out << "\nguest gles hardware render=" << (!software && gles_shim_rendered > 0 && last_gl_error == GL_NO_ERROR && last_swapped == EGL_TRUE ? "true" : "false");
+    out << "\nguest egl swap via android surface=" << (!software && (gles_shim_rendered + gles_shim_draw_rendered) > 0 && last_swapped == EGL_TRUE ? "true" : "false");
+    out << "\nguest gles hardware render=" << (!software && (gles_shim_rendered + gles_shim_draw_rendered) > 0 && last_gl_error == GL_NO_ERROR && last_swapped == EGL_TRUE ? "true" : "false");
+    out << "\nguest gles draw via android surface=" << (!software && gles_shim_draw_rendered > 0 && last_gl_error == GL_NO_ERROR && last_swapped == EGL_TRUE ? "true" : "false");
 
+    if (triangle_program != 0) {
+        glDeleteProgram(triangle_program);
+    }
     eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     eglDestroyContext(display, context);
     eglDestroySurface(display, egl_surface);

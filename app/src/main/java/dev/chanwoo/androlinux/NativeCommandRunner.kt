@@ -95,6 +95,17 @@ class NativeCommandRunner(
             timeoutMs = 3000,
         )
 
+    fun runAlrRuntimeTrampolineGuestGlesShimDrawBenchmark(rootfsDir: File, frameCount: Int): NativeCommandResult =
+        runAlrRuntimeTrampolineGuestGlesShim(
+            rootfsDir,
+            mapOf(
+                "ALR_GLES_SHIM_FRAME_COUNT" to "1",
+                "ALR_GLES_DRAW_FRAME_COUNT" to frameCount.coerceIn(1, 120).toString(),
+                "ALR_GLES_COMPAT_SUBMIT" to "0",
+            ),
+            timeoutMs = 3000,
+        )
+
     private fun runAlrRuntimeTrampolineGuestGlesShim(
         rootfsDir: File,
         extraGuestEnvironment: Map<String, String> = emptyMap(),
@@ -416,6 +427,19 @@ class NativeCommandRunner(
             rawRootfs = true,
             extraEnvironment = mapOf(
                 "ALR_GLES_SHIM_FRAME_COUNT" to frameCount.coerceIn(1, 120).toString(),
+                "ALR_GLES_COMPAT_SUBMIT" to "0",
+            ),
+        )
+
+    fun runProotRootfsGuestGlesShimDrawBenchmark(rootfsDir: File, frameCount: Int): NativeCommandResult =
+        runProotRootfsCommand(
+            rootfsDir,
+            "/usr/bin/alr-gles-shim-smoke",
+            rootId = true,
+            rawRootfs = true,
+            extraEnvironment = mapOf(
+                "ALR_GLES_SHIM_FRAME_COUNT" to "1",
+                "ALR_GLES_DRAW_FRAME_COUNT" to frameCount.coerceIn(1, 120).toString(),
                 "ALR_GLES_COMPAT_SUBMIT" to "0",
             ),
         )

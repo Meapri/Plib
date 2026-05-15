@@ -22,7 +22,7 @@ class MainActivity : Activity() {
 
         val rootfsManifest = RootfsManifest(
             name = "debian-arm64",
-            version = "bookworm-slim-2026-05-gui-gpu-v48",
+            version = "bookworm-slim-2026-05-gui-gpu-v50",
             assets = listOf(
                 RootfsAsset(
                     path = "rootfs.tar.zst",
@@ -98,18 +98,25 @@ class MainActivity : Activity() {
         val guestGpuIpcBridgeResult = runGuestGpuIpcBridge(nativeCommandRunner, rootfsStatus.rootfsDir)
         val alrGuestGpuIpcBridgeResult = runGuestGpuIpcBridge(nativeCommandRunner, rootfsStatus.rootfsDir, useAlr = true)
         val glesShimBenchmarkFrameCount = 32
+        val glesShimDrawFrameCount = 32
         val prootGuestGlesShimSmokeResult = nativeCommandRunner.runProotRootfsGuestGlesShimSmoke(rootfsStatus.rootfsDir)
         val alrGuestGlesShimSmokeResult = nativeCommandRunner.runAlrRuntimeTrampolineGuestGlesShimSmoke(rootfsStatus.rootfsDir)
         val prootGuestGlesShimBenchmarkResult = nativeCommandRunner.runProotRootfsGuestGlesShimBenchmark(rootfsStatus.rootfsDir, glesShimBenchmarkFrameCount)
         val alrGuestGlesShimBenchmarkResult = nativeCommandRunner.runAlrRuntimeTrampolineGuestGlesShimBenchmark(rootfsStatus.rootfsDir, glesShimBenchmarkFrameCount)
+        val prootGuestGlesShimDrawBenchmarkResult = nativeCommandRunner.runProotRootfsGuestGlesShimDrawBenchmark(rootfsStatus.rootfsDir, glesShimDrawFrameCount)
+        val alrGuestGlesShimDrawBenchmarkResult = nativeCommandRunner.runAlrRuntimeTrampolineGuestGlesShimDrawBenchmark(rootfsStatus.rootfsDir, glesShimDrawFrameCount)
         val prootGuestGlesShimStdout = prootGuestGlesShimSmokeResult.stdout
         val alrGuestGlesShimStdout = alrGuestGlesShimSmokeResult.stdout.alrHandoffStdoutText()
         val prootGuestGlesShimBenchmarkStdout = prootGuestGlesShimBenchmarkResult.stdout
         val alrGuestGlesShimBenchmarkStdout = alrGuestGlesShimBenchmarkResult.stdout.alrHandoffStdoutText()
+        val prootGuestGlesShimDrawBenchmarkStdout = prootGuestGlesShimDrawBenchmarkResult.stdout
+        val alrGuestGlesShimDrawBenchmarkStdout = alrGuestGlesShimDrawBenchmarkResult.stdout.alrHandoffStdoutText()
         val guestGlesShimCommands = parseGuestGlesShimCommands(prootGuestGlesShimStdout)
         val alrGuestGlesShimCommands = parseGuestGlesShimCommands(alrGuestGlesShimStdout)
         val guestGlesShimBenchmarkCommands = parseGuestGlesShimCommands(prootGuestGlesShimBenchmarkStdout)
         val alrGuestGlesShimBenchmarkCommands = parseGuestGlesShimCommands(alrGuestGlesShimBenchmarkStdout)
+        val guestGlesShimDrawBenchmarkCommands = parseGuestGlesShimCommands(prootGuestGlesShimDrawBenchmarkStdout)
+        val alrGuestGlesShimDrawBenchmarkCommands = parseGuestGlesShimCommands(alrGuestGlesShimDrawBenchmarkStdout)
         val prootGuestWaylandGuiResult = nativeCommandRunner.runProotRootfsGuestGuiClient(rootfsStatus.rootfsDir, "WAYLAND")
         val prootGuestX11GuiResult = nativeCommandRunner.runProotRootfsGuestGuiClient(rootfsStatus.rootfsDir, "X11")
         val alrGuestWaylandGuiResult = nativeCommandRunner.runAlrRuntimeTrampolineGuestGuiClient(rootfsStatus.rootfsDir, "WAYLAND")
@@ -126,6 +133,7 @@ class MainActivity : Activity() {
             addAll(if (alrGuestGpuIpcBridgeResult.commands.isNotEmpty()) alrGuestGpuIpcBridgeResult.commands else guestGpuIpcBridgeResult.commands)
             addAll(if (alrGuestGpuCommands.isNotEmpty()) alrGuestGpuCommands else guestGpuCommands)
             addAll(if (alrGuestGlesShimBenchmarkCommands.isNotEmpty()) alrGuestGlesShimBenchmarkCommands else guestGlesShimBenchmarkCommands)
+            addAll(if (alrGuestGlesShimDrawBenchmarkCommands.isNotEmpty()) alrGuestGlesShimDrawBenchmarkCommands else guestGlesShimDrawBenchmarkCommands)
             addAll(nativeGlesBaselineCommands)
             addAll(if (alrGuestGlesShimCommands.isNotEmpty()) alrGuestGlesShimCommands else guestGlesShimCommands)
             if (isEmpty()) {
@@ -313,6 +321,12 @@ class MainActivity : Activity() {
         val alrGuestGlesShimBenchmarkPassed = alrGuestGlesShimBenchmarkResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
             alrGuestGlesShimBenchmarkStdout.contains("ALR_GLES_FRAME_WORKLOAD requested=$glesShimBenchmarkFrameCount submitted=$glesShimBenchmarkFrameCount") &&
             alrGuestGlesShimBenchmarkCommands.size == glesShimBenchmarkFrameCount
+        val guestGlesShimDrawBenchmarkPassed = prootGuestGlesShimDrawBenchmarkResult.exitCode == 0 &&
+            prootGuestGlesShimDrawBenchmarkStdout.contains("ALR_GLES_DRAW_WORKLOAD requested=$glesShimDrawFrameCount submitted=$glesShimDrawFrameCount") &&
+            guestGlesShimDrawBenchmarkCommands.count { it.protocol == "GLES_DRAW" } == glesShimDrawFrameCount
+        val alrGuestGlesShimDrawBenchmarkPassed = alrGuestGlesShimDrawBenchmarkResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+            alrGuestGlesShimDrawBenchmarkStdout.contains("ALR_GLES_DRAW_WORKLOAD requested=$glesShimDrawFrameCount submitted=$glesShimDrawFrameCount") &&
+            alrGuestGlesShimDrawBenchmarkCommands.count { it.protocol == "GLES_DRAW" } == glesShimDrawFrameCount
         val guestGlesShimInitPassed = (guestGlesShimSmokePassed && prootGuestGlesShimStdout.hasGlesApiSteps("eglGetDisplay", "eglInitialize", "eglChooseConfig")) ||
             (alrGuestGlesShimSmokePassed && alrGuestGlesShimStdout.hasGlesApiSteps("eglGetDisplay", "eglInitialize", "eglChooseConfig"))
         val guestGlesShimContextPassed = (guestGlesShimSmokePassed && prootGuestGlesShimStdout.hasGlesApiSteps("eglCreateContext", "eglMakeCurrent")) ||
@@ -321,6 +335,10 @@ class MainActivity : Activity() {
             (alrGuestGlesShimSmokePassed && alrGuestGlesShimStdout.hasGlesApiSteps("glViewport", "glClearColor", "glClear"))
         val guestGlesShimSwapPassed = (guestGlesShimSmokePassed && prootGuestGlesShimStdout.hasGlesApiSteps("eglSwapBuffers")) ||
             (alrGuestGlesShimSmokePassed && alrGuestGlesShimStdout.hasGlesApiSteps("eglSwapBuffers"))
+        val guestGlesShimDrawApiPassed = (guestGlesShimSmokePassed && prootGuestGlesShimStdout.hasGlesApiSteps("glUseProgram", "glEnableVertexAttribArray", "glVertexAttribPointer", "glDrawArrays")) ||
+            (alrGuestGlesShimSmokePassed && alrGuestGlesShimStdout.hasGlesApiSteps("glUseProgram", "glEnableVertexAttribArray", "glVertexAttribPointer", "glDrawArrays")) ||
+            guestGlesShimDrawBenchmarkPassed ||
+            alrGuestGlesShimDrawBenchmarkPassed
         val alrGuestWaylandGuiCommandPassed = alrGuestWaylandGuiResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
             alrGuestWaylandGuiResult.stdout.alrHandoffStdoutText().contains("alr-wayland-gpu-client ok")
         val alrGuestX11GuiCommandPassed = alrGuestX11GuiResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
@@ -343,7 +361,7 @@ class MainActivity : Activity() {
             alrGuestX11GuiBridgeResult.error == null
         val hostGpuHardwareCandidate = hostGpuProbe.lineStartingWith("host gpu hardware candidate=") == "host gpu hardware candidate=true"
 
-        val executionSummary = "build: 0.4.49-gles-native-ratio" +
+        val executionSummary = "build: 0.4.50-gles-triangle-draw" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -380,6 +398,8 @@ class MainActivity : Activity() {
             "\nALR GUEST GLES SHIM SMOKE EXECUTION: ${if (alrGuestGlesShimSmokePassed) "PASS" else "FAIL"}" +
             "\nGUEST GLES SHIM FRAME WORKLOAD EXECUTION: ${if (guestGlesShimBenchmarkPassed) "PASS" else "FAIL"}" +
             "\nALR GUEST GLES SHIM FRAME WORKLOAD EXECUTION: ${if (alrGuestGlesShimBenchmarkPassed) "PASS" else "FAIL"}" +
+            "\nGUEST GLES DRAW VIA SHIM EXECUTION: ${if (guestGlesShimDrawBenchmarkPassed || guestGlesShimDrawApiPassed) "PASS" else "FAIL"}" +
+            "\nALR GUEST GLES DRAW VIA SHIM EXECUTION: ${if (alrGuestGlesShimDrawBenchmarkPassed || guestGlesShimDrawApiPassed) "PASS" else "FAIL"}" +
             "\nGUEST EGL INIT VIA SHIM EXECUTION: ${if (guestGlesShimInitPassed) "PASS" else "FAIL"}" +
             "\nGUEST EGL CONTEXT VIA SHIM EXECUTION: ${if (guestGlesShimContextPassed) "PASS" else "FAIL"}" +
             "\nGUEST GLES CLEAR VIA SHIM EXECUTION: ${if (guestGlesShimClearPassed) "PASS" else "FAIL"}" +
@@ -482,6 +502,10 @@ class MainActivity : Activity() {
             "\nguest gles shim frame workload elapsed ms=${prootGuestGlesShimBenchmarkResult.elapsedMs}" +
             "\nguest gles shim frame workload commands=${guestGlesShimBenchmarkCommands.size}" +
             "\nguest gles shim frame workload stdout=${prootGuestGlesShimBenchmarkResult.stdout}" +
+            "\nguest gles shim draw workload requested=$glesShimDrawFrameCount" +
+            "\nguest gles shim draw workload elapsed ms=${prootGuestGlesShimDrawBenchmarkResult.elapsedMs}" +
+            "\nguest gles shim draw workload commands=${guestGlesShimDrawBenchmarkCommands.count { it.protocol == "GLES_DRAW" }}" +
+            "\nguest gles shim draw workload stdout=${prootGuestGlesShimDrawBenchmarkStdout}" +
             "\nnative gles baseline frame workload commands=${nativeGlesBaselineCommands.size}" +
             "\nalr guest gles shim smoke handoff=${alrGuestGlesShimSmokeResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
             "\nalr guest gles shim smoke path rewrite=${alrGuestGlesShimSmokeResult.stdout.lineStartingWith("alr handoff path rewrite count=")}" +
@@ -491,6 +515,10 @@ class MainActivity : Activity() {
             "\nalr guest gles shim frame workload commands=${alrGuestGlesShimBenchmarkCommands.size}" +
             "\nalr guest gles shim frame workload handoff=${alrGuestGlesShimBenchmarkResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
             "\nalr guest gles shim frame workload stdout=${alrGuestGlesShimBenchmarkStdout}" +
+            "\nalr guest gles shim draw workload elapsed ms=${alrGuestGlesShimDrawBenchmarkResult.elapsedMs}" +
+            "\nalr guest gles shim draw workload commands=${alrGuestGlesShimDrawBenchmarkCommands.count { it.protocol == "GLES_DRAW" }}" +
+            "\nalr guest gles shim draw workload handoff=${alrGuestGlesShimDrawBenchmarkResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr guest gles shim draw workload stdout=${alrGuestGlesShimDrawBenchmarkStdout}" +
             "\nproot guest wayland gui client exit=${prootGuestWaylandGuiResult.exitCode}" +
             "\nproot guest wayland gui client stdout=${prootGuestWaylandGuiResult.stdout}" +
             "\nproot guest x11 gui client exit=${prootGuestX11GuiResult.exitCode}" +
@@ -805,6 +833,7 @@ class MainActivity : Activity() {
                         guestGlesShimContextPassed,
                         guestGlesShimClearPassed,
                         guestGlesShimSwapPassed,
+                        guestGlesShimDrawApiPassed,
                     )
                     surfaceStatusView.text = "Linux guest GPU Surface renderer callback complete\n$executionUpdate"
                     view.append("\n\n--- Linux guest Wayland/X11 GUI GPU surface renderer ---\n$executionUpdate\n$surfaceReport")
@@ -1009,11 +1038,30 @@ class MainActivity : Activity() {
 
     private fun parseGuestGlesShimCommands(stdout: String): List<GuestGpuCommand> =
         stdout.lineSequence()
-            .filter { it.startsWith("ALR_GLES_SHIM_COMMAND ALR_GPU_CLEAR ") }
+            .filter {
+                it.startsWith("ALR_GLES_SHIM_COMMAND ALR_GPU_CLEAR ") ||
+                    it.startsWith("ALR_GLES_SHIM_COMMAND ALR_GPU_DRAW_TRIANGLE ")
+            }
             .map { it.removePrefix("ALR_GLES_SHIM_COMMAND ") }
-            .mapNotNull { parseGuestGpuClearLine(it) }
-            .mapIndexed { index, command -> command.copy(protocol = "GLES", seq = index + 1) }
+            .mapNotNull { parseGuestGpuCommandLine(it) }
+            .mapIndexed { index, command -> command.copy(seq = index + 1) }
             .toList()
+
+    private fun parseGuestGpuCommandLine(line: String): GuestGpuCommand? =
+        when {
+            line.startsWith("ALR_GPU_CLEAR ") -> parseGuestGpuClearLine(line)?.copy(protocol = "GLES")
+            line.startsWith("ALR_GPU_DRAW_TRIANGLE ") -> parseGuestGpuTriangleLine(line)
+            else -> null
+        }
+
+    private fun parseGuestGpuTriangleLine(line: String): GuestGpuCommand? {
+        val parts = line.trim().split(Regex("\\s+"))
+        if (parts.size < 5 || parts[0] != "ALR_GPU_DRAW_TRIANGLE") return null
+        val red = parts[1].toFloatOrNull()?.coerceIn(0f, 1f) ?: return null
+        val green = parts[2].toFloatOrNull()?.coerceIn(0f, 1f) ?: return null
+        val blue = parts[3].toFloatOrNull()?.coerceIn(0f, 1f) ?: return null
+        return GuestGpuCommand(red, green, blue, parts[4], protocol = "GLES_DRAW")
+    }
 
     private fun parseGuestGpuClearLine(line: String): GuestGpuCommand? {
         val parts = line.trim().split(Regex("\\s+"))
@@ -1139,6 +1187,7 @@ class MainActivity : Activity() {
         glesShimContextPassed: Boolean,
         glesShimClearPassed: Boolean,
         glesShimSwapPassed: Boolean,
+        glesShimDrawPassed: Boolean,
     ): String {
         val framesRendered = surfaceReport.lineStartingWith("surface frames rendered=")
             .removePrefix("surface frames rendered=")
@@ -1146,6 +1195,10 @@ class MainActivity : Activity() {
             ?: 0
         val glesShimFramesRendered = surfaceReport.lineStartingWith("surface gles shim frames rendered=")
             .removePrefix("surface gles shim frames rendered=")
+            .toIntOrNull()
+            ?: 0
+        val glesShimDrawFramesRendered = surfaceReport.lineStartingWith("surface gles shim draw frames rendered=")
+            .removePrefix("surface gles shim draw frames rendered=")
             .toIntOrNull()
             ?: 0
         val hostSurfacePassed =
@@ -1165,6 +1218,10 @@ class MainActivity : Activity() {
                 surfaceReport.lineStartingWith("guest egl swap via android surface=") == "guest egl swap via android surface=true" &&
                 surfaceReport.lineStartingWith("guest gles hardware render=") == "guest gles hardware render=true" &&
                 glesShimFramesRendered > 0
+        val glesShimDrawSurfacePassed =
+            glesShimDrawPassed &&
+                surfaceReport.lineStartingWith("guest gles draw via android surface=") == "guest gles draw via android surface=true" &&
+                glesShimDrawFramesRendered > 0
 
         return "HOST GPU SURFACE EXECUTION UPDATE: ${if (hostSurfacePassed) "PASS" else "FAIL"}" +
             "\nGUEST GPU MULTI-FRAME SURFACE EXECUTION UPDATE: ${if (multiFrameSurfacePassed) "PASS" else "FAIL"}" +
@@ -1172,10 +1229,11 @@ class MainActivity : Activity() {
             "\nGUEST EGL INIT VIA SHIM UPDATE: ${if (glesShimInitPassed) "PASS" else "FAIL"}" +
             "\nGUEST EGL CONTEXT VIA SHIM UPDATE: ${if (glesShimContextPassed) "PASS" else "FAIL"}" +
             "\nGUEST GLES CLEAR VIA SHIM UPDATE: ${if (glesShimSurfacePassed) "PASS" else "FAIL"}" +
+            "\nGUEST GLES DRAW VIA SHIM UPDATE: ${if (glesShimDrawSurfacePassed) "PASS" else "FAIL"}" +
             "\nGUEST EGL SWAP VIA ANDROID SURFACE UPDATE: ${if (glesShimSurfacePassed) "PASS" else "FAIL"}" +
             "\nGUEST GLES HARDWARE RENDER UPDATE: ${if (glesShimSurfacePassed) "PASS" else "FAIL"}" +
             "\nsurface callback frames rendered=$framesRendered" +
-            "\nsurface callback hardware render=${hostSurfacePassed && multiFrameSurfacePassed && guiSurfacePassed && glesShimSurfacePassed}" +
+            "\nsurface callback hardware render=${hostSurfacePassed && multiFrameSurfacePassed && guiSurfacePassed && glesShimSurfacePassed && glesShimDrawSurfacePassed}" +
             "\n${surfaceReport.lineStartingWith("surface gl renderer=")}" +
             "\n${surfaceReport.lineStartingWith("surface frames rendered=")}" +
             "\n${surfaceReport.lineStartingWith("surface frames dropped=")}" +
@@ -1183,6 +1241,9 @@ class MainActivity : Activity() {
             "\n${surfaceReport.lineStartingWith("surface average frame render us=")}" +
             "\n${surfaceReport.lineStartingWith("surface gles shim render elapsed us=")}" +
             "\n${surfaceReport.lineStartingWith("surface gles shim average frame render us=")}" +
+            "\n${surfaceReport.lineStartingWith("surface gles shim draw frames rendered=")}" +
+            "\n${surfaceReport.lineStartingWith("surface gles shim draw render elapsed us=")}" +
+            "\n${surfaceReport.lineStartingWith("surface gles shim draw average frame render us=")}" +
             "\n${surfaceReport.lineStartingWith("surface native gles frames rendered=")}" +
             "\n${surfaceReport.lineStartingWith("surface native gles render elapsed us=")}" +
             "\n${surfaceReport.lineStartingWith("surface native gles average frame render us=")}" +
@@ -1193,6 +1254,7 @@ class MainActivity : Activity() {
             "\n${surfaceReport.lineStartingWith("surface gles shim frames rendered=")}" +
             "\n${surfaceReport.lineStartingWith("guest egl swap via android surface=")}" +
             "\n${surfaceReport.lineStartingWith("guest gles hardware render=")}" +
+            "\n${surfaceReport.lineStartingWith("guest gles draw via android surface=")}" +
             "\n${surfaceReport.lineStartingWith("surface wayland frames rendered=")}" +
             "\n${surfaceReport.lineStartingWith("surface x11 frames rendered=")}"
     }

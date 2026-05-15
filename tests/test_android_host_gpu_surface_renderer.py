@@ -13,6 +13,8 @@ def test_native_surface_renderer_links_android_window_and_egl():
     assert "ANativeWindow_fromSurface" in text
     assert "eglCreateWindowSurface" in text
     assert "eglSwapBuffers" in text
+    assert "glCreateShader" in text
+    assert "glDrawArrays(GL_TRIANGLES" in text
     assert "surface gpu hardware render=" in text
     assert "SwiftShader".lower() in text.lower()
 
@@ -31,6 +33,7 @@ def test_main_activity_owns_surface_view_and_appends_native_surface_report():
     assert 'surfaceReport.lineStartingWith("surface gpu hardware render=")' in text
     assert 'surfaceReport.lineStartingWith("guest wayland/x11 gui gpu surface hardware render=")' in text
     assert 'surfaceReport.lineStartingWith("surface gles shim frames rendered=")' in text
+    assert 'surfaceReport.lineStartingWith("surface gles shim draw frames rendered=")' in text
     assert 'surfaceReport.lineStartingWith("surface render elapsed us=")' in text
     assert 'surfaceReport.lineStartingWith("surface average frame render us=")' in text
     assert 'surfaceReport.lineStartingWith("surface gles shim average frame render us=")' in text
@@ -39,4 +42,5 @@ def test_main_activity_owns_surface_view_and_appends_native_surface_report():
     assert 'surfaceReport.lineStartingWith("surface gles shim vs native average ratio pct=")' in text
     assert 'surfaceReport.lineStartingWith("guest egl swap via android surface=")' in text
     assert 'surfaceReport.lineStartingWith("guest gles hardware render=")' in text
+    assert 'surfaceReport.lineStartingWith("guest gles draw via android surface=")' in text
     assert "Linux guest Wayland/X11 GUI GPU surface renderer" in text
