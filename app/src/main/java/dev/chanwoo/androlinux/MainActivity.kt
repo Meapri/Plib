@@ -121,6 +121,8 @@ class MainActivity : Activity() {
         val alrAptCacheVersionResult = nativeCommandRunner.runAlrRuntimeTrampolineAptCacheVersion(rootfsStatus.rootfsDir)
         val alrAptCachePreloadVersionResult = nativeCommandRunner.runAlrRuntimeTrampolineAptCacheVersionPreload(rootfsStatus.rootfsDir)
         val alrAptCachePolicyPreloadResult = nativeCommandRunner.runAlrRuntimeTrampolineAptCachePolicyPreload(rootfsStatus.rootfsDir)
+        val alrAptCacheStatsPreloadResult = nativeCommandRunner.runAlrRuntimeTrampolineAptCacheStatsPreload(rootfsStatus.rootfsDir)
+        val alrAptCachePkgNamesPreloadResult = nativeCommandRunner.runAlrRuntimeTrampolineAptCachePkgNamesPreload(rootfsStatus.rootfsDir)
         val alrAptConfigVersionResult = nativeCommandRunner.runAlrRuntimeTrampolineAptConfigVersion(rootfsStatus.rootfsDir)
         val alrAptConfigPreloadVersionResult = nativeCommandRunner.runAlrRuntimeTrampolineAptConfigVersionPreload(rootfsStatus.rootfsDir)
         val alrSyscallStatBenchmarkResult = nativeCommandRunner.runAlrRuntimeTrampolineSyscallBench(
@@ -386,6 +388,11 @@ class MainActivity : Activity() {
         val alrAptCachePolicyPreloadExecutionPassed = alrAptCachePolicyPreloadResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
             alrAptCachePolicyPreloadResult.stdout.alrHandoffStdoutText().contains("Package files:") &&
             alrAptCachePolicyPreloadResult.stdout.alrHandoffStdoutText().contains("/var/lib/dpkg/status")
+        val alrAptCacheStatsPreloadExecutionPassed = alrAptCacheStatsPreloadResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+            alrAptCacheStatsPreloadResult.stdout.alrHandoffStdoutText().contains("Total package names:") &&
+            alrAptCacheStatsPreloadResult.stdout.alrHandoffStdoutText().contains("Total space accounted for:")
+        val alrAptCachePkgNamesPreloadExecutionPassed = alrAptCachePkgNamesPreloadResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+            alrAptCachePkgNamesPreloadResult.stdout.lineStartingWith("alr handoff path rewrite count=") == "alr handoff path rewrite count=0"
         val alrAptConfigVersionExecutionPassed = alrAptConfigVersionResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
             alrAptConfigVersionResult.stdout.alrHandoffStdoutText().contains("apt ") &&
             alrAptConfigVersionResult.stdout.alrHandoffStdoutText().contains("arm64")
@@ -524,7 +531,7 @@ class MainActivity : Activity() {
             alrGuestX11GuiBridgeResult.error == null
         val hostGpuHardwareCandidate = hostGpuProbe.lineStartingWith("host gpu hardware candidate=") == "host gpu hardware candidate=true"
 
-        val executionSummary = "build: 0.4.63-preload-apt-cache-policy" +
+        val executionSummary = "build: 0.4.64-preload-apt-cache-state" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -552,6 +559,8 @@ class MainActivity : Activity() {
             "\nALR APT-CACHE VERSION EXECUTION: ${if (alrAptCacheVersionExecutionPassed) "PASS" else "FAIL"}" +
             "\nALR APT-CACHE PRELOAD EXECUTION: ${if (alrAptCachePreloadVersionExecutionPassed) "PASS" else "FAIL"}" +
             "\nALR APT-CACHE POLICY PRELOAD EXECUTION: ${if (alrAptCachePolicyPreloadExecutionPassed) "PASS" else "FAIL"}" +
+            "\nALR APT-CACHE STATS PRELOAD EXECUTION: ${if (alrAptCacheStatsPreloadExecutionPassed) "PASS" else "FAIL"}" +
+            "\nALR APT-CACHE PKGNAMES PRELOAD EXECUTION: ${if (alrAptCachePkgNamesPreloadExecutionPassed) "PASS" else "FAIL"}" +
             "\nALR APT-CONFIG VERSION EXECUTION: ${if (alrAptConfigVersionExecutionPassed) "PASS" else "FAIL"}" +
             "\nALR APT-CONFIG PRELOAD EXECUTION: ${if (alrAptConfigPreloadVersionExecutionPassed) "PASS" else "FAIL"}" +
             "\nALR SYSCALL STAT BENCH EXECUTION: ${if (alrSyscallStatBenchmarkPassed) "PASS" else "FAIL"}" +
@@ -977,6 +986,14 @@ class MainActivity : Activity() {
             "\nalr apt-cache policy preload path rewrite=${alrAptCachePolicyPreloadResult.stdout.lineStartingWith("alr handoff path rewrite count=")}" +
             "\nalr apt-cache policy preload stdout=${alrAptCachePolicyPreloadResult.stdout.alrHandoffStdoutText()}" +
             "\nalr apt-cache policy preload stderr=${alrAptCachePolicyPreloadResult.stdout.alrHandoffStderrText()}" +
+            "\nalr apt-cache stats preload handoff=${alrAptCacheStatsPreloadResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr apt-cache stats preload path rewrite=${alrAptCacheStatsPreloadResult.stdout.lineStartingWith("alr handoff path rewrite count=")}" +
+            "\nalr apt-cache stats preload stdout=${alrAptCacheStatsPreloadResult.stdout.alrHandoffStdoutText()}" +
+            "\nalr apt-cache stats preload stderr=${alrAptCacheStatsPreloadResult.stdout.alrHandoffStderrText()}" +
+            "\nalr apt-cache pkgnames preload handoff=${alrAptCachePkgNamesPreloadResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr apt-cache pkgnames preload path rewrite=${alrAptCachePkgNamesPreloadResult.stdout.lineStartingWith("alr handoff path rewrite count=")}" +
+            "\nalr apt-cache pkgnames preload stdout=${alrAptCachePkgNamesPreloadResult.stdout.alrHandoffStdoutText()}" +
+            "\nalr apt-cache pkgnames preload stderr=${alrAptCachePkgNamesPreloadResult.stdout.alrHandoffStderrText()}" +
             "\nalr apt-config --version handoff=${alrAptConfigVersionResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
             "\nalr apt-config --version path rewrite=${alrAptConfigVersionResult.stdout.lineStartingWith("alr handoff path rewrite count=")}" +
             "\nalr apt-config --version stdout=${alrAptConfigVersionResult.stdout.alrHandoffStdoutText()}" +
@@ -1090,6 +1107,8 @@ class MainActivity : Activity() {
             resultBlock("alr apt-cache --version", alrAptCacheVersionResult) +
             resultBlock("alr apt-cache --version preload", alrAptCachePreloadVersionResult) +
             resultBlock("alr apt-cache policy preload", alrAptCachePolicyPreloadResult) +
+            resultBlock("alr apt-cache stats preload", alrAptCacheStatsPreloadResult) +
+            resultBlock("alr apt-cache pkgnames preload", alrAptCachePkgNamesPreloadResult) +
             resultBlock("alr apt-config --version", alrAptConfigVersionResult) +
             resultBlock("alr apt-config --version preload", alrAptConfigPreloadVersionResult) +
             resultBlock("alr syscall stat benchmark", alrSyscallStatBenchmarkResult) +

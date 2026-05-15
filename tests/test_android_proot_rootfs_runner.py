@@ -280,6 +280,8 @@ def test_main_activity_reports_apt_base_bundle_smoke_results():
     assert "ALR APT-CACHE VERSION EXECUTION:" in text
     assert "ALR APT-CACHE PRELOAD EXECUTION:" in text
     assert "ALR APT-CACHE POLICY PRELOAD EXECUTION:" in text
+    assert "ALR APT-CACHE STATS PRELOAD EXECUTION:" in text
+    assert "ALR APT-CACHE PKGNAMES PRELOAD EXECUTION:" in text
     assert "ALR APT-CONFIG VERSION EXECUTION:" in text
     assert "ALR APT-CONFIG PRELOAD EXECUTION:" in text
     assert "runAlrRuntimeTrampolineAptVersion" in runner
@@ -289,6 +291,8 @@ def test_main_activity_reports_apt_base_bundle_smoke_results():
     assert "runAlrRuntimeTrampolineAptCacheVersion" in runner
     assert "runAlrRuntimeTrampolineAptCacheVersionPreload" in runner
     assert "runAlrRuntimeTrampolineAptCachePolicyPreload" in runner
+    assert "runAlrRuntimeTrampolineAptCacheStatsPreload" in runner
+    assert "runAlrRuntimeTrampolineAptCachePkgNamesPreload" in runner
     assert "runAlrRuntimeTrampolineAptConfigVersion" in runner
     assert "runAlrRuntimeTrampolineAptConfigVersionPreload" in runner
     assert "pathRewriteIdleSyscallLimit: Int = 32" in runner
@@ -311,6 +315,10 @@ def test_main_activity_reports_apt_base_bundle_smoke_results():
     assert "alr apt-cache --version preload stdout=" in text
     assert "alr apt-cache policy preload path rewrite=" in text
     assert "alr apt-cache policy preload stdout=" in text
+    assert "alr apt-cache stats preload path rewrite=" in text
+    assert "alr apt-cache stats preload stdout=" in text
+    assert "alr apt-cache pkgnames preload path rewrite=" in text
+    assert "alr apt-cache pkgnames preload stdout=" in text
     assert "alr apt-config --version stdout=" in text
     assert "alr apt-config --version preload handoff=" in text
     assert "alr apt-config --version preload path rewrite=" in text
