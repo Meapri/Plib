@@ -4,6 +4,7 @@ import java.io.File
 
 data class NativeCommandResult(
     val command: File,
+    val environment: Map<String, String>,
     val exitCode: Int,
     val stdout: String,
     val stderr: String,
@@ -32,6 +33,7 @@ class NativeCommandRunner(
             "PROOT_TMP_DIR" to prootTmpDir.absolutePath,
             "PROOT_NO_SECCOMP" to "1",
             "PROOT_VERBOSE" to "9",
+            "LD_LIBRARY_PATH" to nativeLibraryDir.absolutePath,
         )
     }
 
@@ -43,6 +45,7 @@ class NativeCommandRunner(
         val command = File(nativeLibraryDir, fileName)
         val processBuilder = ProcessBuilder(listOf(command.absolutePath) + arguments)
             .redirectErrorStream(false)
+        processBuilder.environment().remove("LD_PRELOAD")
         processBuilder.environment().putAll(environment)
         val process = processBuilder.start()
         val stdout = process.inputStream.bufferedReader().use { it.readText() }.trim()
@@ -50,6 +53,7 @@ class NativeCommandRunner(
         val exitCode = process.waitFor()
         return NativeCommandResult(
             command = command,
+            environment = environment.toSortedMap(),
             exitCode = exitCode,
             stdout = stdout,
             stderr = stderr,

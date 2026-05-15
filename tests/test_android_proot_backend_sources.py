@@ -12,13 +12,21 @@ def test_cpp_runtime_plan_can_build_proot_launch_plan():
     assert "libalr_proot.so" in text
     assert '"-R"' in text
     assert '"-w"' in text
+    assert "PROOT_LOADER" in text
+    assert "PROOT_TMP_DIR" in text
     assert "PROOT_NO_SECCOMP" in text
+    assert "PROOT_VERBOSE" in text
+    assert "LD_LIBRARY_PATH" in text
 
 
 def test_jni_report_includes_proot_launch_plan_section():
     text = CPP_REPORT.read_text()
     assert "proot argv:" in text
+    assert "PROOT_LOADER" in text
+    assert "PROOT_TMP_DIR" in text
     assert "PROOT_NO_SECCOMP" in text
+    assert "PROOT_VERBOSE" in text
+    assert "LD_LIBRARY_PATH" in text
 
 
 def test_main_activity_reports_proot_backend_candidate():

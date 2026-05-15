@@ -25,6 +25,14 @@ std::string loader_executable_for(const RuntimeReportInput& input) {
     return join_path(input.native_library_dir, "libalr-loader.so");
 }
 
+std::string proot_loader_for(const RuntimeReportInput& input) {
+    return join_path(input.native_library_dir, "libproot-loader.so");
+}
+
+std::string proot_tmp_dir_for(const RuntimeReportInput& input) {
+    return join_path(input.app_cache_dir, "proot-tmp");
+}
+
 void validate_input(const RuntimeReportInput& input) {
     if (input.program.empty() || input.program.front() != '/') {
         throw std::invalid_argument("program must be an absolute path inside the rootfs");
@@ -101,7 +109,11 @@ LoaderLaunchPlan build_proot_launch_plan(const RuntimeReportInput& input) {
         {"ALR_ROOTFS", rootfs_dir},
         {"ALR_PROGRAM", input.program},
         {"ALR_BACKEND", "proot"},
+        {"PROOT_LOADER", proot_loader_for(input)},
+        {"PROOT_TMP_DIR", proot_tmp_dir_for(input)},
         {"PROOT_NO_SECCOMP", "1"},
+        {"PROOT_VERBOSE", "9"},
+        {"LD_LIBRARY_PATH", input.native_library_dir},
         {"HOME", "/root"},
         {"TMPDIR", "/tmp"},
         {"PATH", "/bin:/usr/bin:/usr/local/bin"},

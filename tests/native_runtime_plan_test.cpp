@@ -9,6 +9,7 @@ int main() {
         .package_name = "dev.chanwoo.androlinux",
         .native_library_dir = "/data/app/pkg/lib/arm64",
         .app_files_dir = "/data/user/0/dev.chanwoo.androlinux/files",
+        .app_cache_dir = "/data/user/0/dev.chanwoo.androlinux/cache",
         .rootfs_name = "debian-arm64",
         .program = "/bin/hello",
     };

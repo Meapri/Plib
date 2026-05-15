@@ -10,6 +10,7 @@ struct RuntimeReportInput {
     std::string package_name;
     std::string native_library_dir;
     std::string app_files_dir;
+    std::string app_cache_dir;
     std::string rootfs_name;
     std::string program;
 };

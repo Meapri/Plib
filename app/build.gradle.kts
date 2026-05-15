@@ -26,8 +26,8 @@ android {
         applicationId = "dev.chanwoo.androlinux"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.3.0-proot-loader-env"
+        versionCode = 4
+        versionName = "0.3.1-termux-proot-pair"
         ndkVersion = "27.2.12479018"
 
         externalNativeBuild {

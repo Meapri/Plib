@@ -32,11 +32,14 @@ class MainActivity : Activity() {
         val prootCandidateResult = nativeCommandRunner.runProotCandidateSmokeTest()
         val prootHelloResult = nativeCommandRunner.runProotRootfsProgram(rootfsStatus.rootfsDir, "/bin/hello")
 
-        val executionSummary = "build: 0.3.0-proot-loader-env" +
+        val executionSummary = "build: 0.3.1-termux-proot-pair" +
             "\nexecution summary" +
             "\nrootfs verified=${rootfsStatus.verified} extracted=${rootfsStatus.extracted}" +
             "\nnative smoke exit=${nativeCommandResult.exitCode}" +
             "\nnative smoke stdout=${nativeCommandResult.stdout}" +
+            "\nproot loader=${prootCandidateResult.environment["PROOT_LOADER"]}" +
+            "\nproot tmp=${prootCandidateResult.environment["PROOT_TMP_DIR"]}" +
+            "\nproot verbose=${prootCandidateResult.environment["PROOT_VERBOSE"]}" +
             "\nproot --version exit=${prootCandidateResult.exitCode}" +
             "\nproot --version stdout=${prootCandidateResult.stdout}" +
             "\nproot --version stderr=${prootCandidateResult.stderr}" +
@@ -48,6 +51,7 @@ class MainActivity : Activity() {
             packageName,
             applicationInfo.nativeLibraryDir,
             filesDir.absolutePath,
+            cacheDir.absolutePath,
             rootfsManifest.name,
             "/bin/hello",
         ) + "\n\nrootfs install dir: ${rootfsPlan.rootfsDir.absolutePath}" +
@@ -64,6 +68,8 @@ class MainActivity : Activity() {
             "\nnative command stderr=${nativeCommandResult.stderr}" +
             "\n\nproot backend candidate: packaged native executable" +
             "\nproot command: ${applicationInfo.nativeLibraryDir}/libalr_proot.so" +
+            "\nproot actual env:" +
+            prootCandidateResult.environment.entries.joinToString(separator = "") { "\n  ${it.key}=${it.value}" } +
             "\nproot candidate exit=${prootCandidateResult.exitCode}" +
             "\nproot candidate stdout=${prootCandidateResult.stdout}" +
             "\nproot candidate stderr=${prootCandidateResult.stderr}" +
@@ -86,6 +92,7 @@ class MainActivity : Activity() {
         packageName: String,
         nativeLibraryDir: String,
         appFilesDir: String,
+        appCacheDir: String,
         rootfsName: String,
         program: String,
     ): String
