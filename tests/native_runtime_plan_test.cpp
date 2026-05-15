@@ -23,6 +23,8 @@ int main() {
         text.find("ALR RUNTIME LAUNCHER AVAILABLE: PASS") != std::string::npos &&
         text.find("ALR RUNTIME CONFIG BUILD: PASS") != std::string::npos &&
         text.find("ALR RUNTIME DIRECT APP-DATA EXEC POLICY: PASS") != std::string::npos &&
+        text.find("ALR HOOK LOAD: PASS") != std::string::npos &&
+        text.find("ALR HOOK CONFIG BUILD: PASS") != std::string::npos &&
         text.find("alr runtime launcher path=/data/app/pkg/lib/arm64/libalr_runtime_launcher.so") != std::string::npos &&
         text.find("alr runtime guest execution=not-claimed") != std::string::npos &&
         text.find("LOW-OVERHEAD BACKEND PROBE FRAMEWORK: PASS") != std::string::npos &&
