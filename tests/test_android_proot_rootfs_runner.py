@@ -64,3 +64,18 @@ def test_main_activity_reports_real_distro_userland_smoke_result():
     assert "proot dash exit=" in text
     assert "proot dash stdout=" in text
     assert "proot dash stderr=" in text
+
+
+def test_native_command_runner_clears_inherited_android_environment_before_launch():
+    text = RUNNER.read_text()
+    assert "processBuilder.environment().clear()" in text
+    assert "processBuilder.environment().putAll(environment)" in text
+
+
+def test_main_activity_reports_clean_guest_environment_smoke():
+    text = MAIN.read_text()
+    assert "CLEAN GUEST ENVIRONMENT:" in text
+    assert "guest env leaked android vars=" in text
+    assert "ANDROID_ROOT=" in text
+    assert "BOOTCLASSPATH=" in text
+    assert "DEX2OATBOOTCLASSPATH=" in text

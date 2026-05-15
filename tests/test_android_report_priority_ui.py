@@ -19,3 +19,13 @@ def test_main_activity_uses_scrollable_selectable_report_text():
     text = MAIN.read_text()
     assert "ScrollView" in text
     assert "setTextIsSelectable(true)" in text
+
+
+def test_report_rejects_android_env_leaks_in_guest_userland_summary():
+    text = MAIN.read_text()
+    assert "val androidEnvLeakPrefixes = listOf(" in text
+    assert "ANDROID_ROOT=" in text
+    assert "BOOTCLASSPATH=" in text
+    assert "DEX2OATBOOTCLASSPATH=" in text
+    assert "prootDashResult.stdout.lineSequence().any" in text
+    assert "!guestEnvLeakedAndroidVars" in text

@@ -70,18 +70,34 @@ class MainActivity : Activity() {
         val glibcDynamicExecutionPassed = prootGlibcResult.exitCode == 0 &&
             prootGlibcResult.stdout.contains("hello from dynamic glibc rootfs") &&
             prootGlibcResult.stdout.contains("glibc version=")
+        val androidEnvLeakPrefixes = listOf(
+            "ANDROID_ROOT=",
+            "ANDROID_DATA=",
+            "BOOTCLASSPATH=",
+            "DEX2OATBOOTCLASSPATH=",
+            "SYSTEMSERVERCLASSPATH=",
+            "ANDROID_SOCKET_",
+            "EXTERNAL_STORAGE=",
+            "KNOX_STORAGE=",
+        )
+        val guestEnvLeakedAndroidVars = prootDashResult.stdout.lineSequence().any { line ->
+            androidEnvLeakPrefixes.any { prefix -> line.startsWith(prefix) }
+        }
         val distroUserlandExecutionPassed = prootDashResult.exitCode == 0 &&
             prootDashResult.stdout.contains("dash-c ok") &&
             prootDashResult.stdout.contains("ALR_ROOTFS=") &&
-            prootDashResult.stdout.contains("PATH=")
+            prootDashResult.stdout.contains("PATH=") &&
+            !guestEnvLeakedAndroidVars
 
-        val executionSummary = "build: 0.3.8-distro-userland-smoke" +
+        val executionSummary = "build: 0.3.9-clean-guest-env" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL -C EXECUTION: ${if (shellCommandExecutionPassed) "PASS" else "FAIL"}" +
             "\nGLIBC DYNAMIC EXECUTION: ${if (glibcDynamicExecutionPassed) "PASS" else "FAIL"}" +
             "\nDISTRO USERLAND EXECUTION: ${if (distroUserlandExecutionPassed) "PASS" else "FAIL"}" +
+            "\nCLEAN GUEST ENVIRONMENT: ${if (!guestEnvLeakedAndroidVars) "PASS" else "FAIL"}" +
+            "\nguest env leaked android vars=$guestEnvLeakedAndroidVars" +
             "\nrootfs verified=${rootfsStatus.verified} extracted=${rootfsStatus.extracted}" +
             "\nrootfs /bin/hello exists=${rootfsHelloFile.isFile} executable=${rootfsHelloFile.canExecute()} bytes=${rootfsHelloFile.length()}" +
             "\nrootfs /bin/sh exists=${rootfsShellFile.isFile} executable=${rootfsShellFile.canExecute()} bytes=${rootfsShellFile.length()}" +

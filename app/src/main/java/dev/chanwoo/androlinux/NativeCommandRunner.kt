@@ -111,7 +111,7 @@ class NativeCommandRunner(
     ): NativeCommandResult {
         val processBuilder = ProcessBuilder(listOf(command.absolutePath) + arguments)
             .redirectErrorStream(false)
-        processBuilder.environment().remove("LD_PRELOAD")
+        processBuilder.environment().clear()
         processBuilder.environment().putAll(environment)
         val process = processBuilder.start()
         val completed = process.waitFor(COMMAND_TIMEOUT_SECONDS, TimeUnit.SECONDS)
