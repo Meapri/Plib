@@ -78,6 +78,18 @@ class NativeCommandRunner(
     fun runProotRootfsAptConfigVersion(rootfsDir: File): NativeCommandResult =
         runProotRootfsCommand(rootfsDir, "/usr/bin/apt-config", listOf("--version"), rootId = true, rawRootfs = true)
 
+    fun runProotRootfsDpkgInstallLocalSmoke(rootfsDir: File): NativeCommandResult =
+        runProotRootfsCommand(
+            rootfsDir,
+            "/usr/bin/dpkg",
+            listOf("-i", "/var/cache/apt/archives/alr-smoke_1.0_arm64.deb"),
+            rootId = true,
+            rawRootfs = true,
+        )
+
+    fun runProotRootfsInstalledPackageSmoke(rootfsDir: File): NativeCommandResult =
+        runProotRootfsCommand(rootfsDir, "/usr/local/bin/alr-package-smoke", rootId = true, rawRootfs = true)
+
     fun runProotRootfsProgramVerbose(rootfsDir: File, program: String): NativeCommandResult =
         runProotRootfsCommand(rootfsDir, program, verbose = "9")
 

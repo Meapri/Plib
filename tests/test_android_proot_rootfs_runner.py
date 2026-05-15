@@ -154,3 +154,14 @@ def test_main_activity_reports_apt_base_bundle_smoke_results():
     assert "proot apt-get --version exit=" in text
     assert "proot apt-cache --version exit=" in text
     assert "proot apt-config --version exit=" in text
+
+
+def test_main_activity_reports_local_deb_install_smoke_results():
+    text = MAIN.read_text()
+    assert "DPKG LOCAL INSTALL EXECUTION:" in text
+    assert "INSTALLED PACKAGE EXECUTION:" in text
+    assert "rootfs local deb exists=" in text
+    assert "rootfs /usr/bin/dpkg-deb exists=" in text
+    assert "rootfs installed alr smoke exists=" in text
+    assert "proot dpkg -i local deb exit=" in text
+    assert "proot installed package smoke exit=" in text

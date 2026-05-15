@@ -242,3 +242,16 @@ def test_tiny_rootfs_contains_bulk_apt_base_bundle():
             assert member in names
         for member in ["./usr/bin/apt", "./usr/bin/apt-get", "./usr/bin/apt-cache", "./usr/bin/apt-config", "./lib/aarch64-linux-gnu/libapt-pkg.so.6.0"]:
             assert archive.extractfile(member).read(4) == b"\x7fELF"
+
+
+def test_tiny_rootfs_contains_local_deb_install_smoke_package():
+    import tarfile
+
+    with tarfile.open(PAYLOAD) as archive:
+        names = set(archive.getnames())
+        assert "./var/cache/apt/archives/alr-smoke_1.0_arm64.deb" in names
+        assert "./usr/bin/dpkg-deb" in names
+        assert "./var/log" in names
+        deb = archive.extractfile("./var/cache/apt/archives/alr-smoke_1.0_arm64.deb").read()
+        assert deb.startswith(b"!<arch>\n")
+        assert archive.extractfile("./usr/bin/dpkg-deb").read(4) == b"\x7fELF"

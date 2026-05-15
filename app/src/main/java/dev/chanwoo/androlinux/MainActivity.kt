@@ -53,6 +53,8 @@ class MainActivity : Activity() {
         val prootAptGetVersionResult = nativeCommandRunner.runProotRootfsAptGetVersion(rootfsStatus.rootfsDir)
         val prootAptCacheVersionResult = nativeCommandRunner.runProotRootfsAptCacheVersion(rootfsStatus.rootfsDir)
         val prootAptConfigVersionResult = nativeCommandRunner.runProotRootfsAptConfigVersion(rootfsStatus.rootfsDir)
+        val prootDpkgInstallLocalResult = nativeCommandRunner.runProotRootfsDpkgInstallLocalSmoke(rootfsStatus.rootfsDir)
+        val prootInstalledPackageSmokeResult = nativeCommandRunner.runProotRootfsInstalledPackageSmoke(rootfsStatus.rootfsDir)
         val prootHelloVerboseResult = if (prootHelloResult.exitCode == 0) {
             null
         } else {
@@ -90,6 +92,10 @@ class MainActivity : Activity() {
         val rootfsLibAptPrivateFile = File(rootfsStatus.rootfsDir, "lib/aarch64-linux-gnu/libapt-private.so.0.0")
         val rootfsAptHttpMethodFile = File(rootfsStatus.rootfsDir, "usr/lib/apt/methods/http")
         val rootfsAptListsPartialDir = File(rootfsStatus.rootfsDir, "var/lib/apt/lists/partial")
+        val rootfsLocalDebFile = File(rootfsStatus.rootfsDir, "var/cache/apt/archives/alr-smoke_1.0_arm64.deb")
+        val rootfsDpkgDebFile = File(rootfsStatus.rootfsDir, "usr/bin/dpkg-deb")
+        val rootfsInstalledSmokeFile = File(rootfsStatus.rootfsDir, "usr/local/bin/alr-package-smoke")
+        val rootfsDpkgStatusFile = File(rootfsStatus.rootfsDir, "var/lib/dpkg/status")
         val rootfsExecutionPassed = prootHelloResult.exitCode == 0 &&
             prootHelloResult.stdout.contains("hello from static arm64 rootfs")
         val shellScriptExecutionPassed = prootScriptResult.exitCode == 0 &&
@@ -142,8 +148,13 @@ class MainActivity : Activity() {
         val aptConfigVersionExecutionPassed = prootAptConfigVersionResult.exitCode == 0 &&
             prootAptConfigVersionResult.stdout.contains("apt ") &&
             prootAptConfigVersionResult.stdout.contains("arm64")
+        val dpkgLocalInstallExecutionPassed = prootDpkgInstallLocalResult.exitCode == 0 &&
+            (prootDpkgInstallLocalResult.stdout.contains("Setting up alr-smoke") ||
+                prootDpkgInstallLocalResult.stdout.contains("alr-smoke (1.0)"))
+        val installedPackageExecutionPassed = prootInstalledPackageSmokeResult.exitCode == 0 &&
+            prootInstalledPackageSmokeResult.stdout.contains("alr local deb package smoke ok")
 
-        val executionSummary = "build: 0.4.6-apt-base-bundle-smoke" +
+        val executionSummary = "build: 0.4.7-local-deb-install-smoke" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -159,6 +170,8 @@ class MainActivity : Activity() {
             "\nAPT-GET VERSION EXECUTION: ${if (aptGetVersionExecutionPassed) "PASS" else "FAIL"}" +
             "\nAPT-CACHE VERSION EXECUTION: ${if (aptCacheVersionExecutionPassed) "PASS" else "FAIL"}" +
             "\nAPT-CONFIG VERSION EXECUTION: ${if (aptConfigVersionExecutionPassed) "PASS" else "FAIL"}" +
+            "\nDPKG LOCAL INSTALL EXECUTION: ${if (dpkgLocalInstallExecutionPassed) "PASS" else "FAIL"}" +
+            "\nINSTALLED PACKAGE EXECUTION: ${if (installedPackageExecutionPassed) "PASS" else "FAIL"}" +
             "\nidentity numeric root=$identityNumericRoot" +
             "\nidentity named root=$identityNamedRoot" +
             "\nidentity proot mode=raw -r" +
@@ -195,6 +208,10 @@ class MainActivity : Activity() {
             "\nrootfs libapt-private exists=${rootfsLibAptPrivateFile.isFile} executable=${rootfsLibAptPrivateFile.canExecute()} bytes=${rootfsLibAptPrivateFile.length()}" +
             "\nrootfs apt http method exists=${rootfsAptHttpMethodFile.isFile} executable=${rootfsAptHttpMethodFile.canExecute()} bytes=${rootfsAptHttpMethodFile.length()}" +
             "\nrootfs apt lists partial exists=${rootfsAptListsPartialDir.isDirectory}" +
+            "\nrootfs local deb exists=${rootfsLocalDebFile.isFile} bytes=${rootfsLocalDebFile.length()}" +
+            "\nrootfs /usr/bin/dpkg-deb exists=${rootfsDpkgDebFile.isFile} executable=${rootfsDpkgDebFile.canExecute()} bytes=${rootfsDpkgDebFile.length()}" +
+            "\nrootfs installed alr smoke exists=${rootfsInstalledSmokeFile.isFile} executable=${rootfsInstalledSmokeFile.canExecute()} bytes=${rootfsInstalledSmokeFile.length()}" +
+            "\nrootfs dpkg status exists=${rootfsDpkgStatusFile.isFile} bytes=${rootfsDpkgStatusFile.length()}" +
             "\nnative smoke exit=${nativeCommandResult.exitCode}" +
             "\nnative smoke stdout=${nativeCommandResult.stdout}" +
             "\nproot --version exit=${prootCandidateResult.exitCode}" +
@@ -238,6 +255,12 @@ class MainActivity : Activity() {
             "\nproot apt-config --version exit=${prootAptConfigVersionResult.exitCode}" +
             "\nproot apt-config --version stdout=${prootAptConfigVersionResult.stdout}" +
             "\nproot apt-config --version stderr=${prootAptConfigVersionResult.stderr}" +
+            "\nproot dpkg -i local deb exit=${prootDpkgInstallLocalResult.exitCode}" +
+            "\nproot dpkg -i local deb stdout=${prootDpkgInstallLocalResult.stdout}" +
+            "\nproot dpkg -i local deb stderr=${prootDpkgInstallLocalResult.stderr}" +
+            "\nproot installed package smoke exit=${prootInstalledPackageSmokeResult.exitCode}" +
+            "\nproot installed package smoke stdout=${prootInstalledPackageSmokeResult.stdout}" +
+            "\nproot installed package smoke stderr=${prootInstalledPackageSmokeResult.stderr}" +
             "\nprobe dlopen talloc=${nativeProbe.lineStartingWith("dlopen libtalloc.so")}" +
             "\nprobe dlopen proot=${nativeProbe.lineStartingWith("dlopen libalr_proot.so")}" +
             "\nproot loader=${prootCandidateResult.environment["PROOT_LOADER"]}" +
@@ -290,6 +313,8 @@ class MainActivity : Activity() {
             resultBlock("proot apt-get --version", prootAptGetVersionResult) +
             resultBlock("proot apt-cache --version", prootAptCacheVersionResult) +
             resultBlock("proot apt-config --version", prootAptConfigVersionResult) +
+            resultBlock("proot dpkg -i local deb", prootDpkgInstallLocalResult) +
+            resultBlock("proot installed package smoke", prootInstalledPackageSmokeResult) +
             optionalResultBlock("proot hello verbose on failure", prootHelloVerboseResult)
 
         val report = executionSummary + "\n\n--- verbose report ---\n" + verboseReport

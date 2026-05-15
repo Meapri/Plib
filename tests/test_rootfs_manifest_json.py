@@ -15,7 +15,7 @@ def test_load_rootfs_manifest_from_json_sample():
     assert manifest.name == "debian-arm64"
     assert manifest.version == "bookworm-slim-2026-05"
     assert manifest.assets[0].path == "tiny-rootfs.tar"
-    assert manifest.assets[0].sha256 == "fb5f176a2424102e6f889e8353e2215adab40ea0c724a7adeb3127c5b0630db1"
+    assert manifest.assets[0].sha256 == "c467bf88120a54d04ce478708f3f1823e227492e2e5dd93e85fd3c534a935089"
     assert manifest.assets[0].size_bytes == 30638080
 
 
