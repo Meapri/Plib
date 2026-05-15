@@ -1,5 +1,9 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
 
 #define ALR_GL_COLOR_BUFFER_BIT 0x00004000u
 #define ALR_GL_FLOAT 0x1406u
@@ -24,6 +28,8 @@ static int g_pending_clear = 0;
 static int g_pending_draw = 0;
 static int g_clear_count = 0;
 static int g_swap_count = 0;
+static int g_bridge_fd = -2;
+static int g_bridge_hello_sent = 0;
 
 void* eglGetDisplay(void* native_display);
 int eglInitialize(void* display, int* major, int* minor);
@@ -143,6 +149,78 @@ void alr_gl_draw_color(float red, float green, float blue) {
     g_draw_blue = blue;
 }
 
+static int alr_bridge_expected_frames(void) {
+    const char* value = getenv("ALR_GLES_DEMO_FRAME_COUNT");
+    if (value == 0 || value[0] == 0) value = getenv("ALR_GLES_SHIM_FRAME_COUNT");
+    if (value == 0 || value[0] == 0) return 1;
+    int count = atoi(value);
+    if (count < 1) return 1;
+    if (count > 240) return 240;
+    return count;
+}
+
+static int alr_bridge_connect(void) {
+    if (g_bridge_fd != -2) return g_bridge_fd;
+    g_bridge_fd = -1;
+    const char* host = getenv("ALR_GPU_BRIDGE_HOST");
+    const char* port_value = getenv("ALR_GPU_BRIDGE_PORT");
+    if (host == 0 || host[0] == 0 || port_value == 0 || port_value[0] == 0) return -1;
+    int port = atoi(port_value);
+    if (port <= 0 || port > 65535) return -1;
+    int fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (fd < 0) return -1;
+    struct sockaddr_in address;
+    memset(&address, 0, sizeof(address));
+    address.sin_family = AF_INET;
+    address.sin_port = htons((unsigned short)port);
+    if (inet_pton(AF_INET, host, &address.sin_addr) != 1) {
+        close(fd);
+        return -1;
+    }
+    if (connect(fd, (struct sockaddr*)&address, sizeof(address)) != 0) {
+        close(fd);
+        return -1;
+    }
+    g_bridge_fd = fd;
+    return g_bridge_fd;
+}
+
+static void alr_bridge_write(const char* line) {
+    int fd = alr_bridge_connect();
+    if (fd < 0 || line == 0) return;
+    size_t length = strlen(line);
+    while (length > 0) {
+        ssize_t written = write(fd, line, length);
+        if (written <= 0) return;
+        line += written;
+        length -= (size_t)written;
+    }
+}
+
+static void alr_bridge_send_hello(void) {
+    if (g_bridge_hello_sent) return;
+    if (alr_bridge_connect() < 0) return;
+    char line[96];
+    snprintf(line, sizeof(line), "ALR_GPU_IPC_HELLO gles-shim-v1 frames=%d\n", alr_bridge_expected_frames());
+    alr_bridge_write(line);
+    g_bridge_hello_sent = 1;
+}
+
+static void alr_bridge_send_command(const char* command) {
+    if (alr_bridge_connect() < 0) return;
+    alr_bridge_send_hello();
+    alr_bridge_write(command);
+}
+
+static void alr_bridge_close(void) {
+    if (g_bridge_fd >= 0) {
+        if (g_bridge_hello_sent) alr_bridge_write("ALR_GPU_IPC_END\n");
+        close(g_bridge_fd);
+    }
+    g_bridge_fd = -2;
+    g_bridge_hello_sent = 0;
+}
+
 int alr_gl_draw_arrays(unsigned int mode, int first, int count) {
     if (!g_current || !g_program_selected || !g_vertex_attrib_enabled || !g_vertex_attrib_pointer) return 0;
     if (mode != ALR_GL_TRIANGLES || first != 0 || count < 3) return 0;
@@ -204,6 +282,16 @@ int alr_egl_swap_buffers(void* display, void* surface) {
     if (!g_current || display == 0 || (!g_pending_clear && !g_pending_draw)) return 0;
     ++g_swap_count;
     if (g_pending_draw) {
+        char command[160];
+        snprintf(
+            command,
+            sizeof(command),
+            "ALR_GPU_DRAW_TRIANGLE %.2f %.2f %.2f shim-draw-frame-%04d\n",
+            g_draw_red,
+            g_draw_green,
+            g_draw_blue,
+            g_swap_count
+        );
         printf(
             "ALR_GLES_SHIM_COMMAND ALR_GPU_DRAW_TRIANGLE %.2f %.2f %.2f shim-draw-frame-%04d\n",
             g_draw_red,
@@ -211,7 +299,18 @@ int alr_egl_swap_buffers(void* display, void* surface) {
             g_draw_blue,
             g_swap_count
         );
+        alr_bridge_send_command(command);
     } else {
+        char command[144];
+        snprintf(
+            command,
+            sizeof(command),
+            "ALR_GPU_CLEAR %.2f %.2f %.2f shim-frame-%04d\n",
+            g_clear_red,
+            g_clear_green,
+            g_clear_blue,
+            g_swap_count
+        );
         printf(
             "ALR_GLES_SHIM_COMMAND ALR_GPU_CLEAR %.2f %.2f %.2f shim-frame-%04d\n",
             g_clear_red,
@@ -219,6 +318,7 @@ int alr_egl_swap_buffers(void* display, void* surface) {
             g_clear_blue,
             g_swap_count
         );
+        alr_bridge_send_command(command);
     }
     g_pending_clear = 0;
     g_pending_draw = 0;
@@ -236,6 +336,7 @@ int alr_egl_destroy_context(void* display, void* context) {
 int alr_egl_terminate(void* display) {
     if (display == 0) return 0;
     g_initialized = 0;
+    alr_bridge_close();
     return 1;
 }
 

@@ -770,6 +770,37 @@ guest GLES demo, ALR launches it through the guest glibc loader and the
 `libEGL.so`/`libGLESv2.so` shim library path, and the Android Surface renderer
 consumes its 60 draw commands alongside the native GLES baseline.
 
+Current V73 installed-package GLES IPC snapshot:
+
+```text
+build: 0.4.73-installed-gles-ipc
+ALR DPKG LOCAL INSTALL PRELOAD EXECUTION: PASS
+INSTALLED PACKAGE EXECUTION: PASS
+ALR INSTALLED PACKAGE PRELOAD EXECUTION: PASS
+ALR GUEST GPU IPC BRIDGE EXECUTION: PASS
+ALR INSTALLED PACKAGE GPU IPC EXECUTION: PASS
+ALR GUEST GLES DEMO GEARS EXECUTION: PASS
+ALR INSTALLED PACKAGE GLES DEMO EXECUTION: PASS
+ALR INSTALLED PACKAGE GLES IPC EXECUTION: PASS
+alr installed package gles demo handoff=ALR STATIC ENTRY HANDOFF: PASS
+alr installed package gles demo command parsed count=60
+alr installed package gles demo draw command count=60
+alr installed package gles ipc received frames=60
+alr installed package gles ipc draw frames=60
+alr installed package gles ipc lossless=true
+alr installed package gles ipc error=none
+alr installed package gles ipc handoff=ALR STATIC ENTRY HANDOFF: PASS
+surface gl renderer=Mali-G615 MC2
+surface gpu hardware render=true
+surface gles shim vs native average ratio pct=100
+```
+
+V73 changes the GLES shim itself: when `ALR_GPU_BRIDGE_HOST` and
+`ALR_GPU_BRIDGE_PORT` are present, `eglSwapBuffers` submits `ALR_GPU_CLEAR` or
+`ALR_GPU_DRAW_TRIANGLE` records over TCP loopback in addition to stdout. This
+turns the installed `.deb` GLES demo into an actual bridge producer instead of
+only a text-command fixture.
+
 Report:
 
 ```text

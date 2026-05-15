@@ -1050,3 +1050,34 @@ Next implementation batch:
 2. Package a second installed ELF that exercises `eglGetProcAddress` and multiple GLES symbols.
 3. Make the summary separate hard known-fail diagnostics from the current PASS path, especially non-preload dpkg/proot install failures.
 4. Start a small installed-app compatibility table for CLI, GPU clear, GLES demo, and GUI protocol clients.
+
+Latest V73 installed-package GLES IPC evidence:
+
+```text
+build: 0.4.73-installed-gles-ipc
+ALR DPKG LOCAL INSTALL PRELOAD EXECUTION: PASS
+INSTALLED PACKAGE EXECUTION: PASS
+ALR INSTALLED PACKAGE PRELOAD EXECUTION: PASS
+ALR GUEST GPU IPC BRIDGE EXECUTION: PASS
+ALR INSTALLED PACKAGE GPU IPC EXECUTION: PASS
+ALR GUEST GLES DEMO GEARS EXECUTION: PASS
+ALR INSTALLED PACKAGE GLES DEMO EXECUTION: PASS
+ALR INSTALLED PACKAGE GLES IPC EXECUTION: PASS
+alr installed package gles demo command parsed count=60
+alr installed package gles demo draw command count=60
+alr installed package gles ipc received frames=60
+alr installed package gles ipc draw frames=60
+alr installed package gles ipc lossless=true
+alr installed package gles ipc error=none
+alr installed package gles ipc handoff=ALR STATIC ENTRY HANDOFF: PASS
+surface gl renderer=Mali-G615 MC2
+surface gpu hardware render=true
+surface gles shim vs native average ratio pct=100
+```
+
+Next implementation batch:
+
+1. Add host-to-guest ACK lines for the GLES TCP bridge and report submit-to-ack timing.
+2. Package an installed `eglGetProcAddress` demo as a second `.deb` app entrypoint.
+3. Add installed-package compatibility rows for shell script, GPU clear, GLES demo stdout, GLES demo TCP, and GUI protocol clients.
+4. Split known-fail legacy dpkg/proot diagnostics away from the current ALR summary so PASS/FAIL status reflects the active backend path.

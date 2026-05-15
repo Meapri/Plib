@@ -22,7 +22,7 @@ class MainActivity : Activity() {
 
         val rootfsManifest = RootfsManifest(
             name = "debian-arm64",
-            version = "bookworm-slim-2026-05-gui-gpu-v72",
+            version = "bookworm-slim-2026-05-gui-gpu-v73",
             assets = listOf(
                 RootfsAsset(
                     path = "rootfs.tar.zst",
@@ -184,6 +184,7 @@ class MainActivity : Activity() {
         val prootGuestGlesDemoGearsResult = nativeCommandRunner.runProotRootfsGuestGlesDemoGears(rootfsStatus.rootfsDir, glesDemoFrameCount)
         val alrGuestGlesDemoGearsResult = nativeCommandRunner.runAlrRuntimeTrampolineGuestGlesDemoGears(rootfsStatus.rootfsDir, glesDemoFrameCount)
         val alrInstalledPackageGlesDemoResult = nativeCommandRunner.runAlrRuntimeTrampolineInstalledPackageGlesDemo(rootfsStatus.rootfsDir, glesDemoFrameCount)
+        val alrInstalledPackageGlesIpcBridgeResult = runInstalledPackageGlesIpcBridge(nativeCommandRunner, rootfsStatus.rootfsDir, glesDemoFrameCount)
         val prootGuestGlesProcaddrDemoResult = nativeCommandRunner.runProotRootfsGuestGlesProcaddrDemo(rootfsStatus.rootfsDir, glesProcDemoFrameCount)
         val alrGuestGlesProcaddrDemoResult = nativeCommandRunner.runAlrRuntimeTrampolineGuestGlesProcaddrDemo(rootfsStatus.rootfsDir, glesProcDemoFrameCount)
         val prootGuestGlesShimBenchmarkResult = nativeCommandRunner.runProotRootfsGuestGlesShimBenchmark(rootfsStatus.rootfsDir, glesShimBenchmarkFrameCount)
@@ -230,6 +231,7 @@ class MainActivity : Activity() {
         val surfaceGpuCommands = buildList {
             addAll(guestGuiSurfaceCommands)
             addAll(alrInstalledPackageGpuIpcBridgeResult.commands)
+            addAll(alrInstalledPackageGlesIpcBridgeResult.commands)
             addAll(alrInstalledPackageGlesDemoCommands)
             addAll(if (alrGuestGpuIpcBridgeResult.commands.isNotEmpty()) alrGuestGpuIpcBridgeResult.commands else guestGpuIpcBridgeResult.commands)
             addAll(if (alrGuestGpuCommands.isNotEmpty()) alrGuestGpuCommands else guestGpuCommands)
@@ -519,6 +521,13 @@ class MainActivity : Activity() {
                 alrInstalledPackageGlesDemoStdout.contains("ALR_GLES_DEMO_KIND es2gears-like-triangle-strip-subset") &&
                 alrInstalledPackageGlesDemoStdout.contains("ALR_GLES_DEMO_WORKLOAD requested=$glesDemoFrameCount submitted=$glesDemoFrameCount") &&
                 alrInstalledPackageGlesDemoCommands.count { it.protocol == "GLES_DRAW" } == glesDemoFrameCount
+        val alrInstalledPackageGlesIpcBridgePassed =
+            alrInstalledPackageGlesIpcBridgeResult.clientResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+                alrInstalledPackageGlesIpcBridgeResult.clientResult.stdout.alrHandoffStdoutText()
+                    .contains("ALR_GLES_DEMO_WORKLOAD requested=$glesDemoFrameCount submitted=$glesDemoFrameCount") &&
+                alrInstalledPackageGlesIpcBridgeResult.commands.count { it.protocol == "GLES_DRAW" } == glesDemoFrameCount &&
+                alrInstalledPackageGlesIpcBridgeResult.commands.size == alrInstalledPackageGlesIpcBridgeResult.expectedFrames &&
+                alrInstalledPackageGlesIpcBridgeResult.error == null
         val guestGlesProcaddrDemoPassed = prootGuestGlesProcaddrDemoResult.exitCode == 0 &&
             prootGuestGlesProcaddrDemoStdout.contains("ALR_GLES_PROC_DEMO_KIND eglGetProcAddress-es2-subset") &&
             prootGuestGlesProcaddrDemoStdout.contains("ALR_GLES_PROC_DEMO_WORKLOAD requested=$glesProcDemoFrameCount submitted=$glesProcDemoFrameCount") &&
@@ -573,7 +582,7 @@ class MainActivity : Activity() {
             alrGuestX11GuiBridgeResult.error == null
         val hostGpuHardwareCandidate = hostGpuProbe.lineStartingWith("host gpu hardware candidate=") == "host gpu hardware candidate=true"
 
-        val executionSummary = "build: 0.4.72-installed-package-gles-shim" +
+        val executionSummary = "build: 0.4.73-installed-gles-ipc" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -636,6 +645,7 @@ class MainActivity : Activity() {
             "\nGUEST GLES DEMO GEARS EXECUTION: ${if (guestGlesDemoGearsPassed) "PASS" else "FAIL"}" +
             "\nALR GUEST GLES DEMO GEARS EXECUTION: ${if (alrGuestGlesDemoGearsPassed) "PASS" else "FAIL"}" +
             "\nALR INSTALLED PACKAGE GLES DEMO EXECUTION: ${if (alrInstalledPackageGlesDemoPassed) "PASS" else "FAIL"}" +
+            "\nALR INSTALLED PACKAGE GLES IPC EXECUTION: ${if (alrInstalledPackageGlesIpcBridgePassed) "PASS" else "FAIL"}" +
             "\nGUEST GLES PROCADDR DEMO EXECUTION: ${if (guestGlesProcaddrDemoPassed) "PASS" else "FAIL"}" +
             "\nALR GUEST GLES PROCADDR DEMO EXECUTION: ${if (alrGuestGlesProcaddrDemoPassed) "PASS" else "FAIL"}" +
             "\nGUEST GLES SHIM FRAME WORKLOAD EXECUTION: ${if (guestGlesShimBenchmarkPassed) "PASS" else "FAIL"}" +
@@ -794,6 +804,13 @@ class MainActivity : Activity() {
             "\nalr installed package gles demo stdout=${alrInstalledPackageGlesDemoStdout}" +
             "\nalr installed package gles demo command parsed count=${alrInstalledPackageGlesDemoCommands.size}" +
             "\nalr installed package gles demo draw command count=${alrInstalledPackageGlesDemoCommands.count { it.protocol == "GLES_DRAW" }}" +
+            "\nalr installed package gles ipc received frames=${alrInstalledPackageGlesIpcBridgeResult.commands.size}" +
+            "\nalr installed package gles ipc draw frames=${alrInstalledPackageGlesIpcBridgeResult.commands.count { it.protocol == "GLES_DRAW" }}" +
+            "\nalr installed package gles ipc lossless=${alrInstalledPackageGlesIpcBridgeResult.expectedFrames > 0 && alrInstalledPackageGlesIpcBridgeResult.expectedFrames == alrInstalledPackageGlesIpcBridgeResult.commands.size}" +
+            "\nalr installed package gles ipc raw=${alrInstalledPackageGlesIpcBridgeResult.rawLines.joinToString("|")}" +
+            "\nalr installed package gles ipc error=${alrInstalledPackageGlesIpcBridgeResult.error ?: "none"}" +
+            "\nalr installed package gles ipc handoff=${alrInstalledPackageGlesIpcBridgeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr installed package gles ipc stdout=${alrInstalledPackageGlesIpcBridgeResult.clientResult.stdout.alrHandoffStdoutText()}" +
             "\nalr guest gles procaddr demo handoff=${alrGuestGlesProcaddrDemoResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
             "\nalr guest gles procaddr demo stdout=${alrGuestGlesProcaddrDemoStdout}" +
             "\nalr guest gles procaddr demo command parsed count=${alrGuestGlesProcaddrDemoCommands.size}" +
@@ -1232,6 +1249,7 @@ class MainActivity : Activity() {
             resultBlock("proot guest gles demo gears", prootGuestGlesDemoGearsResult) +
             resultBlock("alr guest gles demo gears", alrGuestGlesDemoGearsResult) +
             resultBlock("alr installed package gles demo", alrInstalledPackageGlesDemoResult) +
+            resultBlock("alr installed package gles ipc demo", alrInstalledPackageGlesIpcBridgeResult.clientResult) +
             resultBlock("proot guest gles procaddr demo", prootGuestGlesProcaddrDemoResult) +
             resultBlock("alr guest gles procaddr demo", alrGuestGlesProcaddrDemoResult) +
             resultBlock("proot guest wayland gui client", prootGuestWaylandGuiResult) +
@@ -1400,6 +1418,58 @@ class MainActivity : Activity() {
             server.close()
         }
         val commands = parseGuestGpuCommands(rawLines.joinToString("\n"))
+        val expectedFrames = rawLines.firstOrNull { it.startsWith("ALR_GPU_IPC_HELLO ") }
+            ?.substringAfter("frames=", "0")
+            ?.substringBefore(" ")
+            ?.toIntOrNull()
+            ?: commands.size
+        return GuestGpuIpcBridgeResult(
+            host = host,
+            port = port,
+            expectedFrames = expectedFrames,
+            commands = commands,
+            rawLines = rawLines.toList(),
+            error = errors.firstOrNull(),
+            clientResult = clientResult,
+        )
+    }
+
+    private fun runInstalledPackageGlesIpcBridge(
+        nativeCommandRunner: NativeCommandRunner,
+        rootfsDir: File,
+        frameCount: Int,
+    ): GuestGpuIpcBridgeResult {
+        val host = "127.0.0.1"
+        val server = ServerSocket(0, 1, InetAddress.getByName(host)).apply { soTimeout = 5000 }
+        val port = server.localPort
+        val rawLines = mutableListOf<String>()
+        val errors = mutableListOf<String>()
+        val acceptThread = thread(name = "alr-installed-package-gles-ipc-bridge", start = true) {
+            try {
+                server.use { srv ->
+                    val socket = srv.accept()
+                    socket.use { accepted ->
+                        accepted.soTimeout = 5000
+                        accepted.getInputStream().bufferedReader().useLines { lines ->
+                            lines.forEach { rawLines += it }
+                        }
+                    }
+                }
+            } catch (error: SocketTimeoutException) {
+                errors += "timeout waiting for installed package gles ipc client"
+            } catch (error: Exception) {
+                errors += error.javaClass.simpleName + ": " + (error.message ?: "unknown")
+            }
+        }
+        val clientResult = nativeCommandRunner.runAlrRuntimeTrampolineInstalledPackageGlesDemoIpc(rootfsDir, frameCount, port)
+        acceptThread.join(5500)
+        if (acceptThread.isAlive) {
+            errors += "accept thread still alive after join"
+            server.close()
+        }
+        val commands = rawLines
+            .mapNotNull { parseGuestGpuCommandLine(it) }
+            .mapIndexed { index, command -> command.copy(seq = index + 1) }
         val expectedFrames = rawLines.firstOrNull { it.startsWith("ALR_GPU_IPC_HELLO ") }
             ?.substringAfter("frames=", "0")
             ?.substringBefore(" ")

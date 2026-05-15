@@ -398,6 +398,19 @@ class NativeCommandRunner(
             binaryPath = "/usr/local/bin/alr-package-gles-demo",
         )
 
+    fun runAlrRuntimeTrampolineInstalledPackageGlesDemoIpc(rootfsDir: File, frameCount: Int, port: Int): NativeCommandResult =
+        runAlrRuntimeTrampolineGuestGlesShim(
+            rootfsDir,
+            mapOf(
+                "ALR_GLES_DEMO_FRAME_COUNT" to frameCount.coerceIn(1, 240).toString(),
+                "ALR_GPU_BRIDGE_HOST" to "127.0.0.1",
+                "ALR_GPU_BRIDGE_PORT" to port.toString(),
+                "ALR_GPU_BRIDGE_TRANSPORT" to "tcp-loopback-gles-shim",
+            ),
+            timeoutMs = 5000,
+            binaryPath = "/usr/local/bin/alr-package-gles-demo",
+        )
+
     private fun glibcLibraryPath(rootfsDir: File): String =
         listOf(
             File(rootfsDir, "lib/aarch64-linux-gnu").absolutePath,
