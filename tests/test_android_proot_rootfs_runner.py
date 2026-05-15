@@ -68,13 +68,22 @@ def test_main_activity_reports_alr_loader_help_probe():
     assert "alr loader help probe stdout=" in text
     assert "alr glibc hello probe exit=" in text
     assert "alr glibc hello probe handoff=" in text
+    assert "alr glibc hello probe handoff elapsed ms=" in text
     assert "alr glibc hello probe stdout=" in text
     assert "alr direct dynamic glibc hello=" in text
     assert "alr cat os-release probe exit=" in text
     assert "alr cat os-release probe handoff=" in text
+    assert "alr cat os-release probe handoff elapsed ms=" in text
     assert "alr cat os-release probe stdout=" in text
     assert "alr translated guest path cat=" in text
     assert "ID=androlinux-tiny" in text
+    assert "alr static hello elapsed ms=" in text
+    assert "proot static hello elapsed ms=" in text
+    assert "alr static hello faster than proot=" in text
+    assert "alr dynamic glibc elapsed ms=" in text
+    assert "proot dynamic glibc elapsed ms=" in text
+    assert "alr dynamic glibc faster than proot=" in text
+    assert "alr translated cat elapsed ms=" in text
 
 
 def test_native_command_runner_can_attempt_proot_dash_command():

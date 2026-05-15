@@ -11,6 +11,7 @@ data class NativeCommandResult(
     val exitCode: Int,
     val stdout: String,
     val stderr: String,
+    val elapsedMs: Long,
 )
 
 class NativeCommandRunner(
@@ -311,6 +312,7 @@ class NativeCommandRunner(
             .redirectErrorStream(false)
         processBuilder.environment().clear()
         processBuilder.environment().putAll(environment)
+        val startedNs = System.nanoTime()
         val process = processBuilder.start()
         val completed = process.waitFor(COMMAND_TIMEOUT_SECONDS, TimeUnit.SECONDS)
         val exitCode = if (completed) {
@@ -320,6 +322,7 @@ class NativeCommandRunner(
             process.waitFor()
             -124
         }
+        val elapsedMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedNs)
         val stdout = process.inputStream.bufferedReader().use { it.readText() }.trim()
         val stderr = process.errorStream.bufferedReader().use { it.readText() }.trim()
         return NativeCommandResult(
@@ -328,6 +331,7 @@ class NativeCommandRunner(
             exitCode = exitCode,
             stdout = stdout,
             stderr = if (completed) stderr else listOf(stderr, "timeout after ${COMMAND_TIMEOUT_SECONDS}s").filter { it.isNotBlank() }.joinToString("\n"),
+            elapsedMs = elapsedMs,
         )
     }
 }

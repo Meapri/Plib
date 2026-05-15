@@ -376,6 +376,7 @@ class MainActivity : Activity() {
             "\nalr entry probe jump ready=${alrTrampolineEntryProbeResult.stdout.lineStartingWith("ALR STATIC ENTRY JUMP READY:")}" +
             "\nalr entry probe fixed image=${alrTrampolineEntryProbeResult.stdout.lineStartingWith("alr transfer fixed image mapped=")}" +
             "\nalr entry probe attempted=${alrTrampolineEntryProbeResult.stdout.lineStartingWith("alr handoff attempted=")}" +
+            "\nalr entry probe handoff elapsed ms=${alrTrampolineEntryProbeResult.stdout.lineStartingWith("alr handoff elapsed ms=")}" +
             "\nalr entry probe child exited=${alrTrampolineEntryProbeResult.stdout.lineStartingWith("alr handoff child exited=")}" +
             "\nalr entry probe child signaled=${alrTrampolineEntryProbeResult.stdout.lineStartingWith("alr handoff child signaled=")}" +
             "\nalr entry probe child signal=${alrTrampolineEntryProbeResult.stdout.lineStartingWith("alr handoff signal=")}" +
@@ -397,6 +398,7 @@ class MainActivity : Activity() {
             "\nalr glibc hello probe exit=${alrTrampolineGlibcHelloProbeResult.exitCode}" +
             "\nalr glibc hello probe handoff=${alrTrampolineGlibcHelloProbeResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
             "\nalr glibc hello probe child exited=${alrTrampolineGlibcHelloProbeResult.stdout.lineStartingWith("alr handoff child exited=")}" +
+            "\nalr glibc hello probe handoff elapsed ms=${alrTrampolineGlibcHelloProbeResult.stdout.lineStartingWith("alr handoff elapsed ms=")}" +
             "\nalr glibc hello probe child signaled=${alrTrampolineGlibcHelloProbeResult.stdout.lineStartingWith("alr handoff child signaled=")}" +
             "\nalr glibc hello probe fault syscall=${alrTrampolineGlibcHelloProbeResult.stdout.lineStartingWith("alr handoff fault syscall=")}" +
             "\nalr glibc hello probe syscall emulated=${alrTrampolineGlibcHelloProbeResult.stdout.lineStartingWith("alr handoff syscall emulated count=")}" +
@@ -404,9 +406,17 @@ class MainActivity : Activity() {
             "\nalr direct dynamic glibc hello=${if (alrTrampolineGlibcHelloProbeResult.stdout.contains("hello from dynamic glibc rootfs")) "PASS" else "SKIP"}" +
             "\nalr cat os-release probe exit=${alrTrampolineCatOsReleaseProbeResult.exitCode}" +
             "\nalr cat os-release probe handoff=${alrTrampolineCatOsReleaseProbeResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr cat os-release probe handoff elapsed ms=${alrTrampolineCatOsReleaseProbeResult.stdout.lineStartingWith("alr handoff elapsed ms=")}" +
             "\nalr cat os-release probe syscall emulated=${alrTrampolineCatOsReleaseProbeResult.stdout.lineStartingWith("alr handoff syscall emulated count=")}" +
             "\nalr cat os-release probe stdout=${alrTrampolineCatOsReleaseProbeResult.stdout.lineStartingWith("alr handoff stdout=")}" +
             "\nalr translated guest path cat=${if (alrTrampolineCatOsReleaseProbeResult.stdout.contains("ID=androlinux-tiny")) "PASS" else "SKIP"}" +
+            "\nalr static hello elapsed ms=${alrTrampolineEntryProbeResult.elapsedMs}" +
+            "\nproot static hello elapsed ms=${prootHelloResult.elapsedMs}" +
+            "\nalr static hello faster than proot=${alrTrampolineEntryProbeResult.exitCode == 0 && prootHelloResult.exitCode == 0 && alrTrampolineEntryProbeResult.elapsedMs < prootHelloResult.elapsedMs}" +
+            "\nalr dynamic glibc elapsed ms=${alrTrampolineGlibcHelloProbeResult.elapsedMs}" +
+            "\nproot dynamic glibc elapsed ms=${prootGlibcResult.elapsedMs}" +
+            "\nalr dynamic glibc faster than proot=${alrTrampolineGlibcHelloProbeResult.exitCode == 0 && prootGlibcResult.exitCode == 0 && alrTrampolineGlibcHelloProbeResult.elapsedMs < prootGlibcResult.elapsedMs}" +
+            "\nalr translated cat elapsed ms=${alrTrampolineCatOsReleaseProbeResult.elapsedMs}" +
             "\nproot --version exit=${prootCandidateResult.exitCode}" +
             "\nlinker64 proot --version exit=${prootViaLinkerResult.exitCode}" +
             "\nproot hello quiet exit=${prootHelloResult.exitCode}" +
@@ -768,6 +778,7 @@ class MainActivity : Activity() {
     private fun resultBlock(label: String, result: NativeCommandResult): String =
         "\n\n$label command=${result.command.absolutePath}" +
             "\n$label exit=${result.exitCode}" +
+            "\n$label elapsed ms=${result.elapsedMs}" +
             "\n$label stdout=${result.stdout}" +
             "\n$label stderr=${result.stderr}"
 

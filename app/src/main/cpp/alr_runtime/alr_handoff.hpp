@@ -16,6 +16,7 @@ struct StaticEntryHandoffResult {
     bool child_signaled = false;
     bool timed_out = false;
     int timeout_ms = 0;
+    int elapsed_ms = 0;
     int exit_code = -1;
     int signal_number = 0;
     bool fault_captured = false;

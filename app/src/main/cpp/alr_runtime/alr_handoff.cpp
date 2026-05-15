@@ -11,6 +11,7 @@
 #endif
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <cerrno>
@@ -30,6 +31,17 @@ std::string hex_value(std::uint64_t value) {
     std::ostringstream out;
     out << "0x" << std::hex << value;
     return out.str();
+}
+
+int monotonic_elapsed_ms(timespec start) {
+    timespec now {};
+    if (::clock_gettime(CLOCK_MONOTONIC, &now) != 0) {
+        return 0;
+    }
+    const auto sec_ms = static_cast<long long>(now.tv_sec - start.tv_sec) * 1000LL;
+    const auto nsec_ms = static_cast<long long>(now.tv_nsec - start.tv_nsec) / 1000000LL;
+    const auto elapsed = sec_ms + nsec_ms;
+    return elapsed < 0 ? 0 : static_cast<int>(elapsed);
 }
 
 std::string one_line_text(const std::string& value) {
@@ -56,6 +68,7 @@ std::string build_report(const alr::runtime::StaticEntryHandoffResult& result) {
     out << "\nalr handoff attempted=" << (result.attempted ? "true" : "false");
     out << "\nalr handoff preconditions ready=" << (result.preconditions_ready ? "true" : "false");
     out << "\nalr handoff timeout ms=" << result.timeout_ms;
+    out << "\nalr handoff elapsed ms=" << result.elapsed_ms;
     out << "\nalr handoff timed out=" << (result.timed_out ? "true" : "false");
     out << "\nalr handoff child exited=" << (result.child_exited ? "true" : "false");
     out << "\nalr handoff child signaled=" << (result.child_signaled ? "true" : "false");
@@ -326,6 +339,9 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
         return result;
     }
 
+    timespec handoff_started {};
+    (void)::clock_gettime(CLOCK_MONOTONIC, &handoff_started);
+
     const pid_t child = ::fork();
     if (child < 0) {
         result.error = errno_message("fork static entry handoff");
@@ -373,8 +389,8 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
                 } while (waited < 0 && errno == EINTR);
                 break;
             }
-            ::usleep(10 * 1000);
-            waited_ms += 10;
+            ::usleep(1000);
+            waited_ms += 1;
         } else if (waited == child && WIFSTOPPED(status)) {
             append_available_pipe_text(stdout_pipe[0], result.stdout_text);
             append_available_pipe_text(stderr_pipe[0], result.stderr_text);
@@ -426,6 +442,7 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
     }
     append_available_pipe_text(stdout_pipe[0], result.stdout_text);
     append_available_pipe_text(stderr_pipe[0], result.stderr_text);
+    result.elapsed_ms = monotonic_elapsed_ms(handoff_started);
     ::close(stdout_pipe[0]);
     ::close(stderr_pipe[0]);
     if (ptrace_fault_stop_seen) {
@@ -449,6 +466,7 @@ std::string build_static_entry_handoff_skip_report() {
         "alr handoff attempted=false\n"
         "alr handoff preconditions ready=false\n"
         "alr handoff timeout ms=0\n"
+        "alr handoff elapsed ms=0\n"
         "alr handoff timed out=false\n"
         "alr handoff child exited=false\n"
         "alr handoff child signaled=false\n"

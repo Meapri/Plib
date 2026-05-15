@@ -53,6 +53,8 @@ def test_trampoline_report_contract_exists():
     assert '"mov x0, xzr\\n"' in handoff
     assert "PTRACE_TRACEME" in handoff
     assert "alr handoff fault pc=" in handoff
+    assert "alr handoff elapsed ms=" in handoff
+    assert "::usleep(1000)" in handoff
     assert "emulate_android_seccomp_syscall" in handoff
     assert "alr handoff syscall emulated count=" in handoff
     assert "syscall_number == 144" in handoff
