@@ -36,6 +36,10 @@ int main() {
         text.find("ALR LAUNCH ATTEMPT: ") != std::string::npos &&
         text.find("ALR LAUNCH MODE: ") != std::string::npos &&
         text.find("ALR LOW-OVERHEAD RUNTIME HELLO EXECUTION: ") != std::string::npos &&
+        text.find("ALR ELF LOAD PLAN: ") != std::string::npos &&
+        text.find("ALR ELF STATIC HELLO CANDIDATE: ") != std::string::npos &&
+        text.find("alr elf class=") != std::string::npos &&
+        text.find("alr elf load segments=") != std::string::npos &&
         text.find("alr launch exit=") != std::string::npos &&
         text.find("alr runtime launcher path=/data/app/pkg/lib/arm64/libalr_runtime_launcher.so") != std::string::npos &&
         text.find("alr runtime interposer path=/data/app/pkg/lib/arm64/libalr_runtime_interposer.so") != std::string::npos &&

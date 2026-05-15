@@ -5,6 +5,8 @@
 #include <stdexcept>
 #include <string>
 
+#include <unistd.h>
+
 #include "../app/src/main/cpp/alr_runtime/alr_launch.hpp"
 
 namespace {
@@ -29,7 +31,8 @@ void write_text(const std::filesystem::path& path, const std::string& text) {
 }  // namespace
 
 int main() {
-    const auto root = std::filesystem::temp_directory_path() / "alr-launch-attempt-rootfs";
+    const auto root = std::filesystem::temp_directory_path() /
+        ("alr-launch-attempt-rootfs-" + std::to_string(static_cast<long long>(::getpid())));
     std::filesystem::remove_all(root);
     std::filesystem::create_directories(root / "bin");
     write_text(root / "bin" / "hello", "#!/bin/sh\necho alr controlled hello \"$1\"\n");

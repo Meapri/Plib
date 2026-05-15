@@ -381,3 +381,55 @@ Blockers:
 Next recommended action:
 - Open a PR for Issue #15.
 - Next Codex implementation bundle should replace policy-blocked direct exec with a real low-overhead packaged loader/trampoline path for static hello.
+
+## 2026-05-15 - Codex - Bundle I Implementation
+
+Branch/worktree:
+- `codex/alr-elf-load-plan` at `/Users/naen/Documents/Plib/androlinux-runtime-lab`
+
+Touched files:
+- `app/src/main/cpp/CMakeLists.txt`
+- `app/src/main/cpp/alr_runtime/alr_elf.hpp`
+- `app/src/main/cpp/alr_runtime/alr_elf.cpp`
+- `app/src/main/cpp/alr_runtime/alr_elf_format.hpp`
+- `app/src/main/cpp/alr_runtime/alr_launch.cpp`
+- `scripts/test-native-core.sh`
+- `tests/native_alr_runtime_elf_test.cpp`
+- `tests/native_alr_runtime_config_test.cpp`
+- `tests/native_alr_runtime_exec_test.cpp`
+- `tests/native_alr_runtime_hook_test.cpp`
+- `tests/native_alr_runtime_interposer_test.cpp`
+- `tests/native_alr_runtime_launch_test.cpp`
+- `tests/native_runtime_plan_test.cpp`
+- `tests/test_alr_runtime_elf_sources.py`
+- `tests/test_android_loader_plan_report.py`
+
+What changed:
+- Added a clean ELF64 little-endian AArch64 load-plan parser for ALR.
+- Reports ELF class, machine, type, status, entry point, virtual-address span, interpreter path, and PT_LOAD count.
+- Classifies static AArch64 ET_EXEC without PT_INTERP as a static hello candidate.
+- Classifies dynamic glibc-shaped ET_DYN/PT_INTERP as interpreter-needed, not executable yet.
+- Wires the ELF report into the existing launch-attempt report while preserving honest SKIP lines for non-ELF paths.
+- Added a local ELF format compatibility header so host-native tests can build on macOS and Linux without assuming system `<elf.h>` behavior.
+- Fixed Hermes-observed Linux/aarch64 warning-as-error portability by fully initializing the `RuntimeConfig` fixture.
+- Gave native temp directories PID suffixes to avoid parallel-test races.
+
+Commands/tests:
+- `/Users/naen/.venvs/plib-py313/bin/python -m pytest tests -q` -> PASS, 164 passed.
+- `scripts/test-native-core.sh` -> PASS.
+- `CXX=clang++ scripts/test-native-core.sh` -> PASS.
+- `JAVA_HOME=/Users/naen/.jdks/jdk-17.0.19+10/Contents/Home ./gradlew :app:assembleDebug --no-daemon` -> PASS.
+- `unzip -l app/build/outputs/apk/debug/app-debug.apk | rg 'libalr_runtime_(launcher|hook|interposer)|libalr_loader|libalr_test_command|libalr_proot_candidate'` -> PASS.
+
+Evidence:
+- Debug APK: `app/build/outputs/apk/debug/app-debug.apk`
+- APK sha256: `a597d5a0b819731ee325e990520b23db214f06bd87d6935cdda3780d7a6b9819`
+- APK contains `libalr_loader.so`, `libalr_runtime_launcher.so`, `libalr_runtime_hook.so`, `libalr_runtime_interposer.so`, and `libalr_test_command.so` for `arm64-v8a`, `armeabi-v7a`, `x86`, and `x86_64`.
+
+Coordination:
+- Codex continues Bundle I ELF load-plan work.
+- Hermes is expected to continue its separate Bundle J large-batch evidence/implementation work without frequent sync pings.
+
+Blockers:
+- None for Bundle I source/build verification.
+- Static hello still needs the next packaged trampoline/entry path before Android device PASS can be claimed.

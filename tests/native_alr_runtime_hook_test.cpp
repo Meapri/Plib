@@ -5,6 +5,8 @@
 #include <stdexcept>
 #include <string>
 
+#include <unistd.h>
+
 #include "../app/src/main/cpp/alr_runtime/alr_hook.hpp"
 
 namespace {
@@ -18,7 +20,8 @@ void require(bool condition, const char* message) {
 }  // namespace
 
 int main() {
-    const auto root = std::filesystem::temp_directory_path() / "alr-hook-smoke-rootfs";
+    const auto root = std::filesystem::temp_directory_path() /
+        ("alr-hook-smoke-rootfs-" + std::to_string(static_cast<long long>(::getpid())));
     std::filesystem::remove_all(root);
     std::filesystem::create_directories(root / "etc");
     {
