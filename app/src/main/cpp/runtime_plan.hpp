@@ -1,6 +1,8 @@
 #pragma once
 
+#include <map>
 #include <string>
+#include <vector>
 
 namespace alr {
 
@@ -18,6 +20,13 @@ struct RuntimeReport {
     std::string text;
 };
 
+struct LoaderLaunchPlan {
+    std::string executable;
+    std::vector<std::string> argv;
+    std::map<std::string, std::string> env;
+};
+
 RuntimeReport build_runtime_report(const RuntimeReportInput& input);
+LoaderLaunchPlan build_loader_launch_plan(const RuntimeReportInput& input);
 
 }  // namespace alr

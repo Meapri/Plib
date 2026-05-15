@@ -1,5 +1,6 @@
 #include <jni.h>
 
+#include <sstream>
 #include <string>
 
 #include "runtime_plan.hpp"
@@ -29,12 +30,24 @@ Java_dev_chanwoo_androlinux_MainActivity_nativeRuntimeReport(
     jstring app_files_dir,
     jstring rootfs_name,
     jstring program) {
-    const auto report = alr::build_runtime_report({
+    const auto input = alr::RuntimeReportInput{
         .package_name = jstring_to_string(env, package_name),
         .native_library_dir = jstring_to_string(env, native_library_dir),
         .app_files_dir = jstring_to_string(env, app_files_dir),
         .rootfs_name = jstring_to_string(env, rootfs_name),
         .program = jstring_to_string(env, program),
-    });
-    return env->NewStringUTF(report.text.c_str());
+    };
+    const auto report = alr::build_runtime_report(input);
+    const auto launch = alr::build_loader_launch_plan(input);
+
+    std::ostringstream out;
+    out << report.text << "\n\nloader argv:";
+    for (const auto& arg : launch.argv) {
+        out << "\n  " << arg;
+    }
+    out << "\n\nloader env:";
+    out << "\n  ALR_ROOTFS=" << launch.env.at("ALR_ROOTFS");
+    out << "\n  ALR_PROGRAM=" << launch.env.at("ALR_PROGRAM");
+    out << "\n  PATH=" << launch.env.at("PATH");
+    return env->NewStringUTF(out.str().c_str());
 }

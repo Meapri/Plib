@@ -28,7 +28,7 @@ class MainActivity : Activity() {
             applicationInfo.nativeLibraryDir,
             filesDir.absolutePath,
             rootfsManifest.name,
-            "/bin/bash",
+            "/bin/hello",
         ) + "\n\nrootfs install dir: ${rootfsPlan.rootfsDir.absolutePath}" +
             "\nrootfs marker: ${rootfsPlan.markerPath.absolutePath}" +
             "\nrootfs status: ${rootfsStatus.manifestName}/${rootfsStatus.assetPath} verified=${rootfsStatus.verified}" +
