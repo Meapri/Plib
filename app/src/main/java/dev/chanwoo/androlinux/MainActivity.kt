@@ -39,6 +39,7 @@ class MainActivity : Activity() {
         )
         val nativeCommandResult = nativeCommandRunner.runSmokeTest()
         val alrTrampolinePreflightResult = nativeCommandRunner.runAlrRuntimeTrampolinePreflight(rootfsStatus.rootfsDir, "/bin/hello")
+        val alrTrampolineEntryProbeResult = nativeCommandRunner.runAlrRuntimeTrampolineEntryProbe(rootfsStatus.rootfsDir, "/bin/hello")
         val prootCandidateResult = nativeCommandRunner.runProotCandidateSmokeTest()
         val prootShortVersionResult = nativeCommandRunner.runProotShortVersionProbe()
         val prootHelpResult = nativeCommandRunner.runProotHelpProbe()
@@ -367,6 +368,9 @@ class MainActivity : Activity() {
             "\nalr trampoline entry stack=${alrTrampolinePreflightResult.stdout.lineStartingWith("ALR STATIC ENTRY STACK PLAN:")}" +
             "\nalr trampoline transfer context=${alrTrampolinePreflightResult.stdout.lineStartingWith("ALR STATIC ENTRY TRANSFER CONTEXT:")}" +
             "\nalr trampoline handoff=${alrTrampolinePreflightResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr entry probe exit=${alrTrampolineEntryProbeResult.exitCode}" +
+            "\nalr entry probe handoff=${alrTrampolineEntryProbeResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr entry probe timeout=${alrTrampolineEntryProbeResult.stdout.lineStartingWith("alr handoff timed out=")}" +
             "\nproot --version exit=${prootCandidateResult.exitCode}" +
             "\nlinker64 proot --version exit=${prootViaLinkerResult.exitCode}" +
             "\nproot hello quiet exit=${prootHelloResult.exitCode}" +
@@ -448,6 +452,7 @@ class MainActivity : Activity() {
             "\nnative command stdout=${nativeCommandResult.stdout}" +
             "\nnative command stderr=${nativeCommandResult.stderr}" +
             resultBlock("alr trampoline preflight", alrTrampolinePreflightResult) +
+            resultBlock("alr trampoline entry probe", alrTrampolineEntryProbeResult) +
             "\n\nnative library probe:" +
             "\n$nativeProbe" +
             "\n\nAndroid host GPU probe:" +

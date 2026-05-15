@@ -20,9 +20,18 @@ class NativeCommandRunner(
     fun runSmokeTest(): NativeCommandResult = runPackagedCommand("libalr_test_command.so", listOf("smoke"))
 
     fun runAlrRuntimeTrampolinePreflight(rootfsDir: File, program: String): NativeCommandResult {
+        return runAlrRuntimeTrampoline(rootfsDir, program, executeEntry = false)
+    }
+
+    fun runAlrRuntimeTrampolineEntryProbe(rootfsDir: File, program: String): NativeCommandResult {
+        return runAlrRuntimeTrampoline(rootfsDir, program, executeEntry = true)
+    }
+
+    private fun runAlrRuntimeTrampoline(rootfsDir: File, program: String, executeEntry: Boolean): NativeCommandResult {
         require(program.startsWith("/")) { "ALR trampoline program must be an absolute guest path" }
         require(!program.split('/').any { it == ".." }) { "ALR trampoline program must not contain .." }
         val targetHost = File(rootfsDir, program.removePrefix("/"))
+        val mode = if (executeEntry) "entry-probe" else "preflight"
         return runPackagedCommand(
             "libalr_runtime_trampoline.so",
             listOf("--preflight"),
@@ -31,7 +40,9 @@ class NativeCommandRunner(
                 "ALR_PROGRAM" to program,
                 "ALR_TRAMPOLINE_TARGET_GUEST_PATH" to program,
                 "ALR_TRAMPOLINE_TARGET_HOST_PATH" to targetHost.absolutePath,
-                "ALR_TRAMPOLINE_MODE" to "preflight",
+                "ALR_TRAMPOLINE_MODE" to mode,
+                "ALR_TRAMPOLINE_EXECUTE_ENTRY" to if (executeEntry) "1" else "0",
+                "ALR_TRAMPOLINE_HANDOFF_TIMEOUT_MS" to "1000",
                 "LD_LIBRARY_PATH" to nativeLibraryDir.absolutePath,
                 "PATH" to "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
             ),

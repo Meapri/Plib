@@ -23,6 +23,15 @@ bool env_enabled(const char* key) {
             std::string_view(value) == "yes");
 }
 
+int env_int_or_default(const char* key, int fallback) {
+    const char* value = std::getenv(key);
+    if (value == nullptr || value[0] == '\0') {
+        return fallback;
+    }
+    const int parsed = std::atoi(value);
+    return parsed > 0 ? parsed : fallback;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -39,6 +48,7 @@ int main(int argc, char** argv) {
     std::cout << "alr trampoline target host=" << env_or_none("ALR_TRAMPOLINE_TARGET_HOST_PATH") << "\n";
     std::cout << "alr trampoline elf status=" << env_or_none("ALR_TRAMPOLINE_ELF_STATUS") << "\n";
     std::cout << "alr trampoline execute entry=" << (env_enabled("ALR_TRAMPOLINE_EXECUTE_ENTRY") ? "true" : "false") << "\n";
+    std::cout << "alr trampoline handoff timeout ms=" << env_int_or_default("ALR_TRAMPOLINE_HANDOFF_TIMEOUT_MS", 1000) << "\n";
     const char* target_host = std::getenv("ALR_TRAMPOLINE_TARGET_HOST_PATH");
     if (target_host != nullptr && target_host[0] != '\0') {
         const auto elf_plan = alr::runtime::build_elf_load_plan(target_host);
@@ -59,7 +69,8 @@ int main(int argc, char** argv) {
             entry_plan);
         const auto handoff_result = alr::runtime::maybe_run_static_entry_handoff(
             transfer_context,
-            env_enabled("ALR_TRAMPOLINE_EXECUTE_ENTRY"));
+            env_enabled("ALR_TRAMPOLINE_EXECUTE_ENTRY"),
+            env_int_or_default("ALR_TRAMPOLINE_HANDOFF_TIMEOUT_MS", 1000));
         std::cout << handoff_result.report << "\n";
         alr::runtime::cleanup_static_entry_transfer_context(transfer_context);
         std::cout << transfer_context.report << "\n";
