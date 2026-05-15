@@ -103,6 +103,22 @@ class NativeCommandRunner(
     fun runProotRootfsGuestGpuClient(rootfsDir: File): NativeCommandResult =
         runProotRootfsCommand(rootfsDir, "/usr/bin/alr-gpu-client", rootId = true, rawRootfs = true)
 
+    fun runProotRootfsGuestGpuClientIpc(rootfsDir: File, port: Int): NativeCommandResult =
+        runProotRootfsCommand(
+            rootfsDir,
+            "/usr/bin/alr-gpu-client",
+            rootId = true,
+            rawRootfs = true,
+            extraEnvironment = mapOf(
+                "ALR_GPU_BRIDGE_HOST" to "127.0.0.1",
+                "ALR_GPU_BRIDGE_PORT" to port.toString(),
+                "ALR_GPU_BRIDGE_TRANSPORT" to "tcp-loopback",
+            ),
+        )
+
+    fun runProotRootfsGuestGlesShimSmoke(rootfsDir: File): NativeCommandResult =
+        runProotRootfsCommand(rootfsDir, "/usr/bin/alr-gles-shim-smoke", rootId = true, rawRootfs = true)
+
     fun runProotRootfsProgramVerbose(rootfsDir: File, program: String): NativeCommandResult =
         runProotRootfsCommand(rootfsDir, program, verbose = "9")
 
@@ -120,6 +136,7 @@ class NativeCommandRunner(
         rootId: Boolean = false,
         rawRootfs: Boolean = false,
         binds: List<String> = emptyList(),
+        extraEnvironment: Map<String, String> = emptyMap(),
     ): NativeCommandResult =
         runPackagedCommand(
             "libalr_proot.so",
@@ -127,7 +144,7 @@ class NativeCommandRunner(
                 binds.flatMap { listOf("-b", it) } +
                 (if (rootId) listOf("-0") else emptyList()) +
                 listOf("-w", "/", program) + arguments,
-            prootEnvironment(verbose = verbose, rootfsDir = rootfsDir, program = program),
+            prootEnvironment(verbose = verbose, rootfsDir = rootfsDir, program = program) + extraEnvironment,
         )
 
     private fun minimalPackageManagerBinds(): List<String> = listOf(

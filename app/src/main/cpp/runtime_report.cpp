@@ -11,6 +11,7 @@
 #include <cctype>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #include "runtime_plan.hpp"
 
@@ -166,10 +167,40 @@ std::string build_host_gpu_probe_report() {
 }
 
 
-std::string render_to_android_surface(JNIEnv* env, jobject surface_obj, float red, float green, float blue, const std::string& guest_tag) {
+struct SurfaceFrameCommand {
+    float red = 0.05F;
+    float green = 0.18F;
+    float blue = 0.45F;
+    std::string tag = "host-default";
+};
+
+std::vector<SurfaceFrameCommand> parse_surface_frames(const std::string& encoded) {
+    std::vector<SurfaceFrameCommand> frames;
+    std::istringstream input(encoded);
+    std::string line;
+    while (std::getline(input, line)) {
+        if (line.empty()) continue;
+        std::istringstream parts(line);
+        SurfaceFrameCommand cmd;
+        if (parts >> cmd.red >> cmd.green >> cmd.blue >> cmd.tag) {
+            cmd.red = std::max(0.0F, std::min(1.0F, cmd.red));
+            cmd.green = std::max(0.0F, std::min(1.0F, cmd.green));
+            cmd.blue = std::max(0.0F, std::min(1.0F, cmd.blue));
+            frames.push_back(cmd);
+        }
+    }
+    if (frames.empty()) {
+        frames.push_back(SurfaceFrameCommand{});
+    }
+    return frames;
+}
+
+std::string render_to_android_surface_frames(JNIEnv* env, jobject surface_obj, const std::string& encoded_frames) {
+    const auto frames = parse_surface_frames(encoded_frames);
     std::ostringstream out;
     out << "host gpu surface renderer=android-surface-egl-gles";
-    out << "\nsurface guest command tag=" << (guest_tag.empty() ? "host-default" : guest_tag);
+    out << "\nsurface frame stream protocol=clear-color-v3";
+    out << "\nsurface requested frames=" << frames.size();
     if (surface_obj == nullptr) {
         out << "\nsurface render=fail reason=null-surface";
         return out.str();
@@ -249,24 +280,47 @@ std::string render_to_android_surface(JNIEnv* env, jobject surface_obj, float re
     const int width = std::max(1, ANativeWindow_getWidth(window));
     const int height = std::max(1, ANativeWindow_getHeight(window));
     glViewport(0, 0, width, height);
-    glClearColor(red, green, blue, 1.0F);
-    out << "\nsurface clear color=" << red << "," << green << "," << blue;
-    glClear(GL_COLOR_BUFFER_BIT);
-    const GLenum gl_error = glGetError();
     const auto vendor = safe_gl_string(GL_VENDOR);
     const auto renderer = safe_gl_string(GL_RENDERER);
     const bool software = renderer_looks_software(vendor, renderer);
-    const EGLBoolean swapped = eglSwapBuffers(display, egl_surface);
     out << "\nsurface gl vendor=" << vendor;
     out << "\nsurface gl renderer=" << renderer;
-    out << "\nsurface gl clear error=0x" << std::hex << gl_error << std::dec;
-    out << "\nsurface egl swap buffers=" << (swapped == EGL_TRUE ? "ok" : "fail");
-    if (swapped != EGL_TRUE) {
-        out << " error=" << egl_error_hex();
+
+    int rendered = 0;
+    GLenum last_gl_error = GL_NO_ERROR;
+    EGLBoolean last_swapped = EGL_FALSE;
+    std::string last_tag;
+    for (size_t i = 0; i < frames.size(); ++i) {
+        const auto& frame = frames[i];
+        glClearColor(frame.red, frame.green, frame.blue, 1.0F);
+        glClear(GL_COLOR_BUFFER_BIT);
+        last_gl_error = glGetError();
+        last_swapped = eglSwapBuffers(display, egl_surface);
+        out << "\nsurface frame " << (i + 1) << " tag=" << frame.tag
+            << " color=" << frame.red << "," << frame.green << "," << frame.blue
+            << " gl_error=0x" << std::hex << last_gl_error << std::dec
+            << " swap=" << (last_swapped == EGL_TRUE ? "ok" : "fail");
+        if (last_swapped != EGL_TRUE) {
+            out << " error=" << egl_error_hex();
+            break;
+        }
+        if (last_gl_error != GL_NO_ERROR) {
+            break;
+        }
+        ++rendered;
+        last_tag = frame.tag;
     }
+    const int dropped = static_cast<int>(frames.size()) - rendered;
+    out << "\nsurface frames rendered=" << rendered;
+    out << "\nsurface frames dropped=" << dropped;
+    out << "\nsurface frame lossless=" << (dropped == 0 ? "true" : "false");
+    out << "\nsurface last guest command tag=" << (last_tag.empty() ? "missing" : last_tag);
+    out << "\nsurface gl clear error=0x" << std::hex << last_gl_error << std::dec;
+    out << "\nsurface egl swap buffers=" << (last_swapped == EGL_TRUE ? "ok" : "fail");
     out << "\nsurface gpu software renderer=" << (software ? "true" : "false");
-    out << "\nsurface gpu hardware render=" << (!software && gl_error == GL_NO_ERROR && swapped == EGL_TRUE ? "true" : "false");
-    out << "\nguest gpu bridge hardware render=" << (!guest_tag.empty() && !software && gl_error == GL_NO_ERROR && swapped == EGL_TRUE ? "true" : "false");
+    out << "\nsurface gpu hardware render=" << (!software && last_gl_error == GL_NO_ERROR && last_swapped == EGL_TRUE ? "true" : "false");
+    out << "\nguest gpu ipc bridge hardware render=" << (!software && rendered == static_cast<int>(frames.size()) && rendered > 0 ? "true" : "false");
+    out << "\nguest gpu bridge hardware render=" << (!software && rendered > 0 ? "true" : "false");
 
     eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     eglDestroyContext(display, context);
@@ -377,20 +431,11 @@ Java_dev_chanwoo_androlinux_MainActivity_nativeHostGpuProbe(
 
 
 extern "C" JNIEXPORT jstring JNICALL
-Java_dev_chanwoo_androlinux_MainActivity_nativeRenderGpuSurface(
+Java_dev_chanwoo_androlinux_MainActivity_nativeRenderGpuSurfaceFrames(
     JNIEnv* env,
     jobject /* thiz */,
     jobject surface,
-    jfloat red,
-    jfloat green,
-    jfloat blue,
-    jstring guest_tag) {
-    const auto report = render_to_android_surface(
-        env,
-        surface,
-        static_cast<float>(red),
-        static_cast<float>(green),
-        static_cast<float>(blue),
-        jstring_to_string(env, guest_tag));
+    jstring encoded_frames) {
+    const auto report = render_to_android_surface_frames(env, surface, jstring_to_string(env, encoded_frames));
     return env->NewStringUTF(report.c_str());
 }
