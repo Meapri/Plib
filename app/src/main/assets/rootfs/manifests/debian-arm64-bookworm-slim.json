@@ -1,12 +1,12 @@
 {
   "name": "debian-arm64",
   "version": "bookworm-slim-2026-05",
-  "description": "Tiny PoC rootfs archive with a static arm64 ELF /bin/hello for APK PRoot execution smoke tests. Not a real Debian rootfs yet.",
+  "description": "Tiny PoC rootfs archive with static arm64 /bin/hello plus BusyBox-backed /bin/sh and /bin/cat for APK PRoot shell/script smoke tests. Not a real Debian rootfs yet.",
   "assets": [
     {
       "path": "tiny-rootfs.tar",
-      "sha256": "e153f7c28f5e588484f60112b84b45704a8f13851e6b5d6a3ce4b0cec609f14e",
-      "size_bytes": 542720
+      "sha256": "26a0f5d9d612a76f6be9b5fbbba43892f8e390021a5514242b4a608ad552d600",
+      "size_bytes": 6297600
     }
   ],
   "unsupported_features": [

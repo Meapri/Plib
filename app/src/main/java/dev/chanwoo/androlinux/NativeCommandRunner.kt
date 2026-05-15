@@ -3,7 +3,7 @@ package dev.chanwoo.androlinux
 import java.io.File
 import java.util.concurrent.TimeUnit
 
-private const val COMMAND_TIMEOUT_SECONDS = 3L
+private const val COMMAND_TIMEOUT_SECONDS = 5L
 
 data class NativeCommandResult(
     val command: File,
@@ -49,28 +49,49 @@ class NativeCommandRunner(
         )
 
     fun runProotRootfsProgram(rootfsDir: File, program: String): NativeCommandResult =
-        runPackagedCommand(
-            "libalr_proot.so",
-            listOf("-R", rootfsDir.absolutePath, "-w", "/", program),
-            prootEnvironment(verbose = "-1"),
-        )
+        runProotRootfsCommand(rootfsDir, program)
 
     fun runProotRootfsProgramVerbose(rootfsDir: File, program: String): NativeCommandResult =
+        runProotRootfsCommand(rootfsDir, program, verbose = "9")
+
+    fun runProotRootfsShell(rootfsDir: File, command: String): NativeCommandResult =
+        runProotRootfsCommand(rootfsDir, "/bin/sh", listOf("-c", command))
+
+    private fun runProotRootfsCommand(
+        rootfsDir: File,
+        program: String,
+        arguments: List<String> = emptyList(),
+        verbose: String = "-1",
+    ): NativeCommandResult =
         runPackagedCommand(
             "libalr_proot.so",
-            listOf("-R", rootfsDir.absolutePath, "-w", "/", program),
-            prootEnvironment(verbose = "9"),
+            listOf("-R", rootfsDir.absolutePath, "-w", "/", program) + arguments,
+            prootEnvironment(verbose = verbose, rootfsDir = rootfsDir, program = program),
         )
 
-    private fun prootEnvironment(verbose: String = "-1"): Map<String, String> {
+    private fun prootEnvironment(
+        verbose: String = "-1",
+        rootfsDir: File? = null,
+        program: String? = null,
+    ): Map<String, String> {
         prootTmpDir.mkdirs()
-        return mapOf(
+        val environment = mutableMapOf(
             "PROOT_LOADER" to File(nativeLibraryDir, "libproot-loader.so").absolutePath,
             "PROOT_TMP_DIR" to prootTmpDir.absolutePath,
             "PROOT_NO_SECCOMP" to "1",
             "PROOT_VERBOSE" to verbose,
             "LD_LIBRARY_PATH" to nativeLibraryDir.absolutePath,
+            "HOME" to "/root",
+            "TMPDIR" to "/tmp",
+            "PATH" to "/bin:/usr/bin:/usr/local/bin",
         )
+        if (rootfsDir != null) {
+            environment["ALR_ROOTFS"] = rootfsDir.absolutePath
+        }
+        if (program != null) {
+            environment["ALR_PROGRAM"] = program
+        }
+        return environment
     }
 
     private fun runPackagedCommand(

@@ -20,3 +20,19 @@ def test_main_activity_reports_proot_hello_attempt_result():
     assert "proot hello quiet exit=" in text
     assert "proot hello quiet stdout=" in text
     assert "proot hello verbose on failure" in text
+
+
+def test_native_command_runner_can_attempt_proot_shell_command():
+    text = RUNNER.read_text()
+    assert "runProotRootfsShell" in text
+    assert '"/bin/sh"' in text
+    assert '"-c"' in text
+
+
+def test_main_activity_reports_shell_and_script_smoke_results():
+    text = MAIN.read_text()
+    assert "SHELL SCRIPT EXECUTION:" in text
+    assert "proot script exit=" in text
+    assert "proot script stdout=" in text
+    assert "proot shell -c exit=" in text
+    assert "proot shell -c stdout=" in text

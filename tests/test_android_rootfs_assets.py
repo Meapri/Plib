@@ -9,7 +9,7 @@ PAYLOAD = ROOT / "app" / "src" / "main" / "assets" / "rootfs" / "payloads" / "ti
 def test_android_assets_include_rootfs_manifest_and_payload():
     assert MANIFEST.is_file()
     assert PAYLOAD.is_file()
-    assert PAYLOAD.stat().st_size == 542720
+    assert PAYLOAD.stat().st_size == 6297600
 
 
 def test_android_asset_manifest_matches_host_manifest():
@@ -32,10 +32,38 @@ def test_tiny_rootfs_hello_is_static_arm64_elf_not_shell_script():
     assert blob == b"\x7fELF"
 
 
-def test_tiny_rootfs_does_not_depend_on_missing_bin_sh_for_hello():
+def test_tiny_rootfs_hello_remains_static_even_when_shell_is_available():
     import tarfile
 
     with tarfile.open(PAYLOAD) as archive:
         names = set(archive.getnames())
+        hello = archive.extractfile("./bin/hello").read(4)
+        shell = archive.extractfile("./bin/sh").read(4)
     assert "./bin/hello" in names
-    assert "./bin/sh" not in names
+    assert "./bin/sh" in names
+    assert hello == b"\x7fELF"
+    assert shell == b"\x7fELF"
+
+
+def test_tiny_rootfs_contains_static_busybox_shell_userland():
+    import tarfile
+
+    with tarfile.open(PAYLOAD) as archive:
+        names = set(archive.getnames())
+        assert "./bin/busybox" in names
+        assert "./bin/sh" in names
+        assert "./bin/cat" in names
+        assert archive.extractfile("./bin/busybox").read(4) == b"\x7fELF"
+        assert archive.extractfile("./bin/sh").read(4) == b"\x7fELF"
+        assert archive.extractfile("./bin/cat").read(4) == b"\x7fELF"
+
+
+def test_tiny_rootfs_contains_shell_script_smoke_fixture():
+    import tarfile
+
+    with tarfile.open(PAYLOAD) as archive:
+        names = set(archive.getnames())
+        assert "./bin/script-hello" in names
+        script = archive.extractfile("./bin/script-hello").read().decode()
+    assert script.startswith("#!/bin/sh\n")
+    assert "hello from shell script rootfs" in script
