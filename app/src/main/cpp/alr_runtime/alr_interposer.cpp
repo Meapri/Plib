@@ -1,23 +1,16 @@
-#include "alr_runtime/alr_hook.hpp"
+#include "alr_runtime/alr_interposer.hpp"
 
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
 #include <cerrno>
-#include <cstring>
 #include <sstream>
 #include <string>
 #include <vector>
 
 namespace alr::runtime {
 namespace {
-
-std::string errno_message(const char* action) {
-    std::ostringstream out;
-    out << action << " failed errno=" << errno << " message=" << std::strerror(errno);
-    return out.str();
-}
 
 std::string sanitize_first_bytes(const std::vector<char>& bytes, ssize_t count) {
     std::string out;
@@ -36,20 +29,19 @@ std::string sanitize_first_bytes(const std::vector<char>& bytes, ssize_t count) 
 
 }  // namespace
 
-PathHookSmokeResult run_path_hook_smoke(
-    std::string_view rootfs_dir,
-    std::string_view cwd,
+InterposedPathResult run_interposer_path_smoke(
+    const InterposerConfig& config,
     std::string_view path,
     std::size_t max_read_bytes) {
-    PathHookSmokeResult result;
-    result.translation = translate_rootfs_path(rootfs_dir, cwd, path);
+    InterposedPathResult result;
+    result.translation = translate_rootfs_path(config.rootfs_dir, config.cwd, path);
 
     struct stat st {};
     if (::stat(result.translation.host_path.c_str(), &st) == 0) {
         result.stated = true;
         result.size_bytes = static_cast<long long>(st.st_size);
     } else {
-        result.error = errno_message("stat");
+        result.stat_errno = errno;
     }
 
     const int fd = ::open(result.translation.host_path.c_str(), O_RDONLY | O_CLOEXEC);
@@ -59,25 +51,26 @@ PathHookSmokeResult run_path_hook_smoke(
         const ssize_t count = ::read(fd, buffer.data(), buffer.size());
         if (count >= 0) {
             result.first_bytes = sanitize_first_bytes(buffer, count);
-        } else if (result.error.empty()) {
-            result.error = errno_message("read");
         }
         ::close(fd);
-    } else if (result.error.empty()) {
-        result.error = errno_message("open");
+    } else {
+        result.open_errno = errno;
     }
 
     std::ostringstream report;
-    report << "ALR HOOK LOAD: PASS";
-    report << "\nALR HOOK MODE: host-path-smoke";
-    report << "\nALR HOOK GUEST PATH: " << result.translation.guest_path;
-    report << "\nALR HOOK HOST PATH: " << result.translation.host_path;
-    report << "\nALR STAT ROOTFS FILE: " << (result.stated ? "PASS" : "FAIL");
-    report << "\nALR OPEN ROOTFS FILE: " << (result.opened ? "PASS" : "FAIL");
-    report << "\nALR HOOK FILE SIZE: " << result.size_bytes;
-    report << "\nALR HOOK FIRST BYTES: " << result.first_bytes;
-    if (!result.error.empty()) {
-        report << "\nALR HOOK ERROR: " << result.error;
+    report << "ALR INTERPOSER LOAD: PASS";
+    report << "\nALR INTERPOSER MODE: translated-open-stat-smoke";
+    report << "\nALR INTERPOSER GUEST PATH: " << result.translation.guest_path;
+    report << "\nALR INTERPOSER HOST PATH: " << result.translation.host_path;
+    report << "\nALR INTERPOSER STAT PATH: " << (result.stated ? "PASS" : "FAIL");
+    report << "\nALR INTERPOSER OPEN PATH: " << (result.opened ? "PASS" : "FAIL");
+    report << "\nALR INTERPOSER FILE SIZE: " << result.size_bytes;
+    report << "\nALR INTERPOSER FIRST BYTES: " << result.first_bytes;
+    if (!result.stated) {
+        report << "\nALR INTERPOSER STAT ERRNO: " << result.stat_errno;
+    }
+    if (!result.opened) {
+        report << "\nALR INTERPOSER OPEN ERRNO: " << result.open_errno;
     }
     result.report = report.str();
     return result;
