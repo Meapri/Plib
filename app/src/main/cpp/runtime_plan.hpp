@@ -26,7 +26,23 @@ struct LoaderLaunchPlan {
     std::map<std::string, std::string> env;
 };
 
+enum class ExecutionBackendKind {
+    PlanOnly,
+    AndroidNativeTestCommand,
+    Proot,
+    GlibcLoader,
+};
+
+struct ExecutionBackend {
+    ExecutionBackendKind kind;
+    std::string name;
+    bool can_execute;
+    std::string reason;
+};
+
 RuntimeReport build_runtime_report(const RuntimeReportInput& input);
+RuntimeReport build_runtime_report(const RuntimeReportInput& input, const ExecutionBackend& backend);
 LoaderLaunchPlan build_loader_launch_plan(const RuntimeReportInput& input);
+ExecutionBackend select_execution_backend(ExecutionBackendKind kind);
 
 }  // namespace alr

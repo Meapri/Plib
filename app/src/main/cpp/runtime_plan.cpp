@@ -34,6 +34,10 @@ void validate_input(const RuntimeReportInput& input) {
 }  // namespace
 
 RuntimeReport build_runtime_report(const RuntimeReportInput& input) {
+    return build_runtime_report(input, select_execution_backend(ExecutionBackendKind::PlanOnly));
+}
+
+RuntimeReport build_runtime_report(const RuntimeReportInput& input, const ExecutionBackend& backend) {
     validate_input(input);
     RuntimeReport report;
     report.loader_executable = loader_executable_for(input);
@@ -46,7 +50,10 @@ RuntimeReport build_runtime_report(const RuntimeReportInput& input) {
     out << "loader executable: " << report.loader_executable << "\n";
     out << "app files dir: " << input.app_files_dir << "\n";
     out << "rootfs dir: " << report.rootfs_dir << "\n";
-    out << "program: " << input.program << "\n\n";
+    out << "program: " << input.program << "\n";
+    out << "execution backend: " << backend.name << "\n";
+    out << "can execute: " << (backend.can_execute ? "yes" : "no") << "\n";
+    out << "backend reason: " << backend.reason << "\n\n";
     out << "PoC 1 policy: execute packaged native loader only; keep rootfs writable data separate.";
     report.text = out.str();
     return report;
@@ -73,6 +80,40 @@ LoaderLaunchPlan build_loader_launch_plan(const RuntimeReportInput& input) {
         {"PATH", "/bin:/usr/bin:/usr/local/bin"},
     };
     return plan;
+}
+
+ExecutionBackend select_execution_backend(ExecutionBackendKind kind) {
+    switch (kind) {
+        case ExecutionBackendKind::PlanOnly:
+            return {
+                .kind = kind,
+                .name = "plan-only",
+                .can_execute = false,
+                .reason = "writable app-data rootfs binaries are not direct exec entrypoints on modern Android; use a packaged native loader/proot/glibc-loader backend",
+            };
+        case ExecutionBackendKind::AndroidNativeTestCommand:
+            return {
+                .kind = kind,
+                .name = "android-native-test-command",
+                .can_execute = true,
+                .reason = "executes only packaged/native-library-dir test commands, not rootfs app-data binaries",
+            };
+        case ExecutionBackendKind::Proot:
+            return {
+                .kind = kind,
+                .name = "proot",
+                .can_execute = false,
+                .reason = "planned backend; requires packaged proot/proot-rs binary and Android policy validation",
+            };
+        case ExecutionBackendKind::GlibcLoader:
+            return {
+                .kind = kind,
+                .name = "glibc-loader",
+                .can_execute = false,
+                .reason = "planned backend; requires packaged executable glibc loader and path virtualization strategy",
+            };
+    }
+    throw std::invalid_argument("unknown execution backend");
 }
 
 }  // namespace alr

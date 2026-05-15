@@ -1,0 +1,37 @@
+#include <cstdlib>
+#include <iostream>
+#include <string>
+
+#include "../app/src/main/cpp/runtime_plan.hpp"
+
+int main() {
+    const auto input = alr::RuntimeReportInput{
+        .package_name = "dev.chanwoo.androlinux",
+        .native_library_dir = "/data/app/pkg/lib/arm64",
+        .app_files_dir = "/data/user/0/dev.chanwoo.androlinux/files",
+        .rootfs_name = "debian-arm64",
+        .program = "/bin/hello",
+    };
+    const auto backend = alr::select_execution_backend(alr::ExecutionBackendKind::PlanOnly);
+
+    const bool ok =
+        backend.kind == alr::ExecutionBackendKind::PlanOnly &&
+        backend.name == "plan-only" &&
+        backend.can_execute == false &&
+        backend.reason.find("writable app-data rootfs binaries are not direct exec entrypoints") != std::string::npos;
+
+    if (!ok) {
+        std::cerr << backend.name << " " << backend.reason << "\n";
+        return EXIT_FAILURE;
+    }
+
+    const auto report = alr::build_runtime_report(input, backend);
+    if (report.text.find("execution backend: plan-only") == std::string::npos ||
+        report.text.find("can execute: no") == std::string::npos) {
+        std::cerr << report.text << "\n";
+        return EXIT_FAILURE;
+    }
+
+    std::cout << "native backend policy test ok\n";
+    return EXIT_SUCCESS;
+}
