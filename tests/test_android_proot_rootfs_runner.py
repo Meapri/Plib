@@ -47,3 +47,20 @@ def test_main_activity_reports_glibc_dynamic_smoke_result():
     assert "proot glibc exit=" in text
     assert "proot glibc stdout=" in text
     assert "proot glibc stderr=" in text
+
+
+def test_native_command_runner_can_attempt_proot_dash_command():
+    text = RUNNER.read_text()
+    assert "runProotRootfsDash" in text
+    assert '"/bin/dash"' in text
+    assert '"-c"' in text
+
+
+def test_main_activity_reports_real_distro_userland_smoke_result():
+    text = MAIN.read_text()
+    assert "DISTRO USERLAND EXECUTION:" in text
+    assert "rootfs /bin/dash exists=" in text
+    assert "rootfs /usr/bin/env exists=" in text
+    assert "proot dash exit=" in text
+    assert "proot dash stdout=" in text
+    assert "proot dash stderr=" in text

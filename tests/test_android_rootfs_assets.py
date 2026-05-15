@@ -9,7 +9,7 @@ PAYLOAD = ROOT / "app" / "src" / "main" / "assets" / "rootfs" / "payloads" / "ti
 def test_android_assets_include_rootfs_manifest_and_payload():
     assert MANIFEST.is_file()
     assert PAYLOAD.is_file()
-    assert PAYLOAD.stat().st_size == 8294400
+    assert PAYLOAD.stat().st_size == 8499200
 
 
 def test_android_asset_manifest_matches_host_manifest():
@@ -92,3 +92,28 @@ def test_tiny_rootfs_glibc_hello_requests_rootfs_loader():
         tmp.flush()
         program_headers = subprocess.check_output(["readelf", "-l", tmp.name], text=True)
     assert "Requesting program interpreter: /lib/ld-linux-aarch64.so.1" in program_headers
+
+
+def test_tiny_rootfs_contains_real_distro_dynamic_userland_binaries():
+    import tarfile
+
+    with tarfile.open(PAYLOAD) as archive:
+        names = set(archive.getnames())
+        assert "./bin/dash" in names
+        assert "./usr/bin/env" in names
+        assert archive.extractfile("./bin/dash").read(4) == b"\x7fELF"
+        assert archive.extractfile("./usr/bin/env").read(4) == b"\x7fELF"
+
+
+def test_real_distro_dynamic_userland_binaries_request_rootfs_loader():
+    import subprocess
+    import tarfile
+    import tempfile
+
+    with tarfile.open(PAYLOAD) as archive:
+        for member in ["./bin/dash", "./usr/bin/env"]:
+            with tempfile.NamedTemporaryFile() as tmp:
+                tmp.write(archive.extractfile(member).read())
+                tmp.flush()
+                program_headers = subprocess.check_output(["readelf", "-l", tmp.name], text=True)
+            assert "Requesting program interpreter: /lib/ld-linux-aarch64.so.1" in program_headers

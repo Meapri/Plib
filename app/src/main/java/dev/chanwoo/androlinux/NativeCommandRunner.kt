@@ -57,6 +57,9 @@ class NativeCommandRunner(
     fun runProotRootfsShell(rootfsDir: File, command: String): NativeCommandResult =
         runProotRootfsCommand(rootfsDir, "/bin/sh", listOf("-c", command))
 
+    fun runProotRootfsDash(rootfsDir: File, command: String): NativeCommandResult =
+        runProotRootfsCommand(rootfsDir, "/bin/dash", listOf("-c", command))
+
     private fun runProotRootfsCommand(
         rootfsDir: File,
         program: String,
