@@ -37,9 +37,10 @@ class MainActivity : Activity() {
         val prootLoaderDirectResult = nativeCommandRunner.runProotLoaderDirectProbe()
         val tallocViaLinkerResult = nativeCommandRunner.runTallocViaLinkerProbe()
         val prootHelloResult = nativeCommandRunner.runProotRootfsProgram(rootfsStatus.rootfsDir, "/bin/hello")
+        val prootHelloQuietResult = nativeCommandRunner.runProotRootfsProgramQuiet(rootfsStatus.rootfsDir, "/bin/hello")
         val nativeProbe = nativeLibraryProbe(applicationInfo.nativeLibraryDir)
 
-        val executionSummary = "build: 0.3.3-unstripped-proot" +
+        val executionSummary = "build: 0.3.4-static-rootfs-hello" +
             "\nexecution summary" +
             "\nrootfs verified=${rootfsStatus.verified} extracted=${rootfsStatus.extracted}" +
             "\nnative smoke exit=${nativeCommandResult.exitCode}" +
@@ -58,7 +59,10 @@ class MainActivity : Activity() {
             "\nlinker64 talloc exit=${tallocViaLinkerResult.exitCode}" +
             "\nproot hello exit=${prootHelloResult.exitCode}" +
             "\nproot hello stdout=${prootHelloResult.stdout}" +
-            "\nproot hello stderr=${prootHelloResult.stderr}"
+            "\nproot hello stderr=${prootHelloResult.stderr}" +
+            "\nproot hello quiet exit=${prootHelloQuietResult.exitCode}" +
+            "\nproot hello quiet stdout=${prootHelloQuietResult.stdout}" +
+            "\nproot hello quiet stderr=${prootHelloQuietResult.stderr}"
 
         val verboseReport = nativeRuntimeReport(
             packageName,
@@ -94,7 +98,8 @@ class MainActivity : Activity() {
             resultBlock("linker64 proot --version", prootViaLinkerResult) +
             resultBlock("loader direct", prootLoaderDirectResult) +
             resultBlock("linker64 talloc", tallocViaLinkerResult) +
-            resultBlock("proot hello", prootHelloResult)
+            resultBlock("proot hello", prootHelloResult) +
+            resultBlock("proot hello quiet", prootHelloQuietResult)
 
         val report = executionSummary + "\n\n--- verbose report ---\n" + verboseReport
 

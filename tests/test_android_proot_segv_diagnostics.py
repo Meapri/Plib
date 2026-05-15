@@ -24,7 +24,7 @@ def test_runner_probes_proot_with_multiple_entrypoints():
 
 def test_activity_reports_segv_probe_summary():
     text = MAIN.read_text()
-    assert "build: 0.3.3-unstripped-proot" in text
+    assert "build: 0.3.4-static-rootfs-hello" in text
     assert "probe dlopen talloc" in text
     assert "linker64 proot --version exit" in text
     assert "loader direct exit" in text
