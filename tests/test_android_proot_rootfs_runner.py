@@ -54,10 +54,14 @@ def test_main_activity_reports_alr_loader_help_probe():
     runner = RUNNER.read_text()
     assert "runAlrRuntimeTrampolineLoaderHelpProbe" in runner
     assert "runAlrRuntimeTrampolineGlibcHelloProbe" in runner
+    assert "runAlrRuntimeTrampolineCatOsReleaseProbe" in runner
+    assert "translateGuestPath" in runner
     assert '"/lib/ld-linux-aarch64.so.1"' in runner
     assert '"--help"' in runner
     assert '"--library-path"' in runner
-    assert '"bin/glibc-hello"' in runner
+    assert '"--argv0"' in runner
+    assert '"/bin/glibc-hello"' in runner
+    assert '"/etc/os-release"' in runner
     assert "alr loader help probe exit=" in text
     assert "alr loader help probe fixed required=" in text
     assert "alr loader help probe load bias=" in text
@@ -66,6 +70,11 @@ def test_main_activity_reports_alr_loader_help_probe():
     assert "alr glibc hello probe handoff=" in text
     assert "alr glibc hello probe stdout=" in text
     assert "alr direct dynamic glibc hello=" in text
+    assert "alr cat os-release probe exit=" in text
+    assert "alr cat os-release probe handoff=" in text
+    assert "alr cat os-release probe stdout=" in text
+    assert "alr translated guest path cat=" in text
+    assert "ID=androlinux-tiny" in text
 
 
 def test_native_command_runner_can_attempt_proot_dash_command():

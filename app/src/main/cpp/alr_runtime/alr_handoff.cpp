@@ -233,10 +233,19 @@ bool emulate_android_seccomp_syscall(pid_t child, alr::runtime::StaticEntryHando
         syscall_number == 99 ||   // set_robust_list
         syscall_number == 293 ||  // rseq
         syscall_number == 435;    // clone3
-    if (!known_optional_linux_syscall) {
+    const bool identity_syscall =
+        syscall_number == 143 ||  // setregid
+        syscall_number == 144 ||  // setgid
+        syscall_number == 145 ||  // setreuid
+        syscall_number == 146 ||  // setuid
+        syscall_number == 147 ||  // setresuid
+        syscall_number == 149 ||  // setresgid
+        syscall_number == 151 ||  // setfsuid
+        syscall_number == 152;    // setfsgid
+    if (!known_optional_linux_syscall && !identity_syscall) {
         return false;
     }
-    regs.regs[0] = static_cast<std::uint64_t>(-ENOSYS);
+    regs.regs[0] = identity_syscall ? 0 : static_cast<std::uint64_t>(-ENOSYS);
     if (!set_child_registers(child, regs)) {
         return false;
     }

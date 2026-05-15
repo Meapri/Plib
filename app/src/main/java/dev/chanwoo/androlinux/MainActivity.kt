@@ -42,6 +42,7 @@ class MainActivity : Activity() {
         val alrTrampolineEntryProbeResult = nativeCommandRunner.runAlrRuntimeTrampolineEntryProbe(rootfsStatus.rootfsDir, "/bin/hello")
         val alrTrampolineLoaderHelpProbeResult = nativeCommandRunner.runAlrRuntimeTrampolineLoaderHelpProbe(rootfsStatus.rootfsDir)
         val alrTrampolineGlibcHelloProbeResult = nativeCommandRunner.runAlrRuntimeTrampolineGlibcHelloProbe(rootfsStatus.rootfsDir)
+        val alrTrampolineCatOsReleaseProbeResult = nativeCommandRunner.runAlrRuntimeTrampolineCatOsReleaseProbe(rootfsStatus.rootfsDir)
         val prootCandidateResult = nativeCommandRunner.runProotCandidateSmokeTest()
         val prootShortVersionResult = nativeCommandRunner.runProotShortVersionProbe()
         val prootHelpResult = nativeCommandRunner.runProotHelpProbe()
@@ -401,6 +402,11 @@ class MainActivity : Activity() {
             "\nalr glibc hello probe syscall emulated=${alrTrampolineGlibcHelloProbeResult.stdout.lineStartingWith("alr handoff syscall emulated count=")}" +
             "\nalr glibc hello probe stdout=${alrTrampolineGlibcHelloProbeResult.stdout.lineStartingWith("alr handoff stdout=")}" +
             "\nalr direct dynamic glibc hello=${if (alrTrampolineGlibcHelloProbeResult.stdout.contains("hello from dynamic glibc rootfs")) "PASS" else "SKIP"}" +
+            "\nalr cat os-release probe exit=${alrTrampolineCatOsReleaseProbeResult.exitCode}" +
+            "\nalr cat os-release probe handoff=${alrTrampolineCatOsReleaseProbeResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr cat os-release probe syscall emulated=${alrTrampolineCatOsReleaseProbeResult.stdout.lineStartingWith("alr handoff syscall emulated count=")}" +
+            "\nalr cat os-release probe stdout=${alrTrampolineCatOsReleaseProbeResult.stdout.lineStartingWith("alr handoff stdout=")}" +
+            "\nalr translated guest path cat=${if (alrTrampolineCatOsReleaseProbeResult.stdout.contains("ID=androlinux-tiny")) "PASS" else "SKIP"}" +
             "\nproot --version exit=${prootCandidateResult.exitCode}" +
             "\nlinker64 proot --version exit=${prootViaLinkerResult.exitCode}" +
             "\nproot hello quiet exit=${prootHelloResult.exitCode}" +
@@ -485,6 +491,7 @@ class MainActivity : Activity() {
             resultBlock("alr trampoline entry probe", alrTrampolineEntryProbeResult) +
             resultBlock("alr trampoline loader help probe", alrTrampolineLoaderHelpProbeResult) +
             resultBlock("alr trampoline glibc hello probe", alrTrampolineGlibcHelloProbeResult) +
+            resultBlock("alr trampoline cat os-release probe", alrTrampolineCatOsReleaseProbeResult) +
             "\n\nnative library probe:" +
             "\n$nativeProbe" +
             "\n\nAndroid host GPU probe:" +

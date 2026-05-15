@@ -55,6 +55,7 @@ def test_trampoline_report_contract_exists():
     assert "alr handoff fault pc=" in handoff
     assert "emulate_android_seccomp_syscall" in handoff
     assert "alr handoff syscall emulated count=" in handoff
+    assert "syscall_number == 144" in handoff
     image = (ROOT / "app/src/main/cpp/alr_runtime/alr_image.cpp").read_text()
     transfer = (ROOT / "app/src/main/cpp/alr_runtime/alr_transfer.cpp").read_text()
     entry = (ROOT / "app/src/main/cpp/alr_runtime/alr_entry.cpp").read_text()

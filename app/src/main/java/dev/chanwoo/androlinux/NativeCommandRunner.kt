@@ -38,23 +38,46 @@ class NativeCommandRunner(
     }
 
     fun runAlrRuntimeTrampolineGlibcHelloProbe(rootfsDir: File): NativeCommandResult {
-        val libraryPath = listOf(
-            File(rootfsDir, "lib/aarch64-linux-gnu").absolutePath,
-            File(rootfsDir, "usr/lib/aarch64-linux-gnu").absolutePath,
-            File(rootfsDir, "lib").absolutePath,
-            File(rootfsDir, "usr/lib").absolutePath,
-        ).joinToString(":")
+        val libraryPath = glibcLibraryPath(rootfsDir)
         return runAlrRuntimeTrampoline(
             rootfsDir,
             "/lib/ld-linux-aarch64.so.1",
             executeEntry = true,
             extraArgs = listOf(
+                "--argv0",
+                "/bin/glibc-hello",
                 "--library-path",
                 libraryPath,
-                File(rootfsDir, "bin/glibc-hello").absolutePath,
+                translateGuestPath(rootfsDir, "/bin/glibc-hello"),
             ),
             timeoutMs = 1500,
         )
+    }
+
+    fun runAlrRuntimeTrampolineCatOsReleaseProbe(rootfsDir: File): NativeCommandResult {
+        return runAlrRuntimeTrampoline(
+            rootfsDir,
+            "/bin/cat",
+            executeEntry = true,
+            extraArgs = listOf(
+                translateGuestPath(rootfsDir, "/etc/os-release"),
+            ),
+            timeoutMs = 1500,
+        )
+    }
+
+    private fun glibcLibraryPath(rootfsDir: File): String =
+        listOf(
+            File(rootfsDir, "lib/aarch64-linux-gnu").absolutePath,
+            File(rootfsDir, "usr/lib/aarch64-linux-gnu").absolutePath,
+            File(rootfsDir, "lib").absolutePath,
+            File(rootfsDir, "usr/lib").absolutePath,
+        ).joinToString(":")
+
+    private fun translateGuestPath(rootfsDir: File, guestPath: String): String {
+        require(guestPath.startsWith("/")) { "ALR guest path must be absolute" }
+        require(!guestPath.split('/').any { it == ".." }) { "ALR guest path must not contain .." }
+        return File(rootfsDir, guestPath.removePrefix("/")).absolutePath
     }
 
     private fun runAlrRuntimeTrampoline(
