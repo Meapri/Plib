@@ -364,6 +364,23 @@ available for the colder helper `execve` chain and loader rewrite. This is the
 first package-manager mutation evidence that completes successfully inside the
 normal non-root Android app sandbox.
 
+Current V67 installed package preload snapshot:
+
+```text
+build: 0.4.67-preload-installed-package
+ALR DPKG LOCAL INSTALL PRELOAD EXECUTION: PASS
+ALR INSTALLED PACKAGE PRELOAD EXECUTION: PASS
+alr installed package preload handoff=ALR STATIC ENTRY HANDOFF: PASS
+alr installed package preload stdout=alr local deb package smoke ok\nALR_SMOKE_PACKAGE_SCRIPT=1
+```
+
+The v67 snapshot proves installed package entrypoint execution after the local
+dpkg mutation. The smoke package now separates package-entrypoint execution from
+nested package-manager child execution, and the ALR handoff path has shebang
+script detection so future script entrypoints can be routed through the guest
+interpreter instead of being presented to the glibc ELF loader as if they were
+ELF binaries.
+
 ### ALR Exec v3: Identity and Procfs
 
 Required behavior:

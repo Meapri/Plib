@@ -339,6 +339,57 @@ bool path_exists(const std::string& path) {
     return !path.empty() && ::stat(path.c_str(), &st) == 0;
 }
 
+bool guest_path_rewritable(const std::string& guest_path);
+
+bool is_shell_space(char ch) {
+    return ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n';
+}
+
+struct ShebangProgram {
+    bool valid = false;
+    std::string interpreter;
+    std::vector<std::string> arguments;
+};
+
+ShebangProgram read_shebang_program(const std::string& host_path) {
+    ShebangProgram program {};
+    const int fd = ::open(host_path.c_str(), O_RDONLY | O_CLOEXEC);
+    if (fd < 0) {
+        return program;
+    }
+    std::array<char, 256> buffer {};
+    const ssize_t count = ::read(fd, buffer.data(), buffer.size() - 1);
+    ::close(fd);
+    if (count <= 2 || buffer[0] != '#' || buffer[1] != '!') {
+        return program;
+    }
+    std::string line(buffer.data() + 2, static_cast<std::size_t>(count - 2));
+    const auto newline = line.find_first_of("\r\n");
+    if (newline != std::string::npos) {
+        line.resize(newline);
+    }
+    std::size_t cursor = 0;
+    while (cursor < line.size() && is_shell_space(line[cursor])) {
+        ++cursor;
+    }
+    const std::size_t interpreter_start = cursor;
+    while (cursor < line.size() && !is_shell_space(line[cursor])) {
+        ++cursor;
+    }
+    if (interpreter_start == cursor) {
+        return program;
+    }
+    program.interpreter = line.substr(interpreter_start, cursor - interpreter_start);
+    while (cursor < line.size() && is_shell_space(line[cursor])) {
+        ++cursor;
+    }
+    if (cursor < line.size()) {
+        program.arguments.push_back(line.substr(cursor));
+    }
+    program.valid = guest_path_rewritable(program.interpreter);
+    return program;
+}
+
 bool write_all_fd(int fd, const char* data, std::size_t size);
 
 bool copy_file_contents_and_mode(const std::string& from, const std::string& to) {
@@ -1214,17 +1265,38 @@ bool maybe_rewrite_execve_to_loader(
         return false;
     }
 
+    std::string executable_guest_path = guest_path;
+    std::string executable_host_path = host_path;
+    std::vector<std::string> shebang_arguments;
+    const ShebangProgram shebang = read_shebang_program(host_path);
+    if (shebang.valid) {
+        std::string interpreter_guest_path;
+        std::string interpreter_host_path;
+        if (!resolve_guest_exec_path(options.rootfs_path, shebang.interpreter, interpreter_guest_path, interpreter_host_path)) {
+            return false;
+        }
+        executable_guest_path = interpreter_guest_path;
+        executable_host_path = interpreter_host_path;
+        shebang_arguments = shebang.arguments;
+    }
+
     std::vector<std::string> argv;
     argv.reserve(8);
     argv.push_back(loader_exec_fd >= 0 ? loader_host_path : exec_loader_path);
     argv.emplace_back("--argv0");
-    argv.push_back(guest_path);
+    argv.push_back(executable_guest_path);
     argv.emplace_back("--library-path");
     argv.push_back(rootfs_library_path(options.rootfs_path));
-    argv.push_back(host_path);
+    argv.push_back(executable_host_path);
+    for (const auto& arg : shebang_arguments) {
+        argv.push_back(arg);
+    }
+    if (shebang.valid) {
+        argv.push_back(guest_path);
+    }
     const auto original_tail = read_child_argv_tail(child, argv_address);
     for (const auto& arg : original_tail) {
-        if ((guest_path == "/usr/bin/tar" || guest_path == "/bin/tar") &&
+        if ((executable_guest_path == "/usr/bin/tar" || executable_guest_path == "/bin/tar") &&
             arg.rfind("--warning=", 0) == 0) {
             continue;
         }
@@ -1317,8 +1389,8 @@ bool maybe_rewrite_execve_to_loader(
     regs.regs[1] = argv_vector_address;
     regs.regs[2] = env_vector_address;
 #endif
-    result.last_guest_path = guest_path;
-    result.last_host_path = host_path;
+    result.last_guest_path = executable_guest_path;
+    result.last_host_path = executable_host_path;
     ++result.execve_loader_rewrite_count;
     return true;
 #else

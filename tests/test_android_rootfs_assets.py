@@ -279,6 +279,7 @@ def test_tiny_rootfs_contains_bulk_apt_base_bundle():
 
 
 def test_tiny_rootfs_contains_local_deb_install_smoke_package():
+    import io
     import tarfile
 
     with tarfile.open(PAYLOAD) as archive:
@@ -289,6 +290,21 @@ def test_tiny_rootfs_contains_local_deb_install_smoke_package():
         assert "./var/log" in names
         deb = archive.extractfile("./var/cache/apt/archives/alr-smoke_1.0_arm64.deb").read()
         assert deb.startswith(b"!<arch>\n")
+        members = {}
+        offset = 8
+        while offset < len(deb):
+            header = deb[offset:offset + 60]
+            if len(header) < 60:
+                break
+            name = header[:16].decode("ascii").strip()
+            size = int(header[48:58].decode("ascii").strip())
+            payload_start = offset + 60
+            payload_end = payload_start + size
+            members[name] = deb[payload_start:payload_end]
+            offset = payload_end + (payload_end % 2)
+        with tarfile.open(fileobj=io.BytesIO(members["data.tar.gz"]), mode="r:gz") as data_archive:
+            script = data_archive.extractfile("./usr/local/bin/alr-package-smoke").read()
+        assert b"ALR_SMOKE_PACKAGE_SCRIPT=1" in script
         assert archive.extractfile("./usr/bin/dpkg-deb").read(4) == b"\x7fELF"
         assert archive.extractfile("./bin/tar").read(4) == b"\x7fELF"
         dpkg_deb = archive.extractfile("./usr/bin/dpkg-deb").read()

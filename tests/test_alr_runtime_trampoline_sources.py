@@ -75,6 +75,10 @@ def test_trampoline_report_contract_exists():
     assert "PTRACE_O_TRACEEXEC" in handoff
     assert "ptrace continue SIGCHLD stop" in handoff
     assert "maybe_rewrite_execve_to_loader" in handoff
+    assert "read_shebang_program" in handoff
+    assert "ShebangProgram" in handoff
+    assert "executable_guest_path = interpreter_guest_path" in handoff
+    assert "argv.push_back(guest_path)" in handoff
     assert "__NR_execveat" in handoff
     assert "__NR_linkat" in handoff
     assert "__NR_utimensat" in handoff

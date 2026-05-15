@@ -332,8 +332,11 @@ def test_main_activity_reports_local_deb_install_smoke_results():
     assert "ALR DPKG LOCAL INSTALL EXECUTION:" in text
     assert "ALR DPKG LOCAL INSTALL PRELOAD EXECUTION:" in text
     assert "INSTALLED PACKAGE EXECUTION:" in text
+    assert "ALR INSTALLED PACKAGE PRELOAD EXECUTION:" in text
     assert "runAlrRuntimeTrampolineDpkgInstallLocalSmoke" in runner
     assert "runAlrRuntimeTrampolineDpkgInstallLocalSmokePreload" in runner
+    assert "runAlrRuntimeTrampolineInstalledPackageSmokePreload" in runner
+    assert '"/bin/dash"' in runner
     assert "libalr_glibc_loader.so" in runner
     assert '"ALR_PRELOAD_FAKE_ROOT" to "1"' in runner
     assert "rootfs local deb exists=" in text
@@ -352,6 +355,11 @@ def test_main_activity_reports_local_deb_install_smoke_results():
     assert "alr dpkg -i local deb preload execve loader rewrites=" in text
     assert "alr dpkg -i local deb preload path rewrite=" in text
     assert "alr dpkg -i local deb preload stdout=" in text
+    assert "alr installed package preload handoff=" in text
+    assert "alr installed package preload execve loader rewrites=" in text
+    assert "alr installed package preload last exec requested=" in text
+    assert "alr installed package preload last guest=" in text
+    assert "alr installed package preload stdout=" in text
     assert "proot dpkg -i local deb exit=" in text
     assert "proot installed package smoke exit=" in text
 

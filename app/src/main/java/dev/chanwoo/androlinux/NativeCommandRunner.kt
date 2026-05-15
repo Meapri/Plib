@@ -353,6 +353,18 @@ class NativeCommandRunner(
             ),
         )
 
+    fun runAlrRuntimeTrampolineInstalledPackageSmokePreload(rootfsDir: File): NativeCommandResult =
+        runAlrRuntimeTrampolineGlibcRootfsProgram(
+            rootfsDir,
+            "/bin/dash",
+            listOf("/usr/local/bin/alr-package-smoke"),
+            timeoutMs = 8000,
+            pathRewrite = true,
+            pathRewriteLimit = 2048,
+            pathRewriteIdleSyscallLimit = 256,
+            extraGuestEnvironment = preloadPathFastPathEnvironment(rootfsDir),
+        )
+
     private fun glibcLibraryPath(rootfsDir: File): String =
         listOf(
             File(rootfsDir, "lib/aarch64-linux-gnu").absolutePath,

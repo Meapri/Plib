@@ -22,7 +22,7 @@ class MainActivity : Activity() {
 
         val rootfsManifest = RootfsManifest(
             name = "debian-arm64",
-            version = "bookworm-slim-2026-05-gui-gpu-v65",
+            version = "bookworm-slim-2026-05-gui-gpu-v67",
             assets = listOf(
                 RootfsAsset(
                     path = "rootfs.tar.zst",
@@ -162,6 +162,7 @@ class MainActivity : Activity() {
         )
         val alrDpkgInstallLocalResult = nativeCommandRunner.runAlrRuntimeTrampolineDpkgInstallLocalSmoke(rootfsStatus.rootfsDir)
         val alrDpkgInstallLocalPreloadResult = nativeCommandRunner.runAlrRuntimeTrampolineDpkgInstallLocalSmokePreload(rootfsStatus.rootfsDir)
+        val alrInstalledPackageSmokePreloadResult = nativeCommandRunner.runAlrRuntimeTrampolineInstalledPackageSmokePreload(rootfsStatus.rootfsDir)
         val prootDpkgInstallLocalResult = nativeCommandRunner.runProotRootfsDpkgInstallLocalSmoke(rootfsStatus.rootfsDir)
         val prootInstalledPackageSmokeResult = nativeCommandRunner.runProotRootfsInstalledPackageSmoke(rootfsStatus.rootfsDir)
         val prootGuestGpuClientResult = nativeCommandRunner.runProotRootfsGuestGpuClient(rootfsStatus.rootfsDir)
@@ -448,6 +449,9 @@ class MainActivity : Activity() {
                 prootDpkgInstallLocalResult.stderr.contains("Selecting previously unselected package alr-smoke"))
         val installedPackageExecutionPassed = prootInstalledPackageSmokeResult.exitCode == 0 &&
             prootInstalledPackageSmokeResult.stdout.contains("alr local deb package smoke ok")
+        val alrInstalledPackagePreloadExecutionPassed =
+            alrInstalledPackageSmokePreloadResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+                alrInstalledPackageSmokePreloadResult.stdout.alrHandoffStdoutText().contains("alr local deb package smoke ok")
         val guestGpuBridgeCommandPassed = prootGuestGpuClientResult.exitCode == 0 &&
             prootGuestGpuClientResult.stdout.contains("alr guest gpu client ok") &&
             guestGpuCommands.isNotEmpty()
@@ -540,7 +544,7 @@ class MainActivity : Activity() {
             alrGuestX11GuiBridgeResult.error == null
         val hostGpuHardwareCandidate = hostGpuProbe.lineStartingWith("host gpu hardware candidate=") == "host gpu hardware candidate=true"
 
-        val executionSummary = "build: 0.4.65-preload-dpkg-install" +
+        val executionSummary = "build: 0.4.67-preload-installed-package" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -587,6 +591,7 @@ class MainActivity : Activity() {
             "\nALR DPKG LOCAL INSTALL PRELOAD EXECUTION: ${if (alrDpkgLocalInstallPreloadExecutionPassed) "PASS" else "FAIL"}" +
             "\nDPKG LOCAL INSTALL EXECUTION: ${if (dpkgLocalInstallExecutionPassed) "PASS" else "FAIL"}" +
             "\nINSTALLED PACKAGE EXECUTION: ${if (installedPackageExecutionPassed) "PASS" else "FAIL"}" +
+            "\nALR INSTALLED PACKAGE PRELOAD EXECUTION: ${if (alrInstalledPackagePreloadExecutionPassed) "PASS" else "FAIL"}" +
             "\nHOST GPU EGL/GLES EXECUTION: ${if (hostGpuHardwareCandidate) "PASS" else "FAIL"}" +
             "\nHOST GPU SURFACE EXECUTION: PENDING_SURFACE_CALLBACK" +
             "\nGUEST GPU BRIDGE COMMAND EXECUTION: ${if (guestGpuBridgeCommandPassed) "PASS" else "FAIL"}" +
@@ -1031,6 +1036,16 @@ class MainActivity : Activity() {
             "\nalr dpkg -i local deb preload path rewrite=${alrDpkgInstallLocalPreloadResult.stdout.lineStartingWith("alr handoff path rewrite count=")}" +
             "\nalr dpkg -i local deb preload stdout=${alrDpkgInstallLocalPreloadResult.stdout.alrHandoffStdoutText()}" +
             "\nalr dpkg -i local deb preload stderr=${alrDpkgInstallLocalPreloadResult.stdout.alrHandoffStderrText()}" +
+            "\nalr installed package preload handoff=${alrInstalledPackageSmokePreloadResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr installed package preload execve attempts=${alrInstalledPackageSmokePreloadResult.stdout.lineStartingWith("alr handoff execve attempt count=")}" +
+            "\nalr installed package preload execve loader rewrites=${alrInstalledPackageSmokePreloadResult.stdout.lineStartingWith("alr handoff execve loader rewrite count=")}" +
+            "\nalr installed package preload traced processes=${alrInstalledPackageSmokePreloadResult.stdout.lineStartingWith("alr handoff traced process count=")}" +
+            "\nalr installed package preload last exec requested=${alrInstalledPackageSmokePreloadResult.stdout.lineStartingWith("alr handoff last exec requested path=")}" +
+            "\nalr installed package preload last guest=${alrInstalledPackageSmokePreloadResult.stdout.lineStartingWith("alr handoff last guest path=")}" +
+            "\nalr installed package preload last host=${alrInstalledPackageSmokePreloadResult.stdout.lineStartingWith("alr handoff last host path=")}" +
+            "\nalr installed package preload path rewrite=${alrInstalledPackageSmokePreloadResult.stdout.lineStartingWith("alr handoff path rewrite count=")}" +
+            "\nalr installed package preload stdout=${alrInstalledPackageSmokePreloadResult.stdout.alrHandoffStdoutText()}" +
+            "\nalr installed package preload stderr=${alrInstalledPackageSmokePreloadResult.stdout.alrHandoffStderrText()}" +
             "\nproot dpkg -i local deb exit=${prootDpkgInstallLocalResult.exitCode}" +
             "\nproot dpkg -i local deb stdout=${prootDpkgInstallLocalResult.stdout}" +
             "\nproot dpkg -i local deb stderr=${prootDpkgInstallLocalResult.stderr}" +
@@ -1137,6 +1152,7 @@ class MainActivity : Activity() {
             resultBlock("alr syscall spawn benchmark", alrSyscallSpawnBenchmarkResult) +
             resultBlock("alr dpkg -i local deb", alrDpkgInstallLocalResult) +
             resultBlock("alr dpkg -i local deb preload", alrDpkgInstallLocalPreloadResult) +
+            resultBlock("alr installed package smoke preload", alrInstalledPackageSmokePreloadResult) +
             resultBlock("proot dpkg -i local deb", prootDpkgInstallLocalResult) +
             resultBlock("proot installed package smoke", prootInstalledPackageSmokeResult) +
             resultBlock("proot guest gpu client", prootGuestGpuClientResult) +

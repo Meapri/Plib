@@ -291,6 +291,27 @@ operations plus ALR execve loader rewriting for helper programs such as
 so package extraction and dpkg status updates can complete inside the Android
 app-private rootfs.
 
+Latest V67 installed package preload evidence:
+
+```text
+build: 0.4.67-preload-installed-package
+ALR DPKG LOCAL INSTALL PRELOAD EXECUTION: PASS
+ALR INSTALLED PACKAGE PRELOAD EXECUTION: PASS
+alr dpkg -i local deb preload stdout=Selecting previously unselected package alr-smoke.\n(Reading database ... 0 files and directories currently installed.)\nPreparing to unpack .../alr-smoke_1.0_arm64.deb ...\nUnpacking alr-smoke (1.0) ...\nSetting up alr-smoke (1.0) ...
+alr installed package preload handoff=ALR STATIC ENTRY HANDOFF: PASS
+alr installed package preload stdout=alr local deb package smoke ok\nALR_SMOKE_PACKAGE_SCRIPT=1
+surface gl renderer=Mali-G615 MC2
+surface gpu hardware render=true
+```
+
+The V67 result proves the next package-manager step: after the local `.deb`
+install completes, the installed package entrypoint itself runs through
+ALR/preload without falling back to PRoot. ALR exec rewrite now recognizes
+shebang scripts and can map a script execution request to the guest
+interpreter. The installed smoke package intentionally keeps this entrypoint
+free of nested package-manager child calls so package installation and package
+execution remain separately diagnosable.
+
 Known issue:
 
 - V35 summary says `GUEST WAYLAND GUI GPU BRIDGE EXECUTION: FAIL` and `GUEST X11 GUI GPU BRIDGE EXECUTION: FAIL` because ACK writing happens after socket input is closed. Frames were received and rendered losslessly; this is a report/ACK lifecycle bug, not a GPU-path failure.
