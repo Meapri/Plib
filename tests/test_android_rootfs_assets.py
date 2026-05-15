@@ -9,7 +9,7 @@ PAYLOAD = ROOT / "app" / "src" / "main" / "assets" / "rootfs" / "payloads" / "ti
 def test_android_assets_include_rootfs_manifest_and_payload():
     assert MANIFEST.is_file()
     assert PAYLOAD.is_file()
-    assert PAYLOAD.stat().st_size == 35713536
+    assert PAYLOAD.stat().st_size == 35491840
 
 
 def test_android_asset_manifest_matches_host_manifest():
@@ -296,7 +296,7 @@ def test_tiny_rootfs_contains_local_deb_install_smoke_package():
             header = deb[offset:offset + 60]
             if len(header) < 60:
                 break
-            name = header[:16].decode("ascii").strip()
+            name = header[:16].decode("ascii").strip().removesuffix("/")
             size = int(header[48:58].decode("ascii").strip())
             payload_start = offset + 60
             payload_end = payload_start + size
@@ -306,11 +306,13 @@ def test_tiny_rootfs_contains_local_deb_install_smoke_package():
             script = data_archive.extractfile("./usr/local/bin/alr-package-smoke").read()
             gpu_script = data_archive.extractfile("./usr/local/bin/alr-package-gpu-smoke").read()
             gles_demo = data_archive.extractfile("./usr/local/bin/alr-package-gles-demo").read()
+            gles_procaddr_demo = data_archive.extractfile("./usr/local/bin/alr-package-gles-procaddr-demo").read()
         assert b"ALR_SMOKE_PACKAGE_SCRIPT=1" in script
         assert b"ALR_SMOKE_ARCH=$(dpkg --print-architecture" in script
         assert b"ALR_SMOKE_ENV_ARCH=$(/usr/bin/env dpkg --print-architecture" in script
         assert gpu_script.startswith(b"\x7fELF")
         assert gles_demo.startswith(b"\x7fELF")
+        assert gles_procaddr_demo.startswith(b"\x7fELF")
         assert archive.extractfile("./usr/bin/dpkg-deb").read(4) == b"\x7fELF"
         assert archive.extractfile("./bin/tar").read(4) == b"\x7fELF"
         dpkg_deb = archive.extractfile("./usr/bin/dpkg-deb").read()

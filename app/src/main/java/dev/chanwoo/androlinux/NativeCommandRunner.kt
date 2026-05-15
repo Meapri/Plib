@@ -398,6 +398,14 @@ class NativeCommandRunner(
             binaryPath = "/usr/local/bin/alr-package-gles-demo",
         )
 
+    fun runAlrRuntimeTrampolineInstalledPackageGlesProcaddrDemo(rootfsDir: File, frameCount: Int): NativeCommandResult =
+        runAlrRuntimeTrampolineGuestGlesShim(
+            rootfsDir,
+            mapOf("ALR_GLES_PROC_DEMO_FRAME_COUNT" to frameCount.coerceIn(1, 240).toString()),
+            timeoutMs = 4000,
+            binaryPath = "/usr/local/bin/alr-package-gles-procaddr-demo",
+        )
+
     fun runAlrRuntimeTrampolineInstalledPackageGlesDemoIpc(rootfsDir: File, frameCount: Int, port: Int): NativeCommandResult =
         runAlrRuntimeTrampolineGuestGlesShim(
             rootfsDir,

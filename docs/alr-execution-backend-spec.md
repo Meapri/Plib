@@ -824,6 +824,30 @@ prints RTT statistics before shutdown. The first device run exposed the previous
 5s child timeout by cutting off at 51 ACKed frames; the gate now uses a 12s
 timeout and requires all 60 frame ACKs plus the guest-side ACK summary.
 
+Current V75 installed-package GLES procaddr snapshot:
+
+```text
+build: 0.4.75-installed-procaddr
+ALR INSTALLED PACKAGE GLES PROCADDR EXECUTION: PASS
+rootfs installed alr gles procaddr demo exists=true executable=true bytes=7736
+alr installed package gles procaddr handoff=ALR STATIC ENTRY HANDOFF: PASS
+ALR_GLES_PROC_DEMO_KIND eglGetProcAddress-es2-subset
+ALR_GLES_PROC_DEMO_PROC glDrawArrays ok
+ALR_GLES_PROC_DEMO_PROC glUniform4f ok
+ALR_GLES_PROC_DEMO_WORKLOAD requested=45 submitted=45
+alr installed package gles procaddr draw command count=45
+installed package compatibility table=script:PASS,gpu-clear-ipc:PASS,gles-demo:PASS,gles-tcp-ack:PASS,gles-procaddr:PASS,wayland:not-packaged,x11:not-packaged
+ALR_GLES_IPC_ACK_SUMMARY requested=60 received=60 avg_us=113000 min_us=67177 max_us=132319
+surface gl renderer=Mali-G615 MC2
+surface gpu hardware render=true
+surface gles shim vs native average ratio pct=99
+```
+
+V75 packages the source-built `eglGetProcAddress` GLES demo as a second
+installed `.deb` application entrypoint. This makes the installed-package GPU
+path cover both direct GLES symbol linkage and dynamic GLES symbol lookup before
+the commands are submitted to the Android-native Surface/EGL renderer.
+
 Report:
 
 ```text

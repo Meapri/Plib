@@ -1017,7 +1017,7 @@ surface gl renderer=Mali-G615 MC2
 surface gpu hardware render=true
 ```
 
-Next implementation batch:
+V74 follow-up batch targets:
 
 1. Package a source-built installed GLES shim demo binary through `.deb`, not only the tiny GPU clear client.
 2. Add installed-package GLES shim IPC and Android Surface presentation gates.
@@ -1079,21 +1079,23 @@ Next implementation batch:
 
 1. Add host-to-guest ACK lines for the GLES TCP bridge and report submit-to-ack timing.
 2. Package an installed `eglGetProcAddress` demo as a second `.deb` app entrypoint.
-3. Add installed-package compatibility rows for shell script, GPU clear, GLES demo stdout, GLES demo TCP, and GUI protocol clients.
+3. Add installed-package compatibility rows for shell script, GPU clear, GLES demo stdout, GLES demo TCP, procaddr, and GUI protocol clients.
 4. Split known-fail legacy dpkg/proot diagnostics away from the current ALR summary so PASS/FAIL status reflects the active backend path.
 
-Latest V74 installed-package GLES ACK evidence:
+Latest V75 installed-package GLES procaddr evidence:
 
 ```text
-build: 0.4.74-installed-gles-ack
-ALR INSTALLED PACKAGE GLES IPC EXECUTION: PASS
-alr installed package gles ipc received frames=60
-alr installed package gles ipc draw frames=60
-alr installed package gles ipc ack frames=60
-alr installed package gles ipc lossless=true
-alr installed package gles ipc error=none
-alr installed package gles ipc handoff=ALR STATIC ENTRY HANDOFF: PASS
-ALR_GLES_IPC_ACK_SUMMARY requested=60 received=60 avg_us=102882 min_us=32774 max_us=130170
+build: 0.4.75-installed-procaddr
+ALR INSTALLED PACKAGE GLES PROCADDR EXECUTION: PASS
+rootfs installed alr gles procaddr demo exists=true executable=true bytes=7736
+alr installed package gles procaddr handoff=ALR STATIC ENTRY HANDOFF: PASS
+ALR_GLES_PROC_DEMO_KIND eglGetProcAddress-es2-subset
+ALR_GLES_PROC_DEMO_PROC glDrawArrays ok
+ALR_GLES_PROC_DEMO_PROC glUniform4f ok
+ALR_GLES_PROC_DEMO_WORKLOAD requested=45 submitted=45
+alr installed package gles procaddr draw command count=45
+installed package compatibility table=script:PASS,gpu-clear-ipc:PASS,gles-demo:PASS,gles-tcp-ack:PASS,gles-procaddr:PASS,wayland:not-packaged,x11:not-packaged
+ALR_GLES_IPC_ACK_SUMMARY requested=60 received=60 avg_us=113000 min_us=67177 max_us=132319
 surface gl renderer=Mali-G615 MC2
 surface gpu hardware render=true
 surface gles shim vs native average ratio pct=99
@@ -1101,7 +1103,7 @@ surface gles shim vs native average ratio pct=99
 
 Next implementation batch:
 
-1. Package an installed `eglGetProcAddress` demo as a second `.deb` app entrypoint.
-2. Add per-frame ACK timing extraction on the Android side, not only guest-side RTT.
-3. Add an installed-package compatibility table for script, GPU clear, GLES stdout, GLES TCP+ACK, procaddr, Wayland, and X11 clients.
-4. Split known-fail legacy dpkg/proot diagnostics away from the active ALR summary.
+1. Add per-frame ACK timing extraction on the Android side, not only guest-side RTT.
+2. Package installed Wayland and X11 GUI bridge clients, then mark them in the compatibility table from real `.deb` entrypoints.
+3. Split known-fail legacy dpkg/proot diagnostics away from the active ALR summary.
+4. Start a minimal installed Vulkan/WSI discovery probe once GLES installed-package coverage stays stable.

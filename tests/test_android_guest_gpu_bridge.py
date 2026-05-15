@@ -84,12 +84,18 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "ALR INSTALLED PACKAGE GPU IPC EXECUTION" in text
     assert "ALR INSTALLED PACKAGE GLES DEMO EXECUTION" in text
     assert "ALR INSTALLED PACKAGE GLES IPC EXECUTION" in text
+    assert "ALR INSTALLED PACKAGE GLES PROCADDR EXECUTION" in text
     assert "runInstalledPackageGpuIpcBridge" in text
     assert "runInstalledPackageGlesIpcBridge" in text
     assert "runAlrRuntimeTrampolineInstalledPackageGlesDemo" in runner
+    assert "runAlrRuntimeTrampolineInstalledPackageGlesProcaddrDemo" in runner
     assert "runAlrRuntimeTrampolineInstalledPackageGlesDemoIpc" in runner
     assert "alr installed package gles demo command parsed count" in text
     assert "alr installed package gles demo draw command count" in text
+    assert "alr installed package gles procaddr command parsed count" in text
+    assert "alr installed package gles procaddr draw command count" in text
+    assert "installed package compatibility table=" in text
+    assert "gles-procaddr:" in text
     assert "alr installed package gles ipc draw frames" in text
     assert "alr installed package gles ipc ack frames" in text
     assert "alr installed package gles ipc ack raw" in text
