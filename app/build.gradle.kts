@@ -26,8 +26,8 @@ android {
         applicationId = "dev.chanwoo.androlinux"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2.0-proot-smoke"
+        versionCode = 3
+        versionName = "0.3.0-proot-loader-env"
         ndkVersion = "27.2.12479018"
 
         externalNativeBuild {
@@ -81,6 +81,10 @@ tasks.register("packageProotCandidate") {
                 val prebuiltTalloc = prebuiltNativeDir.dir(abi).file("libtalloc.so").asFile
                 if (prebuiltTalloc.isFile) {
                     prebuiltTalloc.copyTo(destDir.resolve("libtalloc.so"), overwrite = true)
+                }
+                val prebuiltProotLoader = prebuiltNativeDir.dir(abi).file("libproot-loader.so").asFile
+                if (prebuiltProotLoader.isFile) {
+                    prebuiltProotLoader.copyTo(destDir.resolve("libproot-loader.so"), overwrite = true)
                 }
             } else {
                 val built = fileTree(layout.buildDirectory.dir("intermediates/cxx/Debug")) {

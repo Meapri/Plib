@@ -24,12 +24,15 @@ class MainActivity : Activity() {
         )
         val rootfsPlan = buildRootfsInstallPlan(rootfsManifest, filesDir)
         val rootfsStatus = RootfsInstaller(this).prepareBundledTinyRootfs()
-        val nativeCommandRunner = NativeCommandRunner(File(applicationInfo.nativeLibraryDir))
+        val nativeCommandRunner = NativeCommandRunner(
+            File(applicationInfo.nativeLibraryDir),
+            File(cacheDir, "proot-tmp"),
+        )
         val nativeCommandResult = nativeCommandRunner.runSmokeTest()
         val prootCandidateResult = nativeCommandRunner.runProotCandidateSmokeTest()
         val prootHelloResult = nativeCommandRunner.runProotRootfsProgram(rootfsStatus.rootfsDir, "/bin/hello")
 
-        val executionSummary = "build: 0.2.0-proot-smoke" +
+        val executionSummary = "build: 0.3.0-proot-loader-env" +
             "\nexecution summary" +
             "\nrootfs verified=${rootfsStatus.verified} extracted=${rootfsStatus.extracted}" +
             "\nnative smoke exit=${nativeCommandResult.exitCode}" +
