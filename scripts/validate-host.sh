@@ -15,6 +15,7 @@ required=(
   "app/src/main/cpp/CMakeLists.txt"
   "app/src/main/cpp/runtime_report.cpp"
   "docs/architecture.md"
+  "docs/build-environment.md"
   "docs/poc-roadmap.md"
 )
 
