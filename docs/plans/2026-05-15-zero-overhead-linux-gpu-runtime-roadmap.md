@@ -1123,44 +1123,49 @@ surface gpu hardware render=true
 surface gles shim vs native average ratio pct=100
 ```
 
-Latest V79 Android Vulkan Surface clear evidence:
+Latest V80 guest-requested Vulkan Surface clear evidence:
 
 ```text
-build: 0.4.79-vulkan-surface-clear
-versionCode=79
-versionName=0.4.79-vulkan-surface-clear
+build: 0.4.80-guest-vulkan-clear-request
+versionCode=80
+versionName=0.4.80-guest-vulkan-clear-request
 HOST VULKAN DISCOVERY EXECUTION: PASS
 ALR INSTALLED PACKAGE VULKAN DISCOVERY EXECUTION: PASS
-rootfs installed alr vulkan discovery client exists=true executable=true bytes=6952
+rootfs installed alr vulkan discovery client exists=true executable=true bytes=7384
 alr installed package vulkan discovery raw=ALR_VK_DISCOVERY_HELLO version=1 request=instance-device
+alr installed package vulkan surface clear request=ALR_VK_SURFACE_CLEAR_REQUEST version=1 red=0.12 green=0.64 blue=0.92 alpha=1.0 tag=guest-vulkan-clear-0001
+alr installed package vulkan surface clear accepted=ALR_VK_SURFACE_CLEAR_ACCEPTED status=PASS request=guest-wsi-clear-v1
 alr installed package vulkan discovery ack=ALR_VK_DISCOVERY_ACK status=PASS physical_devices=1 hardware=true device=Mali-G615_MC2
 alr installed package vulkan discovery device record=ALR_VK_DEVICE_RECORD name=Mali-G615_MC2 api=1.3.247 type=integrated-gpu physical_devices=1 queue_families=1 graphics_queue=0
 alr installed package vulkan discovery feature record=ALR_VK_FEATURE_RECORD robust_buffer_access=true geometry_shader=true sampler_anisotropy=true max_image_2d=16384 max_memory_allocations=16384
-alr installed package vulkan discovery ack lines=ALR_VK_DISCOVERY_ACK status=PASS physical_devices=1 hardware=true device=Mali-G615_MC2|ALR_VK_DEVICE_RECORD name=Mali-G615_MC2 api=1.3.247 type=integrated-gpu physical_devices=1 queue_families=1 graphics_queue=0|ALR_VK_FEATURE_RECORD robust_buffer_access=true geometry_shader=true sampler_anisotropy=true max_image_2d=16384 max_memory_allocations=16384
+alr installed package vulkan discovery ack lines=ALR_VK_DISCOVERY_ACK status=PASS physical_devices=1 hardware=true device=Mali-G615_MC2|ALR_VK_DEVICE_RECORD name=Mali-G615_MC2 api=1.3.247 type=integrated-gpu physical_devices=1 queue_families=1 graphics_queue=0|ALR_VK_FEATURE_RECORD robust_buffer_access=true geometry_shader=true sampler_anisotropy=true max_image_2d=16384 max_memory_allocations=16384|ALR_VK_SURFACE_CLEAR_ACCEPTED status=PASS request=guest-wsi-clear-v1
 alr installed package vulkan discovery handoff=ALR STATIC ENTRY HANDOFF: PASS
-alr installed package vulkan discovery stdout=alr guest vulkan discovery client ok ... ALR_VK_DISCOVERY_DEVICE_RECORD ok ... ALR_VK_DISCOVERY_FEATURE_RECORD ok
+alr installed package vulkan discovery stdout=alr guest vulkan discovery client ok ... ALR_VK_DISCOVERY_DEVICE_RECORD ok ... ALR_VK_DISCOVERY_FEATURE_RECORD ok ... ALR_VK_SURFACE_CLEAR_REQUEST_ACCEPTED ok
 host vulkan device=host vulkan device=Mali-G615 MC2
 host vulkan hardware candidate=host vulkan hardware candidate=true
 installed package compatibility table=script:PASS,gpu-clear-ipc:PASS,gles-demo:PASS,gles-tcp-ack:PASS,gles-procaddr:PASS,wayland:PASS,x11:PASS,vulkan-discovery:PASS
 surface gl renderer=Mali-G615 MC2
 surface gpu hardware render=true
 surface gles shim vs native average ratio pct=100
+GUEST VULKAN SURFACE CLEAR REQUEST EXECUTION: PASS
 ANDROID HOST VULKAN SURFACE EXECUTION: PASS
+surface vulkan clear request source=guest-request
+surface vulkan clear request tag=guest-vulkan-clear-0001
 surface vulkan device=Mali-G615 MC2
 surface vulkan api version=1.3.247
 surface vulkan graphics present queue=0
 surface vulkan present mode=mailbox
 surface vulkan swapchain image count=7
-surface vulkan clear command=ok color=0.12,0.64,0.92,1.0
+surface vulkan clear command=ok color=0.12,0.64,0.92,1
 surface vulkan queue submit=ok
 surface vulkan present=ok
 surface vulkan hardware render=true
-surface vulkan render elapsed us=30482
+surface vulkan render elapsed us=19542
 ```
 
 Next implementation batch:
 
-1. Connect the guest Vulkan discovery client to the host Vulkan Surface clear path as the first WSI-shaped command.
-2. Replace the text Vulkan record stream with a bounded binary schema once command submission begins.
+1. Turn the guest-requested Vulkan clear into a bounded request/response schema instead of line-oriented text.
+2. Add a guest-side Vulkan proxy/ICD smoke that exposes the current device record and clear command through Vulkan-shaped entrypoints.
 3. Split known-fail legacy dpkg/proot diagnostics away from the active ALR summary.
 4. Add a small real toolkit fixture target, likely a tiny GTK/Qt-independent Wayland protocol smoke before pulling in a larger GUI stack.

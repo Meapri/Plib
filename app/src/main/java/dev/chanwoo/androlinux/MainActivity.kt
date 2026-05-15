@@ -22,7 +22,7 @@ class MainActivity : Activity() {
 
         val rootfsManifest = RootfsManifest(
             name = "debian-arm64",
-            version = "bookworm-slim-2026-05-gui-gpu-v78",
+            version = "bookworm-slim-2026-05-gui-gpu-v80",
             assets = listOf(
                 RootfsAsset(
                     path = "rootfs.tar.zst",
@@ -631,11 +631,15 @@ class MainActivity : Activity() {
                 alrInstalledPackageVulkanDiscoveryBridgeResult.ackLine.startsWith("ALR_VK_DISCOVERY_ACK status=PASS") &&
                 alrInstalledPackageVulkanDiscoveryBridgeResult.deviceRecordLine.startsWith("ALR_VK_DEVICE_RECORD ") &&
                 alrInstalledPackageVulkanDiscoveryBridgeResult.featureRecordLine.startsWith("ALR_VK_FEATURE_RECORD ") &&
+                alrInstalledPackageVulkanDiscoveryBridgeResult.clearRequestLine.startsWith("ALR_VK_SURFACE_CLEAR_REQUEST ") &&
+                alrInstalledPackageVulkanDiscoveryBridgeResult.clearAcceptedLine.startsWith("ALR_VK_SURFACE_CLEAR_ACCEPTED status=PASS") &&
                 alrInstalledPackageVulkanDiscoveryBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("ALR_VK_DISCOVERY_ACK status=PASS") &&
                 alrInstalledPackageVulkanDiscoveryBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("ALR_VK_DEVICE_RECORD ") &&
                 alrInstalledPackageVulkanDiscoveryBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("ALR_VK_FEATURE_RECORD ") &&
+                alrInstalledPackageVulkanDiscoveryBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("ALR_VK_SURFACE_CLEAR_ACCEPTED status=PASS") &&
                 alrInstalledPackageVulkanDiscoveryBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("ALR_VK_DISCOVERY_DEVICE_RECORD ok") &&
                 alrInstalledPackageVulkanDiscoveryBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("ALR_VK_DISCOVERY_FEATURE_RECORD ok") &&
+                alrInstalledPackageVulkanDiscoveryBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("ALR_VK_SURFACE_CLEAR_REQUEST_ACCEPTED ok") &&
                 alrInstalledPackageVulkanDiscoveryBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("ALR_VK_DISCOVERY_DONE ok") &&
                 alrInstalledPackageVulkanDiscoveryBridgeResult.error == null
 
@@ -649,7 +653,7 @@ class MainActivity : Activity() {
                 "x11:${if (alrInstalledPackageX11GuiBridgePassed) "PASS" else "FAIL"}," +
                 "vulkan-discovery:${if (alrInstalledPackageVulkanDiscoveryPassed) "PASS" else "FAIL"}"
 
-        val executionSummary = "build: 0.4.79-vulkan-surface-clear" +
+        val executionSummary = "build: 0.4.80-guest-vulkan-clear-request" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -959,6 +963,8 @@ class MainActivity : Activity() {
             "\nalr installed package vulkan discovery ack=${alrInstalledPackageVulkanDiscoveryBridgeResult.ackLine}" +
             "\nalr installed package vulkan discovery device record=${alrInstalledPackageVulkanDiscoveryBridgeResult.deviceRecordLine}" +
             "\nalr installed package vulkan discovery feature record=${alrInstalledPackageVulkanDiscoveryBridgeResult.featureRecordLine}" +
+            "\nalr installed package vulkan surface clear request=${alrInstalledPackageVulkanDiscoveryBridgeResult.clearRequestLine}" +
+            "\nalr installed package vulkan surface clear accepted=${alrInstalledPackageVulkanDiscoveryBridgeResult.clearAcceptedLine}" +
             "\nalr installed package vulkan discovery ack lines=${alrInstalledPackageVulkanDiscoveryBridgeResult.ackLines.joinToString("|")}" +
             "\nalr installed package vulkan discovery error=${alrInstalledPackageVulkanDiscoveryBridgeResult.error ?: "none"}" +
             "\nalr installed package vulkan discovery handoff=${alrInstalledPackageVulkanDiscoveryBridgeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
@@ -1396,7 +1402,10 @@ class MainActivity : Activity() {
                 override fun surfaceCreated(holder: SurfaceHolder) {
                     val encodedFrames = encodeSurfaceFrames(surfaceGpuCommands)
                     val surfaceReport = nativeRenderGpuSurfaceFrames(holder.surface, encodedFrames)
-                    val vulkanSurfaceReport = nativeRenderVulkanSurfaceClear(holder.surface)
+                    val vulkanSurfaceReport = nativeRenderVulkanSurfaceClear(
+                        holder.surface,
+                        alrInstalledPackageVulkanDiscoveryBridgeResult.clearRequestLine,
+                    )
                     val executionUpdate = surfaceExecutionUpdate(
                         surfaceReport,
                         guestGlesShimInitPassed,
@@ -1462,6 +1471,8 @@ class MainActivity : Activity() {
         val ackLine: String,
         val deviceRecordLine: String,
         val featureRecordLine: String,
+        val clearRequestLine: String,
+        val clearAcceptedLine: String,
         val ackLines: List<String>,
         val hostProbe: String,
         val error: String?,
@@ -1513,7 +1524,9 @@ class MainActivity : Activity() {
         val featureRecordLine =
             "ALR_VK_FEATURE_RECORD robust_buffer_access=$robustBufferAccess geometry_shader=$geometryShader " +
                 "sampler_anisotropy=$samplerAnisotropy max_image_2d=$maxImage2d max_memory_allocations=$maxMemoryAllocationCount"
-        val ackLines = listOf(ackLine, deviceRecordLine, featureRecordLine)
+        var clearRequestLine = "missing"
+        var clearAcceptedLine = "ALR_VK_SURFACE_CLEAR_ACCEPTED status=FAIL reason=no-request"
+        var ackLines = listOf(ackLine, deviceRecordLine, featureRecordLine, clearAcceptedLine)
         val acceptThread = thread(name = "alr-vulkan-discovery-bridge", start = true) {
             try {
                 server.use { srv ->
@@ -1529,6 +1542,18 @@ class MainActivity : Activity() {
                             } ?: break
                             rawLines += line
                         }
+                        clearRequestLine = rawLines.firstOrNull { it.startsWith("ALR_VK_SURFACE_CLEAR_REQUEST ") } ?: "missing"
+                        clearAcceptedLine = if (
+                            clearRequestLine.startsWith("ALR_VK_SURFACE_CLEAR_REQUEST ") &&
+                            clearRequestLine.contains("red=") &&
+                            clearRequestLine.contains("green=") &&
+                            clearRequestLine.contains("blue=")
+                        ) {
+                            "ALR_VK_SURFACE_CLEAR_ACCEPTED status=PASS request=guest-wsi-clear-v1"
+                        } else {
+                            "ALR_VK_SURFACE_CLEAR_ACCEPTED status=FAIL reason=invalid-request"
+                        }
+                        ackLines = listOf(ackLine, deviceRecordLine, featureRecordLine, clearAcceptedLine)
                         accepted.getOutputStream().write((ackLines.joinToString("\n") + "\n").toByteArray())
                         accepted.getOutputStream().flush()
                     }
@@ -1552,6 +1577,8 @@ class MainActivity : Activity() {
             ackLine = ackLine,
             deviceRecordLine = deviceRecordLine,
             featureRecordLine = featureRecordLine,
+            clearRequestLine = clearRequestLine,
+            clearAcceptedLine = clearAcceptedLine,
             ackLines = ackLines,
             hostProbe = hostProbe,
             error = errors.firstOrNull(),
@@ -2257,11 +2284,16 @@ class MainActivity : Activity() {
 
     private fun vulkanSurfaceExecutionUpdate(vulkanSurfaceReport: String): String {
         val passed =
+            vulkanSurfaceReport.lineStartingWith("surface vulkan clear request source=") ==
+                "surface vulkan clear request source=guest-request" &&
             vulkanSurfaceReport.lineStartingWith("surface vulkan present=") == "surface vulkan present=ok" &&
                 vulkanSurfaceReport.lineStartingWith("surface vulkan hardware render=") == "surface vulkan hardware render=true" &&
                 vulkanSurfaceReport.lineStartingWith("android host vulkan surface execution=") ==
                 "android host vulkan surface execution=PASS"
         return "ANDROID HOST VULKAN SURFACE EXECUTION: ${if (passed) "PASS" else "FAIL"}" +
+            "\nGUEST VULKAN SURFACE CLEAR REQUEST EXECUTION: ${if (passed) "PASS" else "FAIL"}" +
+            "\n${vulkanSurfaceReport.lineStartingWith("surface vulkan clear request source=")}" +
+            "\n${vulkanSurfaceReport.lineStartingWith("surface vulkan clear request tag=")}" +
             "\n${vulkanSurfaceReport.lineStartingWith("surface vulkan device=")}" +
             "\n${vulkanSurfaceReport.lineStartingWith("surface vulkan api version=")}" +
             "\n${vulkanSurfaceReport.lineStartingWith("surface vulkan graphics present queue=")}" +
@@ -2318,5 +2350,8 @@ class MainActivity : Activity() {
         encodedFrames: String,
     ): String
 
-    private external fun nativeRenderVulkanSurfaceClear(surface: android.view.Surface): String
+    private external fun nativeRenderVulkanSurfaceClear(
+        surface: android.view.Surface,
+        clearRequest: String,
+    ): String
 }

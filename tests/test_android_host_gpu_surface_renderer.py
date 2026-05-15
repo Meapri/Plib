@@ -59,6 +59,9 @@ def test_main_activity_owns_surface_view_and_appends_native_surface_report():
     assert "Linux guest Wayland/X11 GUI GPU surface renderer" in text
     assert "nativeRenderVulkanSurfaceClear" in text
     assert "ANDROID HOST VULKAN SURFACE EXECUTION:" in text
+    assert "GUEST VULKAN SURFACE CLEAR REQUEST EXECUTION:" in text
+    assert 'vulkanSurfaceReport.lineStartingWith("surface vulkan clear request source=")' in text
+    assert 'vulkanSurfaceReport.lineStartingWith("surface vulkan clear request tag=")' in text
     assert 'vulkanSurfaceReport.lineStartingWith("surface vulkan present=")' in text
     assert 'vulkanSurfaceReport.lineStartingWith("surface vulkan hardware render=")' in text
     assert "Android host Vulkan Surface clear renderer" in text

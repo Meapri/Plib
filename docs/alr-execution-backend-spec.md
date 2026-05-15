@@ -954,6 +954,34 @@ present queue, and presents it. This is still host-side proof rather than guest
 Vulkan command forwarding, but it confirms that the same Android surface used
 by the GLES bridge can be driven by Vulkan without a software renderer.
 
+Current V80 guest-requested Vulkan Surface clear snapshot:
+
+```text
+build: 0.4.80-guest-vulkan-clear-request
+versionCode=80
+versionName=0.4.80-guest-vulkan-clear-request
+GUEST VULKAN SURFACE CLEAR REQUEST EXECUTION: PASS
+ANDROID HOST VULKAN SURFACE EXECUTION: PASS
+surface vulkan clear request source=guest-request
+surface vulkan clear request tag=guest-vulkan-clear-0001
+surface vulkan device=Mali-G615 MC2
+surface vulkan present mode=mailbox
+surface vulkan clear command=ok color=0.12,0.64,0.92,1
+surface vulkan present=ok
+surface vulkan hardware render=true
+surface vulkan render elapsed us=19542
+surface gl renderer=Mali-G615 MC2
+surface gles shim vs native average ratio pct=100
+```
+
+V80 connects the installed glibc Vulkan discovery client to the host Vulkan
+Surface proof as the first WSI-shaped guest command. The guest sends
+`ALR_VK_SURFACE_CLEAR_REQUEST`, the host bridge accepts it with
+`ALR_VK_SURFACE_CLEAR_ACCEPTED`, and the Surface callback uses that request as
+the Vulkan clear command source. This is still a narrow clear/present command,
+not an ICD, but it moves the Vulkan path from host-only proof to a
+guest-directed Android-native Surface operation.
+
 Report:
 
 ```text

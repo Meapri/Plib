@@ -14,6 +14,7 @@
 #include <cctype>
 #include <chrono>
 #include <cstdint>
+#include <cstdlib>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -425,6 +426,48 @@ std::vector<SurfaceFrameCommand> parse_surface_frames(const std::string& encoded
     return frames;
 }
 
+struct VulkanSurfaceClearCommand {
+    float red = 0.12F;
+    float green = 0.64F;
+    float blue = 0.92F;
+    float alpha = 1.0F;
+    std::string tag = "host-vulkan-clear";
+    std::string source = "host-default";
+};
+
+float parse_float_token(const std::string& text, const std::string& key, float fallback) {
+    const auto start = text.find(key);
+    if (start == std::string::npos) return fallback;
+    const auto value_start = start + key.size();
+    char* end = nullptr;
+    const float value = std::strtof(text.c_str() + value_start, &end);
+    if (end == text.c_str() + value_start) return fallback;
+    return std::max(0.0F, std::min(1.0F, value));
+}
+
+std::string parse_string_token(const std::string& text, const std::string& key, const std::string& fallback) {
+    const auto start = text.find(key);
+    if (start == std::string::npos) return fallback;
+    auto value_start = start + key.size();
+    auto value_end = text.find(' ', value_start);
+    if (value_end == std::string::npos) value_end = text.size();
+    if (value_end <= value_start) return fallback;
+    return text.substr(value_start, value_end - value_start);
+}
+
+VulkanSurfaceClearCommand parse_vulkan_surface_clear_command(const std::string& request) {
+    VulkanSurfaceClearCommand command;
+    if (request.rfind("ALR_VK_SURFACE_CLEAR_REQUEST ", 0) == 0) {
+        command.source = "guest-request";
+    }
+    command.red = parse_float_token(request, "red=", command.red);
+    command.green = parse_float_token(request, "green=", command.green);
+    command.blue = parse_float_token(request, "blue=", command.blue);
+    command.alpha = parse_float_token(request, "alpha=", command.alpha);
+    command.tag = parse_string_token(request, "tag=", command.tag);
+    return command;
+}
+
 std::string render_to_android_surface_frames(JNIEnv* env, jobject surface_obj, const std::string& encoded_frames) {
     const auto frames = parse_surface_frames(encoded_frames);
     const auto render_started = std::chrono::steady_clock::now();
@@ -647,10 +690,14 @@ std::string render_to_android_surface_frames(JNIEnv* env, jobject surface_obj, c
     return out.str();
 }
 
-std::string render_vulkan_clear_to_android_surface(JNIEnv* env, jobject surface_obj) {
+std::string render_vulkan_clear_to_android_surface(JNIEnv* env, jobject surface_obj, const std::string& clear_request) {
+    const auto clear_command = parse_vulkan_surface_clear_command(clear_request);
     const auto render_started = std::chrono::steady_clock::now();
     std::ostringstream out;
     out << "host vulkan surface renderer=android-surface-vulkan-swapchain";
+    out << "\nsurface vulkan clear request=" << (clear_request.empty() ? "missing" : clear_request);
+    out << "\nsurface vulkan clear request source=" << clear_command.source;
+    out << "\nsurface vulkan clear request tag=" << clear_command.tag;
     if (surface_obj == nullptr) {
         out << "\nsurface vulkan render=fail reason=null-surface";
         return out.str();
@@ -702,9 +749,9 @@ std::string render_vulkan_clear_to_android_surface(JNIEnv* env, jobject surface_
     VkApplicationInfo app_info{};
     app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     app_info.pApplicationName = "PlibVulkanSurfaceClear";
-    app_info.applicationVersion = VK_MAKE_VERSION(0, 4, 79);
+    app_info.applicationVersion = VK_MAKE_VERSION(0, 4, 80);
     app_info.pEngineName = "Plib";
-    app_info.engineVersion = VK_MAKE_VERSION(0, 4, 79);
+    app_info.engineVersion = VK_MAKE_VERSION(0, 4, 80);
     app_info.apiVersion = VK_API_VERSION_1_0;
 
     const char* instance_extensions[] = {
@@ -1006,7 +1053,7 @@ std::string render_vulkan_clear_to_android_surface(JNIEnv* env, jobject surface_
         &to_transfer
     );
 
-    const VkClearColorValue clear_color{{0.12F, 0.64F, 0.92F, 1.0F}};
+    const VkClearColorValue clear_color{{clear_command.red, clear_command.green, clear_command.blue, clear_command.alpha}};
     VkImageSubresourceRange clear_range{};
     clear_range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     clear_range.levelCount = 1;
@@ -1042,7 +1089,8 @@ std::string render_vulkan_clear_to_android_surface(JNIEnv* env, jobject surface_
         cleanup();
         return out.str();
     }
-    out << "\nsurface vulkan clear command=ok color=0.12,0.64,0.92,1.0";
+    out << "\nsurface vulkan clear command=ok color="
+        << clear_command.red << "," << clear_command.green << "," << clear_command.blue << "," << clear_command.alpha;
 
     const VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
     VkSubmitInfo submit_info{};
@@ -1240,7 +1288,8 @@ extern "C" JNIEXPORT jstring JNICALL
 Java_dev_chanwoo_androlinux_MainActivity_nativeRenderVulkanSurfaceClear(
     JNIEnv* env,
     jobject /* thiz */,
-    jobject surface) {
-    const auto report = render_vulkan_clear_to_android_surface(env, surface);
+    jobject surface,
+    jstring clear_request) {
+    const auto report = render_vulkan_clear_to_android_surface(env, surface, jstring_to_string(env, clear_request));
     return env->NewStringUTF(report.c_str());
 }

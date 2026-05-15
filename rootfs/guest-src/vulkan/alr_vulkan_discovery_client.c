@@ -83,6 +83,11 @@ int main(void) {
         close(fd);
         return 4;
     }
+    if (!write_all(fd, "ALR_VK_SURFACE_CLEAR_REQUEST version=1 red=0.12 green=0.64 blue=0.92 alpha=1.0 tag=guest-vulkan-clear-0001\n")) {
+        fprintf(stderr, "ALR_VK_DISCOVERY_ERROR write-clear-request errno=%d\n", errno);
+        close(fd);
+        return 4;
+    }
     shutdown(fd, SHUT_WR);
 
     char buffer[1024];
@@ -117,8 +122,13 @@ int main(void) {
         fprintf(stderr, "ALR_VK_DISCOVERY_ERROR missing-feature-record\n");
         return 7;
     }
+    if (strstr(response, "ALR_VK_SURFACE_CLEAR_ACCEPTED status=PASS") == 0) {
+        fprintf(stderr, "ALR_VK_DISCOVERY_ERROR missing-surface-clear-ack\n");
+        return 8;
+    }
     printf("ALR_VK_DISCOVERY_DEVICE_RECORD ok\n");
     printf("ALR_VK_DISCOVERY_FEATURE_RECORD ok\n");
+    printf("ALR_VK_SURFACE_CLEAR_REQUEST_ACCEPTED ok\n");
     printf("ALR_VK_DISCOVERY_DONE ok\n");
     return 0;
 }

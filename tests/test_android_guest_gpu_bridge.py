@@ -121,6 +121,8 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "alr installed package vulkan discovery ack" in text
     assert "alr installed package vulkan discovery device record" in text
     assert "alr installed package vulkan discovery feature record" in text
+    assert "alr installed package vulkan surface clear request" in text
+    assert "alr installed package vulkan surface clear accepted" in text
     assert "alr installed package vulkan discovery ack lines" in text
     assert "alr installed package vulkan discovery stdout" in text
     assert "nativeHostVulkanProbe" in text
@@ -148,6 +150,8 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "surface native gles average frame render us=" in text
     assert "surface gles shim vs native average ratio pct=" in text
     assert "ANDROID HOST VULKAN SURFACE EXECUTION:" in text
+    assert "GUEST VULKAN SURFACE CLEAR REQUEST EXECUTION:" in text
+    assert "surface vulkan clear request source=guest-request" in text
     assert "surface vulkan present=ok" in text
     assert "surface vulkan hardware render=true" in text
     assert "runProotRootfsGuestGlesShimBenchmark" in runner
@@ -256,8 +260,11 @@ def test_guest_vulkan_discovery_client_is_source_built_ipc_probe():
     assert "ALR_VK_DISCOVERY_ACK status=PASS" in source
     assert "ALR_VK_DEVICE_RECORD" in source
     assert "ALR_VK_FEATURE_RECORD" in source
+    assert "ALR_VK_SURFACE_CLEAR_REQUEST" in source
+    assert "ALR_VK_SURFACE_CLEAR_ACCEPTED status=PASS" in source
     assert "ALR_VK_DISCOVERY_DEVICE_RECORD ok" in source
     assert "ALR_VK_DISCOVERY_FEATURE_RECORD ok" in source
+    assert "ALR_VK_SURFACE_CLEAR_REQUEST_ACCEPTED ok" in source
     assert "ALR_VK_BRIDGE_HOST" in source
     assert "ALR_VK_BRIDGE_PORT" in source
     assert "-target aarch64-linux-gnu" in build_script

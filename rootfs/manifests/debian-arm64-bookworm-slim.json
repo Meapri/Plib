@@ -1,11 +1,11 @@
 {
   "name": "debian-arm64",
-  "version": "bookworm-slim-2026-05-gui-gpu-v78",
-  "description": "Tiny PoC rootfs with source-built guest GLES/EGL shim API smoke, libEGL/libGLESv2 ABI-name smoke, eglGetProcAddress GLES demo workload, es2gears-like GLES demo workload, syscall-heavy benchmark fixture, LD_PRELOAD path fast path shim with glibc stat metadata directory stream realpath mkstemp rename mkdir unlink rmdir and fakeroot chown compatibility, multi-frame clear and triangle draw GLES workloads, TCP loopback guest GPU bridge client, GLES shim TCP bridge submit and ACK timing path, clean extraction schema, dpkg-split smoke, apt/dpkg bundle, installed-script smoke, installed-package GPU IPC smoke, installed-package GLES demo smoke, installed-package GLES IPC ACK smoke, installed-package eglGetProcAddress GLES procaddr demo smoke, installed-package Wayland/X11 GUI GPU bridge client smoke, and installed-package Vulkan discovery IPC client smoke with structured Android device and feature records.",
+  "version": "bookworm-slim-2026-05-gui-gpu-v80",
+  "description": "Tiny PoC rootfs with source-built guest GLES/EGL shim API smoke, libEGL/libGLESv2 ABI-name smoke, eglGetProcAddress GLES demo workload, es2gears-like GLES demo workload, syscall-heavy benchmark fixture, LD_PRELOAD path fast path shim with glibc stat metadata directory stream realpath mkstemp rename mkdir unlink rmdir and fakeroot chown compatibility, multi-frame clear and triangle draw GLES workloads, TCP loopback guest GPU bridge client, GLES shim TCP bridge submit and ACK timing path, clean extraction schema, dpkg-split smoke, apt/dpkg bundle, installed-script smoke, installed-package GPU IPC smoke, installed-package GLES demo smoke, installed-package GLES IPC ACK smoke, installed-package eglGetProcAddress GLES procaddr demo smoke, installed-package Wayland/X11 GUI GPU bridge client smoke, and installed-package Vulkan discovery IPC client smoke with structured Android device and feature records plus guest-requested Vulkan Surface clear.",
   "assets": [
     {
       "path": "tiny-rootfs.tar",
-      "sha256": "1336cca391be01183404fe05bc172ee2842b064c9e5bcf78c0585f6883a2d88e",
+      "sha256": "f19387d74b83c13e0a359bb6d8c1159a8aedd48973202a7feaec1ac2f67061e7",
       "size_bytes": 35840000
     }
   ],
