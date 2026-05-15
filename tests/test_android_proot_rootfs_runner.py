@@ -248,10 +248,12 @@ def test_main_activity_reports_dpkg_arch_and_query_smoke_results():
     assert "ALR DPKG VERSION EXECUTION:" in text
     assert "ALR DPKG ARCH EXECUTION:" in text
     assert "ALR DPKG ARCH PRELOAD EXECUTION:" in text
+    assert "ALR SHELL DPKG ARCH PRELOAD EXECUTION:" in text
     assert "ALR DPKG QUERY EXECUTION:" in text
     assert "runAlrRuntimeTrampolineDpkgVersion" in runner
     assert "runAlrRuntimeTrampolineDpkgPrintArchitecture" in runner
     assert "runAlrRuntimeTrampolineDpkgPrintArchitecturePreload" in runner
+    assert "runAlrRuntimeTrampolineShellDpkgPrintArchitecturePreload" in runner
     assert "runAlrRuntimeTrampolineDpkgQueryVersion" in runner
     assert "rootfs /usr/bin/dpkg-query exists=" in text
     assert "rootfs /usr/share/dpkg/cputable exists=" in text
@@ -263,6 +265,11 @@ def test_main_activity_reports_dpkg_arch_and_query_smoke_results():
     assert "alr dpkg --print-architecture preload handoff=" in text
     assert "alr dpkg --print-architecture preload path rewrite=" in text
     assert "alr dpkg --print-architecture preload stdout=" in text
+    assert "alr shell dpkg --print-architecture preload handoff=" in text
+    assert "alr shell dpkg --print-architecture preload exit code=" in text
+    assert "alr shell dpkg --print-architecture preload fault syscall=" in text
+    assert "alr shell dpkg --print-architecture preload execve loader rewrites=" in text
+    assert "alr shell dpkg --print-architecture preload stdout=" in text
     assert "alr dpkg-query --version path rewrite=" in text
 
 

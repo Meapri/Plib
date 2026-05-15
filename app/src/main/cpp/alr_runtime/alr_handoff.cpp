@@ -35,6 +35,10 @@
 #define AT_EMPTY_PATH 0x1000
 #endif
 
+#ifndef AT_EACCESS
+#define AT_EACCESS 0x200
+#endif
+
 #ifndef AT_FDCWD
 #define AT_FDCWD -100
 #endif
@@ -337,6 +341,23 @@ std::string join_relative_path(const std::string& base, const std::string& relat
 bool path_exists(const std::string& path) {
     struct stat st {};
     return !path.empty() && ::stat(path.c_str(), &st) == 0;
+}
+
+int virtual_access_result(const std::string& host_path, int mode) {
+    struct stat st {};
+    if (::stat(host_path.c_str(), &st) != 0) {
+        return -errno;
+    }
+    if ((mode & X_OK) != 0 && (st.st_mode & 0111) == 0) {
+        return -EACCES;
+    }
+    if ((mode & R_OK) != 0 && (st.st_mode & 0444) == 0) {
+        return -EACCES;
+    }
+    if ((mode & W_OK) != 0 && (st.st_mode & 0222) == 0) {
+        return -EACCES;
+    }
+    return 0;
 }
 
 bool guest_path_rewritable(const std::string& guest_path);
@@ -1421,12 +1442,46 @@ void capture_ptrace_fault(pid_t child, int signal_number, alr::runtime::StaticEn
     }
 }
 
-bool emulate_android_seccomp_syscall(pid_t child, alr::runtime::StaticEntryHandoffResult& result) {
+bool emulate_android_seccomp_syscall(
+    pid_t child,
+    const alr::runtime::StaticEntryHandoffOptions& options,
+    alr::runtime::StaticEntryHandoffResult& result) {
     user_pt_regs regs {};
     if (!get_child_registers(child, regs)) {
         return false;
     }
     const std::uint64_t syscall_number = regs.regs[8];
+#if defined(__NR_faccessat2)
+    if (syscall_number == __NR_faccessat2) {
+        const std::uintptr_t path_address = static_cast<std::uintptr_t>(regs.regs[1]);
+        if (path_address == 0) {
+            return false;
+        }
+        const std::string requested_path = read_child_cstring(child, path_address);
+        std::string guest_path;
+        std::string host_path;
+        if (host_path_to_guest_path(options.rootfs_path, requested_path, guest_path)) {
+            host_path = requested_path;
+        } else if (!resolve_guest_syscall_path(child, options.rootfs_path, regs, 1, requested_path, guest_path, host_path)) {
+            return false;
+        }
+        const int mode = static_cast<int>(regs.regs[2]);
+        (void)regs.regs[3];
+        const int rc = virtual_access_result(host_path, mode);
+        regs.regs[0] = rc == 0 ? 0 : static_cast<std::uint64_t>(rc);
+        if (!set_child_registers(child, regs)) {
+            return false;
+        }
+        result.fault_captured = true;
+        result.fault_signal = SIGSYS;
+        result.fault_pc = regs.pc;
+        result.fault_syscall = syscall_number;
+        result.last_guest_path = guest_path;
+        result.last_host_path = host_path;
+        ++result.syscall_emulated_count;
+        return true;
+    }
+#endif
     const bool known_optional_linux_syscall =
         syscall_number == 99 ||   // set_robust_list
         syscall_number == 293 ||  // rseq
@@ -1474,7 +1529,10 @@ void capture_ptrace_fault(pid_t /*child*/, int signal_number, alr::runtime::Stat
     result.fault_signal = signal_number;
 }
 
-bool emulate_android_seccomp_syscall(pid_t /*child*/, alr::runtime::StaticEntryHandoffResult& /*result*/) {
+bool emulate_android_seccomp_syscall(
+    pid_t /*child*/,
+    const alr::runtime::StaticEntryHandoffOptions& /*options*/,
+    alr::runtime::StaticEntryHandoffResult& /*result*/) {
     return false;
 }
 
@@ -1844,7 +1902,7 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
                 capture_ptrace_fault(waited, stop_signal, result);
                 if (stop_signal == SIGSYS &&
                     result.syscall_emulated_count < 64 &&
-                    emulate_android_seccomp_syscall(waited, result)) {
+                    emulate_android_seccomp_syscall(waited, options, result)) {
                     const bool continued = trace_syscalls ?
                         continue_child_syscall(waited) :
                         continue_child_ptrace(waited);

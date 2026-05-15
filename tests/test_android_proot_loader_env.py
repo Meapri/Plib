@@ -33,4 +33,4 @@ def test_proot_launch_plan_and_report_show_actual_loader_environment():
 
 def test_visible_build_stamp_bumped_for_termux_pair_probe():
     text = MAIN.read_text()
-    assert "build: 0.4.67-preload-installed-package" in text
+    assert "build: 0.4.68-preload-shell-child-exec" in text

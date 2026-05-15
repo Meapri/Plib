@@ -66,6 +66,8 @@ def test_trampoline_report_contract_exists():
     assert "alr handoff elapsed ms=" in handoff
     assert "::usleep(1000)" in handoff
     assert "emulate_android_seccomp_syscall" in handoff
+    assert "__NR_faccessat2" in handoff
+    assert "virtual_access_result" in handoff
     assert "alr handoff syscall emulated count=" in handoff
     assert "PTRACE_SYSCALL" in handoff
     assert "process_vm_writev" in handoff

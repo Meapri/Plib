@@ -381,6 +381,24 @@ script detection so future script entrypoints can be routed through the guest
 interpreter instead of being presented to the glibc ELF loader as if they were
 ELF binaries.
 
+Current V68 shell child exec snapshot:
+
+```text
+build: 0.4.68-preload-shell-child-exec
+ALR SHELL DPKG ARCH PRELOAD EXECUTION: PASS
+alr shell dpkg --print-architecture preload handoff=ALR STATIC ENTRY HANDOFF: PASS
+alr shell dpkg --print-architecture preload execve attempts=alr handoff execve attempt count=1
+alr shell dpkg --print-architecture preload execve loader rewrites=alr handoff execve loader rewrite count=1
+alr shell dpkg --print-architecture preload traced processes=alr handoff traced process count=2
+alr shell dpkg --print-architecture preload stdout=arm64
+```
+
+The v68 snapshot proves a shell wrapper can spawn a glibc child binary inside
+the Android app process. The key Android-specific fix is seccomp emulation for
+guest `faccessat2` PATH probing: the handoff layer now maps host-rootfs PATH
+entries back to guest paths and answers access checks from rootfs file mode
+metadata instead of Android host access policy.
+
 ### ALR Exec v3: Identity and Procfs
 
 Required behavior:

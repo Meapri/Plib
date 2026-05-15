@@ -222,6 +222,18 @@ class NativeCommandRunner(
             extraGuestEnvironment = preloadPathFastPathEnvironment(rootfsDir),
         )
 
+    fun runAlrRuntimeTrampolineShellDpkgPrintArchitecturePreload(rootfsDir: File): NativeCommandResult =
+        runAlrRuntimeTrampolineGlibcRootfsProgram(
+            rootfsDir,
+            "/bin/dash",
+            listOf("-c", "dpkg --print-architecture"),
+            timeoutMs = 8000,
+            pathRewrite = true,
+            pathRewriteLimit = 2048,
+            pathRewriteIdleSyscallLimit = 256,
+            extraGuestEnvironment = preloadPathFastPathEnvironment(rootfsDir),
+        )
+
     fun runAlrRuntimeTrampolineDpkgQueryVersion(rootfsDir: File): NativeCommandResult =
         runAlrRuntimeTrampolineGlibcRootfsProgram(rootfsDir, "/usr/bin/dpkg-query", listOf("--version"))
 

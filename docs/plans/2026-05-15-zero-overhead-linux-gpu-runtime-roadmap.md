@@ -312,6 +312,27 @@ interpreter. The installed smoke package intentionally keeps this entrypoint
 free of nested package-manager child calls so package installation and package
 execution remain separately diagnosable.
 
+Latest V68 shell child exec evidence:
+
+```text
+build: 0.4.68-preload-shell-child-exec
+ALR DPKG LOCAL INSTALL PRELOAD EXECUTION: PASS
+ALR SHELL DPKG ARCH PRELOAD EXECUTION: PASS
+ALR INSTALLED PACKAGE PRELOAD EXECUTION: PASS
+alr shell dpkg --print-architecture preload execve attempts=alr handoff execve attempt count=1
+alr shell dpkg --print-architecture preload execve loader rewrites=alr handoff execve loader rewrite count=1
+alr shell dpkg --print-architecture preload traced processes=alr handoff traced process count=2
+alr shell dpkg --print-architecture preload stdout=arm64
+surface gl renderer=Mali-G615 MC2
+surface gpu hardware render=true
+```
+
+The V68 result removes the next shell-wrapper blocker. Android app-process
+seccomp traps guest `faccessat2` during dash PATH probing; ALR now emulates that
+access check against the rootfs view, allowing `/bin/dash -c "dpkg
+--print-architecture"` to locate `/usr/bin/dpkg`, rewrite the child exec through
+the glibc loader, and complete under ALR/preload.
+
 Known issue:
 
 - V35 summary says `GUEST WAYLAND GUI GPU BRIDGE EXECUTION: FAIL` and `GUEST X11 GUI GPU BRIDGE EXECUTION: FAIL` because ACK writing happens after socket input is closed. Frames were received and rendered losslessly; this is a report/ACK lifecycle bug, not a GPU-path failure.
