@@ -170,6 +170,9 @@ def test_tiny_rootfs_contains_dpkg_version_smoke_files():
         names = set(archive.getnames())
         assert "./usr/bin/dpkg" in names
         assert "./lib/aarch64-linux-gnu/libmd.so.0" in names
+        assert "./etc/dpkg" in names
+        assert "./etc/dpkg/dpkg.cfg" in names
+        assert "./etc/dpkg/dpkg.cfg.d" in names
         assert archive.extractfile("./usr/bin/dpkg").read(4) == b"\x7fELF"
         assert archive.extractfile("./lib/aarch64-linux-gnu/libmd.so.0").read(4) == b"\x7fELF"
 

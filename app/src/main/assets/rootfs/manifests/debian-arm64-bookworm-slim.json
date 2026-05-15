@@ -1,11 +1,11 @@
 {
   "name": "debian-arm64",
   "version": "bookworm-slim-2026-05",
-  "description": "Tiny PoC rootfs archive with static arm64 hello, BusyBox shell/cat, glibc/distro dynamic smoke binaries, clean guest env, identity/NSS id smoke, and dpkg --version package-manager preflight. Not a full Debian rootfs yet.",
+  "description": "Tiny PoC rootfs archive with static arm64 hello, BusyBox shell/cat, glibc/distro dynamic smoke binaries, clean guest env, identity/NSS id smoke, and dpkg --version package-manager preflight including minimal /etc/dpkg config dirs. Not a full Debian rootfs yet.",
   "assets": [
     {
       "path": "tiny-rootfs.tar",
-      "sha256": "0b42bbaf42c15020c1ce178182a557698a5ba75d033635fe307c68655a860434",
+      "sha256": "a91115345ad7616c89bceb6d1394ed723abca73c550a57fc563547dfabb2627b",
       "size_bytes": 9830400
     }
   ],
