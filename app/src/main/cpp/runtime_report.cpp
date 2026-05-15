@@ -1,7 +1,12 @@
 #include <jni.h>
 
+#include <EGL/egl.h>
+#include <GLES2/gl2.h>
+
 #include <dlfcn.h>
 
+#include <algorithm>
+#include <cctype>
 #include <sstream>
 #include <string>
 
@@ -29,6 +34,133 @@ std::string join_path(const std::string& left, const std::string& right) {
         return left + right;
     }
     return left + "/" + right;
+}
+
+
+std::string egl_error_hex() {
+    std::ostringstream out;
+    out << "0x" << std::hex << eglGetError();
+    return out.str();
+}
+
+std::string safe_gl_string(GLenum name) {
+    const auto* value = glGetString(name);
+    if (value == nullptr) {
+        return "missing";
+    }
+    return reinterpret_cast<const char*>(value);
+}
+
+std::string lower_copy(std::string value) {
+    std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) {
+        return static_cast<char>(std::tolower(c));
+    });
+    return value;
+}
+
+bool renderer_looks_software(const std::string& vendor, const std::string& renderer) {
+    const auto combined = lower_copy(vendor + " " + renderer);
+    return combined.find("swiftshader") != std::string::npos ||
+           combined.find("llvmpipe") != std::string::npos ||
+           combined.find("softpipe") != std::string::npos ||
+           combined.find("software") != std::string::npos ||
+           combined.find("mesa offscreen") != std::string::npos;
+}
+
+std::string build_host_gpu_probe_report() {
+    std::ostringstream out;
+    out << "host gpu probe=android-egl-gles-pbuffer";
+
+    EGLDisplay display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+    if (display == EGL_NO_DISPLAY) {
+        out << "\negl display=fail error=" << egl_error_hex();
+        return out.str();
+    }
+
+    EGLint major = 0;
+    EGLint minor = 0;
+    if (eglInitialize(display, &major, &minor) != EGL_TRUE) {
+        out << "\negl initialize=fail error=" << egl_error_hex();
+        return out.str();
+    }
+    out << "\negl initialize=ok version=" << major << "." << minor;
+
+    const EGLint config_attribs[] = {
+        EGL_SURFACE_TYPE, EGL_PBUFFER_BIT,
+        EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+        EGL_RED_SIZE, 8,
+        EGL_GREEN_SIZE, 8,
+        EGL_BLUE_SIZE, 8,
+        EGL_ALPHA_SIZE, 8,
+        EGL_NONE,
+    };
+    EGLConfig config = nullptr;
+    EGLint config_count = 0;
+    if (eglChooseConfig(display, config_attribs, &config, 1, &config_count) != EGL_TRUE || config_count < 1) {
+        out << "\negl choose config=fail error=" << egl_error_hex();
+        eglTerminate(display);
+        return out.str();
+    }
+    out << "\negl choose config=ok count=" << config_count;
+
+    const EGLint surface_attribs[] = {
+        EGL_WIDTH, 16,
+        EGL_HEIGHT, 16,
+        EGL_NONE,
+    };
+    EGLSurface surface = eglCreatePbufferSurface(display, config, surface_attribs);
+    if (surface == EGL_NO_SURFACE) {
+        out << "\negl pbuffer surface=fail error=" << egl_error_hex();
+        eglTerminate(display);
+        return out.str();
+    }
+    out << "\negl pbuffer surface=ok size=16x16";
+
+    const EGLint context_attribs[] = {
+        EGL_CONTEXT_CLIENT_VERSION, 2,
+        EGL_NONE,
+    };
+    EGLContext context = eglCreateContext(display, config, EGL_NO_CONTEXT, context_attribs);
+    if (context == EGL_NO_CONTEXT) {
+        out << "\negl context=fail error=" << egl_error_hex();
+        eglDestroySurface(display, surface);
+        eglTerminate(display);
+        return out.str();
+    }
+    out << "\negl context=ok api=gles2";
+
+    if (eglMakeCurrent(display, surface, surface, context) != EGL_TRUE) {
+        out << "\negl make current=fail error=" << egl_error_hex();
+        eglDestroyContext(display, context);
+        eglDestroySurface(display, surface);
+        eglTerminate(display);
+        return out.str();
+    }
+    out << "\negl make current=ok";
+
+    glViewport(0, 0, 16, 16);
+    glClearColor(0.125F, 0.25F, 0.5F, 1.0F);
+    glClear(GL_COLOR_BUFFER_BIT);
+    const GLenum gl_error = glGetError();
+
+    const auto vendor = safe_gl_string(GL_VENDOR);
+    const auto renderer = safe_gl_string(GL_RENDERER);
+    const auto version = safe_gl_string(GL_VERSION);
+    const auto shading_language = safe_gl_string(GL_SHADING_LANGUAGE_VERSION);
+    const bool software = renderer_looks_software(vendor, renderer);
+    out << "\ngl vendor=" << vendor;
+    out << "\ngl renderer=" << renderer;
+    out << "\ngl version=" << version;
+    out << "\ngl shading language=" << shading_language;
+    out << "\ngl clear error=0x" << std::hex << gl_error << std::dec;
+    out << "\nhost gpu software renderer=" << (software ? "true" : "false");
+    out << "\nhost gpu hardware candidate=" << (!software && gl_error == GL_NO_ERROR ? "true" : "false");
+
+    eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+    eglDestroyContext(display, context);
+    eglDestroySurface(display, surface);
+    eglTerminate(display);
+    return out.str();
 }
 
 void append_dlopen_probe(std::ostringstream& out, const std::string& path, const std::string& label) {
@@ -119,4 +251,13 @@ Java_dev_chanwoo_androlinux_MainActivity_nativeLibraryProbe(
     append_dlopen_probe(out, join_path(dir, "libalr_proot.so"), "libalr_proot.so");
     append_dlopen_probe(out, join_path(dir, "libproot-loader.so"), "libproot-loader.so");
     return env->NewStringUTF(out.str().c_str());
+}
+
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_dev_chanwoo_androlinux_MainActivity_nativeHostGpuProbe(
+    JNIEnv* env,
+    jobject /* thiz */) {
+    const auto report = build_host_gpu_probe_report();
+    return env->NewStringUTF(report.c_str());
 }

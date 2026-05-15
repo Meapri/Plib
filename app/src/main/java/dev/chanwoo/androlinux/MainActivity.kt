@@ -61,6 +61,7 @@ class MainActivity : Activity() {
             nativeCommandRunner.runProotRootfsProgramVerbose(rootfsStatus.rootfsDir, "/bin/hello")
         }
         val nativeProbe = nativeLibraryProbe(applicationInfo.nativeLibraryDir)
+        val hostGpuProbe = nativeHostGpuProbe()
         val rootfsHelloFile = File(rootfsStatus.rootfsDir, "bin/hello")
         val rootfsShellFile = File(rootfsStatus.rootfsDir, "bin/sh")
         val rootfsCatFile = File(rootfsStatus.rootfsDir, "bin/cat")
@@ -153,8 +154,9 @@ class MainActivity : Activity() {
                 prootDpkgInstallLocalResult.stdout.contains("alr-smoke (1.0)"))
         val installedPackageExecutionPassed = prootInstalledPackageSmokeResult.exitCode == 0 &&
             prootInstalledPackageSmokeResult.stdout.contains("alr local deb package smoke ok")
+        val hostGpuHardwareCandidate = hostGpuProbe.lineStartingWith("host gpu hardware candidate=") == "host gpu hardware candidate=true"
 
-        val executionSummary = "build: 0.4.7-local-deb-install-smoke" +
+        val executionSummary = "build: 0.4.8-host-gpu-probe" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -172,6 +174,7 @@ class MainActivity : Activity() {
             "\nAPT-CONFIG VERSION EXECUTION: ${if (aptConfigVersionExecutionPassed) "PASS" else "FAIL"}" +
             "\nDPKG LOCAL INSTALL EXECUTION: ${if (dpkgLocalInstallExecutionPassed) "PASS" else "FAIL"}" +
             "\nINSTALLED PACKAGE EXECUTION: ${if (installedPackageExecutionPassed) "PASS" else "FAIL"}" +
+            "\nHOST GPU EGL/GLES EXECUTION: ${if (hostGpuHardwareCandidate) "PASS" else "FAIL"}" +
             "\nidentity numeric root=$identityNumericRoot" +
             "\nidentity named root=$identityNamedRoot" +
             "\nidentity proot mode=raw -r" +
@@ -265,7 +268,11 @@ class MainActivity : Activity() {
             "\nprobe dlopen proot=${nativeProbe.lineStartingWith("dlopen libalr_proot.so")}" +
             "\nproot loader=${prootCandidateResult.environment["PROOT_LOADER"]}" +
             "\nproot tmp=${prootCandidateResult.environment["PROOT_TMP_DIR"]}" +
-            "\nproot verbose=${prootCandidateResult.environment["PROOT_VERBOSE"]}"
+            "\nproot verbose=${prootCandidateResult.environment["PROOT_VERBOSE"]}" +
+            "\nhost gpu renderer=${hostGpuProbe.lineStartingWith("gl renderer=")}" +
+            "\nhost gpu vendor=${hostGpuProbe.lineStartingWith("gl vendor=")}" +
+            "\nhost gpu software renderer=${hostGpuProbe.lineStartingWith("host gpu software renderer=")}" +
+            "\nhost gpu hardware candidate=${hostGpuProbe.lineStartingWith("host gpu hardware candidate=")}"
 
         val verboseReport = nativeRuntimeReport(
             packageName,
@@ -288,6 +295,8 @@ class MainActivity : Activity() {
             "\nnative command stderr=${nativeCommandResult.stderr}" +
             "\n\nnative library probe:" +
             "\n$nativeProbe" +
+            "\n\nAndroid host GPU probe:" +
+            "\n$hostGpuProbe" +
             "\n\nproot backend candidate: packaged native executable" +
             "\nproot actual env:" +
             prootCandidateResult.environment.entries.joinToString(separator = "") { "\n  ${it.key}=${it.value}" } +
@@ -350,4 +359,6 @@ class MainActivity : Activity() {
     ): String
 
     private external fun nativeLibraryProbe(nativeLibraryDir: String): String
+
+    private external fun nativeHostGpuProbe(): String
 }

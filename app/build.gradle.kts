@@ -34,8 +34,8 @@ android {
         applicationId = "dev.chanwoo.androlinux"
         minSdk = 26
         targetSdk = 35
-        versionCode = 20
-        versionName = "0.4.7-local-deb-install-smoke"
+        versionCode = 21
+        versionName = "0.4.8-host-gpu-probe"
         ndkVersion = "27.2.12479018"
 
         externalNativeBuild {
