@@ -5,6 +5,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 python3 -m pytest tests/ -q
+./scripts/test-native-core.sh
 
 required=(
   "settings.gradle.kts"
@@ -13,6 +14,8 @@ required=(
   "app/src/main/AndroidManifest.xml"
   "app/src/main/java/dev/chanwoo/androlinux/MainActivity.kt"
   "app/src/main/cpp/CMakeLists.txt"
+  "app/src/main/cpp/runtime_plan.cpp"
+  "app/src/main/cpp/runtime_plan.hpp"
   "app/src/main/cpp/runtime_report.cpp"
   "docs/architecture.md"
   "docs/build-environment.md"
