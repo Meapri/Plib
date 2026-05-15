@@ -21,6 +21,7 @@ class MainActivity : Activity() {
             ),
         )
         val rootfsPlan = buildRootfsInstallPlan(rootfsManifest, filesDir)
+        val rootfsStatus = RootfsInstaller(this).prepareBundledTinyRootfs()
 
         val report = nativeRuntimeReport(
             packageName,
@@ -29,7 +30,9 @@ class MainActivity : Activity() {
             rootfsManifest.name,
             "/bin/bash",
         ) + "\n\nrootfs install dir: ${rootfsPlan.rootfsDir.absolutePath}" +
-            "\nrootfs marker: ${rootfsPlan.markerPath.absolutePath}"
+            "\nrootfs marker: ${rootfsPlan.markerPath.absolutePath}" +
+            "\nrootfs status: ${rootfsStatus.manifestName}/${rootfsStatus.assetPath} verified=${rootfsStatus.verified}" +
+            "\nrootfs staged archive: ${rootfsStatus.stagedArchive.absolutePath}"
 
         val view = TextView(this).apply {
             text = report
