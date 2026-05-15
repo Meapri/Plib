@@ -58,6 +58,19 @@ std::vector<std::string> env_extra_args() {
     return args;
 }
 
+std::vector<std::string> env_extra_guest_env() {
+    std::vector<std::string> env;
+    const int count = env_int_or_default("ALR_TRAMPOLINE_EXTRA_ENV_COUNT", 0);
+    for (int index = 0; index < count && index < 16; ++index) {
+        const std::string key = "ALR_TRAMPOLINE_EXTRA_ENV_" + std::to_string(index);
+        const char* value = std::getenv(key.c_str());
+        if (value != nullptr && std::string_view(value).find('=') != std::string_view::npos) {
+            env.emplace_back(value);
+        }
+    }
+    return env;
+}
+
 struct HandoffBenchmarkSummary {
     int requested_count = 1;
     int attempted_count = 0;
@@ -147,12 +160,15 @@ int main(int argc, char** argv) {
         std::vector<std::string> guest_argv{env_or_none("ALR_TRAMPOLINE_TARGET_GUEST_PATH")};
         const auto extra_args = env_extra_args();
         guest_argv.insert(guest_argv.end(), extra_args.begin(), extra_args.end());
+        std::vector<std::string> guest_env{"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"};
+        const auto extra_guest_env = env_extra_guest_env();
+        guest_env.insert(guest_env.end(), extra_guest_env.begin(), extra_guest_env.end());
         const auto entry_plan = alr::runtime::build_static_entry_stack_plan(
             elf_plan,
             image_plan,
             alr::runtime::EntryStackInput{
                 .argv = guest_argv,
-                .env = {"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"},
+                .env = guest_env,
             });
         std::cout << entry_plan.report << "\n";
         const auto load_result = alr::runtime::load_static_image_for_preflight(target_host, image_plan);

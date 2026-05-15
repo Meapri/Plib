@@ -94,6 +94,44 @@ class NativeCommandRunner(
         )
     }
 
+    fun runAlrRuntimeTrampolineGuestGpuClient(rootfsDir: File): NativeCommandResult =
+        runAlrRuntimeTrampoline(rootfsDir, "/usr/bin/alr-gpu-client", executeEntry = true, timeoutMs = 1500)
+
+    fun runAlrRuntimeTrampolineGuestGpuClientIpc(rootfsDir: File, port: Int): NativeCommandResult =
+        runAlrRuntimeTrampoline(
+            rootfsDir,
+            "/usr/bin/alr-gpu-client",
+            executeEntry = true,
+            timeoutMs = 1500,
+            extraGuestEnvironment = mapOf(
+                "ALR_GPU_BRIDGE_HOST" to "127.0.0.1",
+                "ALR_GPU_BRIDGE_PORT" to port.toString(),
+                "ALR_GPU_BRIDGE_TRANSPORT" to "tcp-loopback",
+            ),
+        )
+
+    fun runAlrRuntimeTrampolineGuestGuiClient(rootfsDir: File, protocol: String): NativeCommandResult =
+        runAlrRuntimeTrampoline(
+            rootfsDir,
+            if (protocol == "X11") "/usr/bin/alr-x11-gpu-client" else "/usr/bin/alr-wayland-gpu-client",
+            executeEntry = true,
+            timeoutMs = 1500,
+        )
+
+    fun runAlrRuntimeTrampolineGuestGuiClientIpc(rootfsDir: File, protocol: String, port: Int): NativeCommandResult =
+        runAlrRuntimeTrampoline(
+            rootfsDir,
+            if (protocol == "X11") "/usr/bin/alr-x11-gpu-client" else "/usr/bin/alr-wayland-gpu-client",
+            executeEntry = true,
+            timeoutMs = 1500,
+            extraGuestEnvironment = mapOf(
+                "ALR_GUI_BRIDGE_HOST" to "127.0.0.1",
+                "ALR_GUI_BRIDGE_PORT" to port.toString(),
+                "ALR_GUI_BRIDGE_PROTOCOL" to protocol,
+                "ALR_GPU_BRIDGE_TRANSPORT" to "tcp-loopback-gui",
+            ),
+        )
+
     private fun glibcLibraryPath(rootfsDir: File): String =
         listOf(
             File(rootfsDir, "lib/aarch64-linux-gnu").absolutePath,
@@ -113,6 +151,7 @@ class NativeCommandRunner(
         program: String,
         executeEntry: Boolean,
         extraArgs: List<String> = emptyList(),
+        extraGuestEnvironment: Map<String, String> = emptyMap(),
         timeoutMs: Int = 1000,
         repeatCount: Int = 1,
     ): NativeCommandResult {
@@ -124,6 +163,14 @@ class NativeCommandRunner(
             put("ALR_TRAMPOLINE_EXTRA_ARG_COUNT", extraArgs.size.coerceAtMost(8).toString())
             extraArgs.take(8).forEachIndexed { index, value ->
                 put("ALR_TRAMPOLINE_EXTRA_ARG_$index", value)
+            }
+            val guestEnv = extraGuestEnvironment.entries
+                .filter { (key, _) -> key.isNotBlank() && !key.contains("=") }
+                .take(16)
+                .map { (key, value) -> "$key=$value" }
+            put("ALR_TRAMPOLINE_EXTRA_ENV_COUNT", guestEnv.size.toString())
+            guestEnv.forEachIndexed { index, value ->
+                put("ALR_TRAMPOLINE_EXTRA_ENV_$index", value)
             }
         }
         return runPackagedCommand(

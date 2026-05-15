@@ -45,6 +45,8 @@ def test_trampoline_report_contract_exists():
     assert "ALR_TRAMPOLINE_EXECUTE_ENTRY" in main
     assert "ALR_TRAMPOLINE_REPEAT_COUNT" in main
     assert "ALR_TRAMPOLINE_EXTRA_ARG_COUNT" in main
+    assert "ALR_TRAMPOLINE_EXTRA_ENV_COUNT" in main
+    assert "env_extra_guest_env" in main
     assert "maybe_run_static_entry_handoff" in main
     assert "ALR STATIC ENTRY HANDOFF BENCHMARK:" in main
     assert "alr handoff repeat average elapsed ms=" in main
