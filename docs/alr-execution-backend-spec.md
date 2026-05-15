@@ -134,8 +134,24 @@ Performance evidence:
 
 - Report ALR and PRoot elapsed time for static hello and dynamic glibc hello on the same device run.
 - Report ALR/PRoot elapsed ratio as an integer percent so regressions are visible without reading verbose logs.
-- Compare ALR repeated handoff average against a single PRoot session that loops the same static hello command. This reduces launcher noise and better exposes steady execution overhead.
-- Treat `ALR HOT PATH PERF EVIDENCE: PASS` as a device-local signal only when both static and dynamic probes are faster than PRoot in that run. This is not a universal claim until repeated across device classes.
+- Compare ALR repeated handoff average against single PRoot sessions that loop the same static hello and dynamic glibc hello commands. This reduces launcher noise and better exposes steady execution overhead.
+- Report a native Bionic fork/wait microbaseline from the packaged executable so ALR/PRoot measurements can be read against a device-local native process-control floor.
+- Treat `ALR LOOP HOT PATH PERF EVIDENCE: PASS` as a device-local signal only when both static and dynamic repeated handoff probes are faster than their PRoot loop baselines in that run. This is not a universal claim until repeated across device classes.
+
+Current V54 device snapshot:
+
+```text
+native bionic fork benchmark average us=native fork repeat average elapsed us=953
+alr static handoff benchmark average ms=alr handoff repeat average elapsed ms=4
+proot static hello loop benchmark average ms=10
+alr static handoff vs native fork ratio pct=419
+alr static handoff vs proot loop ratio pct=40
+alr dynamic glibc handoff benchmark average ms=alr handoff repeat average elapsed ms=4
+proot dynamic glibc loop benchmark average ms=20
+alr dynamic glibc handoff vs native fork ratio pct=419
+alr dynamic glibc handoff vs proot loop ratio pct=20
+alr loop hot path perf evidence=PASS
+```
 
 ### ALR Exec v3: Identity and Procfs
 

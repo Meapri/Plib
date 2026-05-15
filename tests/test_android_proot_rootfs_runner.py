@@ -58,6 +58,8 @@ def test_main_activity_reports_alr_loader_help_probe():
     assert "runAlrRuntimeTrampolineEntryBenchmark" in runner
     assert "runAlrRuntimeTrampolineGlibcHelloBenchmark" in runner
     assert "runProotRootfsHelloLoopBenchmark" in runner
+    assert "runProotRootfsGlibcHelloLoopBenchmark" in runner
+    assert "runNativeBionicForkBenchmark" in runner
     assert "translateGuestPath" in runner
     assert "ALR_TRAMPOLINE_REPEAT_COUNT" in runner
     assert '"/lib/ld-linux-aarch64.so.1"' in runner
@@ -96,6 +98,9 @@ def test_main_activity_reports_alr_loader_help_probe():
     assert "alr static handoff benchmark requested=" in text
     assert "alr static handoff benchmark pass=" in text
     assert "alr static handoff benchmark average ms=" in text
+    assert "native bionic fork benchmark=" in text
+    assert "native bionic fork benchmark average us=" in text
+    assert "alr static handoff vs native fork ratio pct=" in text
     assert "proot static hello loop benchmark elapsed ms=" in text
     assert "proot static hello loop benchmark average ms=" in text
     assert "alr static handoff vs proot loop ratio pct=" in text
@@ -104,6 +109,13 @@ def test_main_activity_reports_alr_loader_help_probe():
     assert "alr dynamic glibc handoff benchmark requested=" in text
     assert "alr dynamic glibc handoff benchmark pass=" in text
     assert "alr dynamic glibc handoff benchmark average ms=" in text
+    assert "alr dynamic glibc handoff vs native fork ratio pct=" in text
+    assert "proot dynamic glibc loop benchmark elapsed ms=" in text
+    assert "proot dynamic glibc loop benchmark average ms=" in text
+    assert "alr dynamic glibc handoff vs proot loop ratio pct=" in text
+    assert "alr dynamic glibc handoff faster than proot loop=" in text
+    assert "alr loop hot path measured faster count=" in text
+    assert "alr loop hot path perf evidence=" in text
 
 
 def test_native_command_runner_can_attempt_proot_dash_command():

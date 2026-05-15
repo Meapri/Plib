@@ -20,6 +20,12 @@ class NativeCommandRunner(
 ) {
     fun runSmokeTest(): NativeCommandResult = runPackagedCommand("libalr_test_command.so", listOf("smoke"))
 
+    fun runNativeBionicForkBenchmark(repeatCount: Int = 10): NativeCommandResult =
+        runPackagedCommand(
+            "libalr_test_command.so",
+            listOf("fork-benchmark", repeatCount.coerceIn(1, 200).toString()),
+        )
+
     fun runAlrRuntimeTrampolinePreflight(rootfsDir: File, program: String): NativeCommandResult {
         return runAlrRuntimeTrampoline(rootfsDir, program, executeEntry = false)
     }
@@ -368,6 +374,15 @@ class NativeCommandRunner(
         return runProotRootfsShell(
             rootfsDir,
             "for i in $loopItems; do /bin/hello >/dev/null || exit 1; done; echo proot-loop-ok count=$clampedRepeatCount",
+        )
+    }
+
+    fun runProotRootfsGlibcHelloLoopBenchmark(rootfsDir: File, repeatCount: Int = 10): NativeCommandResult {
+        val clampedRepeatCount = repeatCount.coerceIn(1, 50)
+        val loopItems = (1..clampedRepeatCount).joinToString(" ")
+        return runProotRootfsShell(
+            rootfsDir,
+            "for i in $loopItems; do /bin/glibc-hello >/dev/null || exit 1; done; echo proot-glibc-loop-ok count=$clampedRepeatCount",
         )
     }
 

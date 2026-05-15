@@ -12,6 +12,8 @@ def test_native_test_command_target_exists():
     assert "add_executable(alr_test_command" in cmake
     assert "OUTPUT_NAME \"alr-test-command\"" in cmake
     assert "alr-test-command ok" in command
+    assert "fork_benchmark" in command
+    assert "NATIVE BIONIC FORK BENCHMARK:" in command
 
 
 def test_main_activity_mentions_native_test_command_backend():

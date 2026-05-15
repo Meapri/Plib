@@ -34,8 +34,8 @@ android {
         applicationId = "dev.chanwoo.androlinux"
         minSdk = 26
         targetSdk = 35
-        versionCode = 53
-        versionName = "0.4.53-gles-procaddr-demo"
+        versionCode = 54
+        versionName = "0.4.54-cpu-baseline-bench"
         ndkVersion = "27.2.12479018"
 
         externalNativeBuild {

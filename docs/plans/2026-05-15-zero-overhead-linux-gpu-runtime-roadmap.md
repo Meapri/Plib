@@ -44,6 +44,26 @@ guest gles draw via android surface=true
 guest wayland/x11 gui gpu surface hardware render=true
 ```
 
+Latest V54 CPU baseline evidence:
+
+```text
+build: 0.4.54-cpu-baseline-bench
+native bionic fork benchmark=NATIVE BIONIC FORK BENCHMARK: PASS
+native bionic fork benchmark average us=native fork repeat average elapsed us=953
+alr static handoff benchmark average ms=alr handoff repeat average elapsed ms=4
+proot static hello loop benchmark average ms=10
+alr static handoff vs native fork ratio pct=419
+alr static handoff vs proot loop ratio pct=40
+alr static handoff faster than proot loop=true
+alr dynamic glibc handoff benchmark average ms=alr handoff repeat average elapsed ms=4
+proot dynamic glibc loop benchmark average ms=20
+alr dynamic glibc handoff vs native fork ratio pct=419
+alr dynamic glibc handoff vs proot loop ratio pct=20
+alr dynamic glibc handoff faster than proot loop=true
+alr loop hot path measured faster count=2/2
+alr loop hot path perf evidence=PASS
+```
+
 Known issue:
 
 - V35 summary says `GUEST WAYLAND GUI GPU BRIDGE EXECUTION: FAIL` and `GUEST X11 GUI GPU BRIDGE EXECUTION: FAIL` because ACK writing happens after socket input is closed. Frames were received and rendered losslessly; this is a report/ACK lifecycle bug, not a GPU-path failure.

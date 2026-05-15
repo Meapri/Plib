@@ -289,8 +289,9 @@ Tasks:
 1. Add benchmark rootfs commands.
 2. Add app-side timing.
 3. Add repeated-run aggregation.
-4. Add warm/cold distinction.
-5. Add report export or copyable text block.
+4. Add native Bionic fork/wait baseline for device-local native comparison.
+5. Add warm/cold distinction.
+6. Add report export or copyable text block.
 
 Workloads:
 
@@ -300,11 +301,15 @@ Workloads:
 - 1,000 `open/read/close`.
 - 100 child spawns.
 - Package-manager preflight command.
+- Native Bionic fork/wait baseline.
 
 Expected report:
 
 ```text
 ALR BENCH HELLO MS=<n> PROOT=<n> RATIO=<n>
+ALR BENCH HELLO LOOP AVG MS=<n> PROOT_LOOP=<n> RATIO=<n>
+ALR BENCH GLIBC LOOP AVG MS=<n> PROOT_LOOP=<n> RATIO=<n>
+NATIVE BIONIC FORK AVG US=<n>
 ALR BENCH STAT1000 MS=<n> PROOT=<n> RATIO=<n>
 ALR BENCH SPAWN100 MS=<n> PROOT=<n> RATIO=<n>
 ALR SYSCALL OVERHEAD SMOKE: LOWER_THAN_PROOT
