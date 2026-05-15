@@ -25,7 +25,7 @@ class MainActivity : Activity() {
 
         val rootfsManifest = RootfsManifest(
             name = "debian-arm64",
-            version = "bookworm-slim-2026-05-gui-gpu-v87",
+            version = "bookworm-slim-2026-05-gui-gpu-v88",
             assets = listOf(
                 RootfsAsset(
                     path = "rootfs.tar.zst",
@@ -235,13 +235,16 @@ class MainActivity : Activity() {
         val alrGuestX11GuiBridgeResult = runGuestGuiBridge(nativeCommandRunner, rootfsStatus.rootfsDir, "X11", useAlr = true)
         val alrInstalledPackageWaylandGuiBridgeResult = runGuestGuiBridge(nativeCommandRunner, rootfsStatus.rootfsDir, "WAYLAND", useInstalledPackage = true)
         val alrInstalledPackageX11GuiBridgeResult = runGuestGuiBridge(nativeCommandRunner, rootfsStatus.rootfsDir, "X11", useInstalledPackage = true)
+        val alrInstalledPackageWaylandGuiUnixBridgeResult = runGuestGuiBridgeUnix(nativeCommandRunner, rootfsStatus.rootfsDir, "WAYLAND", useInstalledPackage = true)
+        val alrInstalledPackageX11GuiUnixBridgeResult = runGuestGuiBridgeUnix(nativeCommandRunner, rootfsStatus.rootfsDir, "X11", useInstalledPackage = true)
         val alrInstalledPackageVulkanDiscoveryBridgeResult = runInstalledPackageVulkanDiscoveryBridge(nativeCommandRunner, rootfsStatus.rootfsDir)
         val alrInstalledPackageVulkanProxyBridgeResult = runInstalledPackageVulkanProxyBridge(nativeCommandRunner, rootfsStatus.rootfsDir)
         val alrInstalledPackageVulkanIcdBridgeResult = runInstalledPackageVulkanIcdBridge(nativeCommandRunner, rootfsStatus.rootfsDir)
         val alrInstalledPackageVulkanLoaderInfoBridgeResult = runInstalledPackageVulkanLoaderInfoBridge(nativeCommandRunner, rootfsStatus.rootfsDir)
         val alrInstalledPackageVulkanUnixLoaderInfoBridgeResult = runInstalledPackageVulkanUnixLoaderInfoBridge(nativeCommandRunner, rootfsStatus.rootfsDir)
         val nativeGlesBaselineCommands = buildNativeGlesBaselineCommands(glesShimBenchmarkFrameCount)
-        val guestGuiSurfaceCommands = alrInstalledPackageWaylandGuiBridgeResult.commands + alrInstalledPackageX11GuiBridgeResult.commands +
+        val guestGuiSurfaceCommands = alrInstalledPackageWaylandGuiUnixBridgeResult.commands + alrInstalledPackageX11GuiUnixBridgeResult.commands +
+            alrInstalledPackageWaylandGuiBridgeResult.commands + alrInstalledPackageX11GuiBridgeResult.commands +
             alrGuestWaylandGuiBridgeResult.commands + alrGuestX11GuiBridgeResult.commands +
             guestWaylandGuiBridgeResult.commands + guestX11GuiBridgeResult.commands
         val surfaceGpuCommands = buildList {
@@ -659,6 +662,28 @@ class MainActivity : Activity() {
                 alrInstalledPackageX11GuiBridgeResult.commands.size == alrInstalledPackageX11GuiBridgeResult.expectedFrames &&
                 alrInstalledPackageX11GuiBridgeResult.expectedFrames > 0 &&
                 alrInstalledPackageX11GuiBridgeResult.error == null
+        val alrInstalledPackageWaylandGuiUnixBridgePassed =
+            alrInstalledPackageWaylandGuiUnixBridgeResult.clientResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+                alrInstalledPackageWaylandGuiUnixBridgeResult.rawLines.any { it.startsWith("ALR_GUI_UNIX_BRIDGE_SOCKET ") } &&
+                alrInstalledPackageWaylandGuiUnixBridgeResult.rawLines.any { it.startsWith("ALR_GUI_IPC_HELLO ") && it.contains("transport=unix-abstract-gui") } &&
+                rootfsInstalledWaylandGuiClientFile.isFile &&
+                rootfsInstalledWaylandGuiClientFile.canExecute() &&
+                alrInstalledPackageWaylandGuiUnixBridgeResult.commands.size == alrInstalledPackageWaylandGuiUnixBridgeResult.expectedFrames &&
+                alrInstalledPackageWaylandGuiUnixBridgeResult.expectedFrames > 0 &&
+                alrInstalledPackageWaylandGuiUnixBridgeResult.ackLines.size == 1 &&
+                alrInstalledPackageWaylandGuiUnixBridgeResult.ackLines.first().contains("transport=unix-abstract") &&
+                alrInstalledPackageWaylandGuiUnixBridgeResult.error == null
+        val alrInstalledPackageX11GuiUnixBridgePassed =
+            alrInstalledPackageX11GuiUnixBridgeResult.clientResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+                alrInstalledPackageX11GuiUnixBridgeResult.rawLines.any { it.startsWith("ALR_GUI_UNIX_BRIDGE_SOCKET ") } &&
+                alrInstalledPackageX11GuiUnixBridgeResult.rawLines.any { it.startsWith("ALR_GUI_IPC_HELLO ") && it.contains("transport=unix-abstract-gui") } &&
+                rootfsInstalledX11GuiClientFile.isFile &&
+                rootfsInstalledX11GuiClientFile.canExecute() &&
+                alrInstalledPackageX11GuiUnixBridgeResult.commands.size == alrInstalledPackageX11GuiUnixBridgeResult.expectedFrames &&
+                alrInstalledPackageX11GuiUnixBridgeResult.expectedFrames > 0 &&
+                alrInstalledPackageX11GuiUnixBridgeResult.ackLines.size == 1 &&
+                alrInstalledPackageX11GuiUnixBridgeResult.ackLines.first().contains("transport=unix-abstract") &&
+                alrInstalledPackageX11GuiUnixBridgeResult.error == null
         val hostGpuHardwareCandidate = hostGpuProbe.lineStartingWith("host gpu hardware candidate=") == "host gpu hardware candidate=true"
         val hostVulkanHardwareCandidate = hostVulkanProbe.lineStartingWith("host vulkan hardware candidate=") == "host vulkan hardware candidate=true"
         val hostVulkanDiscoveryPassed = hostVulkanHardwareCandidate &&
@@ -763,13 +788,15 @@ class MainActivity : Activity() {
                 "gles-procaddr:${if (alrInstalledPackageGlesProcaddrDemoPassed) "PASS" else "FAIL"}," +
                 "wayland:${if (alrInstalledPackageWaylandGuiBridgePassed) "PASS" else "FAIL"}," +
                 "x11:${if (alrInstalledPackageX11GuiBridgePassed) "PASS" else "FAIL"}," +
+                "wayland-unix:${if (alrInstalledPackageWaylandGuiUnixBridgePassed) "PASS" else "FAIL"}," +
+                "x11-unix:${if (alrInstalledPackageX11GuiUnixBridgePassed) "PASS" else "FAIL"}," +
                 "vulkan-discovery:${if (alrInstalledPackageVulkanDiscoveryPassed) "PASS" else "FAIL"}," +
                 "vulkan-proxy:${if (alrInstalledPackageVulkanProxyPassed) "PASS" else "FAIL"}," +
                 "vulkan-icd:${if (alrInstalledPackageVulkanIcdPassed) "PASS" else "FAIL"}," +
                 "vulkan-loader:${if (alrInstalledPackageVulkanLoaderInfoPassed) "PASS" else "FAIL"}," +
                 "vulkan-loader-unix:${if (alrInstalledPackageVulkanUnixLoaderInfoPassed) "PASS" else "FAIL"}"
 
-        val executionSummary = "build: 0.4.87-gles-unix-batch-bridge" +
+        val executionSummary = "build: 0.4.88-gui-unix-bridge" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -854,6 +881,9 @@ class MainActivity : Activity() {
             "\nALR GUEST X11 GUI GPU BRIDGE EXECUTION: ${if (alrGuestX11GuiBridgePassed) "PASS" else "FAIL"}" +
             "\nALR INSTALLED PACKAGE WAYLAND GUI GPU BRIDGE EXECUTION: ${if (alrInstalledPackageWaylandGuiBridgePassed) "PASS" else "FAIL"}" +
             "\nALR INSTALLED PACKAGE X11 GUI GPU BRIDGE EXECUTION: ${if (alrInstalledPackageX11GuiBridgePassed) "PASS" else "FAIL"}" +
+            "\nALR INSTALLED PACKAGE WAYLAND GUI GPU UNIX BRIDGE EXECUTION: ${if (alrInstalledPackageWaylandGuiUnixBridgePassed) "PASS" else "FAIL"}" +
+            "\nALR INSTALLED PACKAGE X11 GUI GPU UNIX BRIDGE EXECUTION: ${if (alrInstalledPackageX11GuiUnixBridgePassed) "PASS" else "FAIL"}" +
+            "\nGUI BRIDGE UNIX TRANSPORT EXECUTION: ${if (alrInstalledPackageWaylandGuiUnixBridgePassed && alrInstalledPackageX11GuiUnixBridgePassed) "PASS" else "FAIL"}" +
             "\nALR INSTALLED PACKAGE VULKAN DISCOVERY EXECUTION: ${if (alrInstalledPackageVulkanDiscoveryPassed) "PASS" else "FAIL"}" +
             "\nGUEST GUI GPU SURFACE EXECUTION: PENDING_SURFACE_CALLBACK" +
             "\nANDROID PERMISSION MODEL: ${if (internetPermissionDeclared && networkStatePermissionDeclared && !broadStoragePermissionDeclared) "PASS" else "FAIL"}" +
@@ -1104,6 +1134,28 @@ class MainActivity : Activity() {
             "\nalr installed package x11 gui ipc error=${alrInstalledPackageX11GuiBridgeResult.error ?: "none"}" +
             "\nalr installed package x11 gui ipc client handoff=${alrInstalledPackageX11GuiBridgeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
             "\nalr installed package x11 gui ipc stdout=${alrInstalledPackageX11GuiBridgeResult.clientResult.stdout.alrHandoffStdoutText()}" +
+            "\nalr installed package wayland gui unix ipc received frames=${alrInstalledPackageWaylandGuiUnixBridgeResult.commands.size}" +
+            "\nalr installed package wayland gui unix ipc lossless=${alrInstalledPackageWaylandGuiUnixBridgeResult.expectedFrames > 0 && alrInstalledPackageWaylandGuiUnixBridgeResult.expectedFrames == alrInstalledPackageWaylandGuiUnixBridgeResult.commands.size}" +
+            "\nalr installed package wayland gui unix ipc raw=${alrInstalledPackageWaylandGuiUnixBridgeResult.rawLines.joinToString("|")}" +
+            "\nalr installed package wayland gui unix ipc ack raw=${alrInstalledPackageWaylandGuiUnixBridgeResult.ackLines.joinToString("|")}" +
+            "\nalr installed package wayland gui unix ipc error=${alrInstalledPackageWaylandGuiUnixBridgeResult.error ?: "none"}" +
+            "\nalr installed package wayland gui unix ipc client handoff=${alrInstalledPackageWaylandGuiUnixBridgeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr installed package wayland gui unix ipc stdout=${alrInstalledPackageWaylandGuiUnixBridgeResult.clientResult.stdout.alrHandoffStdoutText()}" +
+            "\nalr installed package x11 gui unix ipc received frames=${alrInstalledPackageX11GuiUnixBridgeResult.commands.size}" +
+            "\nalr installed package x11 gui unix ipc lossless=${alrInstalledPackageX11GuiUnixBridgeResult.expectedFrames > 0 && alrInstalledPackageX11GuiUnixBridgeResult.expectedFrames == alrInstalledPackageX11GuiUnixBridgeResult.commands.size}" +
+            "\nalr installed package x11 gui unix ipc raw=${alrInstalledPackageX11GuiUnixBridgeResult.rawLines.joinToString("|")}" +
+            "\nalr installed package x11 gui unix ipc ack raw=${alrInstalledPackageX11GuiUnixBridgeResult.ackLines.joinToString("|")}" +
+            "\nalr installed package x11 gui unix ipc error=${alrInstalledPackageX11GuiUnixBridgeResult.error ?: "none"}" +
+            "\nalr installed package x11 gui unix ipc client handoff=${alrInstalledPackageX11GuiUnixBridgeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr installed package x11 gui unix ipc stdout=${alrInstalledPackageX11GuiUnixBridgeResult.clientResult.stdout.alrHandoffStdoutText()}" +
+            "\ngui bridge transport wayland tcp loader elapsed ms=${alrInstalledPackageWaylandGuiBridgeResult.clientResult.elapsedMs}" +
+            "\ngui bridge transport wayland unix loader elapsed ms=${alrInstalledPackageWaylandGuiUnixBridgeResult.clientResult.elapsedMs}" +
+            "\ngui bridge transport wayland unix vs tcp ratio pct=${elapsedRatioPct(alrInstalledPackageWaylandGuiUnixBridgeResult.clientResult, alrInstalledPackageWaylandGuiBridgeResult.clientResult)}" +
+            "\ngui bridge transport wayland unix faster than tcp=${isFaster(alrInstalledPackageWaylandGuiUnixBridgeResult.clientResult, alrInstalledPackageWaylandGuiBridgeResult.clientResult)}" +
+            "\ngui bridge transport x11 tcp loader elapsed ms=${alrInstalledPackageX11GuiBridgeResult.clientResult.elapsedMs}" +
+            "\ngui bridge transport x11 unix loader elapsed ms=${alrInstalledPackageX11GuiUnixBridgeResult.clientResult.elapsedMs}" +
+            "\ngui bridge transport x11 unix vs tcp ratio pct=${elapsedRatioPct(alrInstalledPackageX11GuiUnixBridgeResult.clientResult, alrInstalledPackageX11GuiBridgeResult.clientResult)}" +
+            "\ngui bridge transport x11 unix faster than tcp=${isFaster(alrInstalledPackageX11GuiUnixBridgeResult.clientResult, alrInstalledPackageX11GuiBridgeResult.clientResult)}" +
             "\nalr installed package vulkan discovery host=${alrInstalledPackageVulkanDiscoveryBridgeResult.host}" +
             "\nalr installed package vulkan discovery port=${alrInstalledPackageVulkanDiscoveryBridgeResult.port}" +
             "\nalr installed package vulkan discovery raw=${alrInstalledPackageVulkanDiscoveryBridgeResult.rawLines.joinToString("|")}" +
@@ -1561,6 +1613,8 @@ class MainActivity : Activity() {
             resultBlock("alr guest x11 gui ipc client", alrGuestX11GuiBridgeResult.clientResult) +
             resultBlock("alr installed package wayland gui ipc client", alrInstalledPackageWaylandGuiBridgeResult.clientResult) +
             resultBlock("alr installed package x11 gui ipc client", alrInstalledPackageX11GuiBridgeResult.clientResult) +
+            resultBlock("alr installed package wayland gui unix ipc client", alrInstalledPackageWaylandGuiUnixBridgeResult.clientResult) +
+            resultBlock("alr installed package x11 gui unix ipc client", alrInstalledPackageX11GuiUnixBridgeResult.clientResult) +
             resultBlock("alr installed package vulkan discovery client", alrInstalledPackageVulkanDiscoveryBridgeResult.clientResult) +
             resultBlock("alr installed package vulkan proxy smoke", alrInstalledPackageVulkanProxyBridgeResult.clientResult) +
             resultBlock("alr installed package vulkan icd manifest smoke", alrInstalledPackageVulkanIcdBridgeResult.clientResult) +
@@ -1617,11 +1671,19 @@ class MainActivity : Activity() {
                         alrInstalledPackageGlesUnixIpcBridgePassed,
                         alrInstalledPackageGlesUnixBatchIpcBridgePassed,
                     )
+                    val guiTransportUpdate = guiBridgeTransportUpdate(
+                        alrInstalledPackageWaylandGuiBridgeResult,
+                        alrInstalledPackageWaylandGuiUnixBridgeResult,
+                        alrInstalledPackageX11GuiBridgeResult,
+                        alrInstalledPackageX11GuiUnixBridgeResult,
+                        alrInstalledPackageWaylandGuiUnixBridgePassed,
+                        alrInstalledPackageX11GuiUnixBridgePassed,
+                    )
                     surfaceStatusView.text =
-                        "Linux guest GPU Surface renderer callback complete\n$executionUpdate\n$glesTransportUpdate\n$vulkanExecutionUpdate\n$vulkanTransportUpdate"
+                        "Linux guest GPU Surface renderer callback complete\n$executionUpdate\n$guiTransportUpdate\n$glesTransportUpdate\n$vulkanExecutionUpdate\n$vulkanTransportUpdate"
                     view.append(
                         "\n\n--- Linux guest Wayland/X11 GUI GPU surface renderer ---\n" +
-                            "$executionUpdate\n$glesTransportUpdate\n$surfaceReport" +
+                            "$executionUpdate\n$guiTransportUpdate\n$glesTransportUpdate\n$surfaceReport" +
                             "\n\n--- Android host Vulkan Surface clear renderer ---\n" +
                             "$vulkanExecutionUpdate\n$vulkanTransportUpdate\n$vulkanSurfaceReport",
                     )
@@ -2504,6 +2566,91 @@ class MainActivity : Activity() {
         )
     }
 
+    private fun runGuestGuiBridgeUnix(
+        nativeCommandRunner: NativeCommandRunner,
+        rootfsDir: File,
+        protocol: String,
+        useAlr: Boolean = false,
+        useInstalledPackage: Boolean = false,
+    ): GuestGpuIpcBridgeResult {
+        val socketName = "alr-gui-${protocol.lowercase()}-${System.nanoTime()}"
+        val server = LocalServerSocket(socketName)
+        val rawLines = mutableListOf("ALR_GUI_UNIX_BRIDGE_SOCKET protocol=$protocol name=@$socketName")
+        val ackLines = mutableListOf<String>()
+        val errors = mutableListOf<String>()
+        val acceptThread = thread(name = "alr-gui-unix-ipc-bridge-$protocol", start = true) {
+            try {
+                server.use { srv ->
+                    val accepted = srv.accept()
+                    accepted.use { socket ->
+                        socket.setSoTimeout(3000)
+                        val reader = socket.getInputStream().bufferedReader()
+                        var expectedFrames = 0
+                        while (true) {
+                            val line = try {
+                                reader.readLine()
+                            } catch (timeout: SocketTimeoutException) {
+                                if (expectedFrames > 0 && rawLines.count { it.startsWith("ALR_GUI_FRAME ") } >= expectedFrames) {
+                                    null
+                                } else {
+                                    throw timeout
+                                }
+                            } ?: break
+                            rawLines += line
+                            if (line.startsWith("ALR_GUI_IPC_HELLO ")) {
+                                expectedFrames = line.substringAfter("frames=", "0")
+                                    .substringBefore(" ")
+                                    .toIntOrNull()
+                                    ?: 0
+                            }
+                            if (expectedFrames > 0 && rawLines.count { it.startsWith("ALR_GUI_FRAME ") } >= expectedFrames) {
+                                break
+                            }
+                        }
+                        val receivedFrames = rawLines.count { it.startsWith("ALR_GUI_FRAME ") }
+                        val lossless = expectedFrames > 0 && receivedFrames == expectedFrames
+                        val ack = "ALR_GUI_IPC_ACK protocol=$protocol received=$receivedFrames expected=$expectedFrames lossless=$lossless transport=unix-abstract"
+                        ackLines += ack
+                        socket.getOutputStream().write((ack + "\n").toByteArray())
+                        socket.getOutputStream().flush()
+                    }
+                }
+            } catch (error: SocketTimeoutException) {
+                errors += "timeout waiting for guest gui unix ipc client $protocol"
+            } catch (error: Exception) {
+                errors += error.javaClass.simpleName + ": " + (error.message ?: "unknown")
+            }
+        }
+        val clientResult = if (useInstalledPackage) {
+            nativeCommandRunner.runAlrRuntimeTrampolineInstalledPackageGuiClientIpcUnix(rootfsDir, protocol, socketName)
+        } else if (useAlr) {
+            nativeCommandRunner.runAlrRuntimeTrampolineGuestGuiClientIpcUnix(rootfsDir, protocol, socketName)
+        } else {
+            nativeCommandRunner.runProotRootfsGuestGuiClientIpcUnix(rootfsDir, protocol, socketName)
+        }
+        acceptThread.join(3500)
+        if (acceptThread.isAlive) {
+            errors += "gui unix accept thread still alive after join $protocol"
+            server.close()
+        }
+        val commands = parseGuestGuiCommands(rawLines.joinToString("\n"), protocol)
+        val expectedFrames = rawLines.firstOrNull { it.startsWith("ALR_GUI_IPC_HELLO ") }
+            ?.substringAfter("frames=", "0")
+            ?.substringBefore(" ")
+            ?.toIntOrNull()
+            ?: commands.size
+        return GuestGpuIpcBridgeResult(
+            host = "unix-abstract-gui",
+            port = 0,
+            expectedFrames = expectedFrames,
+            commands = commands,
+            rawLines = rawLines.toList(),
+            error = errors.firstOrNull(),
+            clientResult = clientResult,
+            ackLines = ackLines.toList(),
+        )
+    }
+
     private fun parseGuestGpuCommands(text: String): List<GuestGpuCommand> =
         text.lineSequence()
             .filter { it.startsWith("ALR_GPU_CLEAR ") }
@@ -3013,6 +3160,36 @@ class MainActivity : Activity() {
             "\ngles bridge transport unix batch vs tcp ratio pct=${elapsedRatioPct(unixBatchGlesResult, tcpGlesResult)}" +
             "\ngles bridge transport unix batch vs unix ack ratio pct=${elapsedRatioPct(unixBatchGlesResult, unixGlesResult)}" +
             "\ngles bridge transport unix batch faster than unix ack=${isFaster(unixBatchGlesResult, unixGlesResult)}"
+
+    private fun guiBridgeTransportUpdate(
+        waylandTcpResult: GuestGpuIpcBridgeResult,
+        waylandUnixResult: GuestGpuIpcBridgeResult,
+        x11TcpResult: GuestGpuIpcBridgeResult,
+        x11UnixResult: GuestGpuIpcBridgeResult,
+        waylandUnixPassed: Boolean,
+        x11UnixPassed: Boolean,
+    ): String =
+        "GUI BRIDGE UNIX TRANSPORT EXECUTION: ${if (waylandUnixPassed && x11UnixPassed) "PASS" else "FAIL"}" +
+            "\nWAYLAND GUI UNIX TRANSPORT EXECUTION: ${if (waylandUnixPassed) "PASS" else "FAIL"}" +
+            "\nX11 GUI UNIX TRANSPORT EXECUTION: ${if (x11UnixPassed) "PASS" else "FAIL"}" +
+            "\ngui bridge transport wayland tcp loader elapsed ms=${waylandTcpResult.clientResult.elapsedMs}" +
+            "\ngui bridge transport wayland unix loader elapsed ms=${waylandUnixResult.clientResult.elapsedMs}" +
+            "\ngui bridge transport wayland unix vs tcp ratio pct=${elapsedRatioPct(waylandUnixResult.clientResult, waylandTcpResult.clientResult)}" +
+            "\ngui bridge transport wayland unix faster than tcp=${isFaster(waylandUnixResult.clientResult, waylandTcpResult.clientResult)}" +
+            "\ngui bridge wayland unix frames=${waylandUnixResult.commands.size}/${waylandUnixResult.expectedFrames}" +
+            "\ngui bridge wayland unix ack frames=${waylandUnixResult.ackLines.size}" +
+            "\ngui bridge wayland unix error=${waylandUnixResult.error ?: "none"}" +
+            "\ngui bridge wayland unix handoff=${waylandUnixResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\ngui bridge wayland unix stdout=${waylandUnixResult.clientResult.stdout.alrHandoffStdoutText()}" +
+            "\ngui bridge transport x11 tcp loader elapsed ms=${x11TcpResult.clientResult.elapsedMs}" +
+            "\ngui bridge transport x11 unix loader elapsed ms=${x11UnixResult.clientResult.elapsedMs}" +
+            "\ngui bridge transport x11 unix vs tcp ratio pct=${elapsedRatioPct(x11UnixResult.clientResult, x11TcpResult.clientResult)}" +
+            "\ngui bridge transport x11 unix faster than tcp=${isFaster(x11UnixResult.clientResult, x11TcpResult.clientResult)}" +
+            "\ngui bridge x11 unix frames=${x11UnixResult.commands.size}/${x11UnixResult.expectedFrames}" +
+            "\ngui bridge x11 unix ack frames=${x11UnixResult.ackLines.size}" +
+            "\ngui bridge x11 unix error=${x11UnixResult.error ?: "none"}" +
+            "\ngui bridge x11 unix handoff=${x11UnixResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\ngui bridge x11 unix stdout=${x11UnixResult.clientResult.stdout.alrHandoffStdoutText()}"
 
     private fun String.lineStartingWith(prefix: String): String =
         lineSequence().firstOrNull { it.startsWith(prefix) } ?: "missing"

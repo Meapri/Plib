@@ -51,6 +51,7 @@ def test_rootfs_contains_guest_gpu_ipc_client_and_gles_shim():
         gui_payload = archive.extractfile("./usr/share/androlinux/gui-gpu-bridge.txt").read().decode()
         assert "Wayland/X11" in gui_payload
         assert "ALR_GUI_FRAME" in gui_payload
+        assert "unix-abstract-gui" in gui_payload
 
 
 def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
@@ -59,6 +60,8 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "runAlrRuntimeTrampolineGuestGpuClientIpc" in runner
     assert "runAlrRuntimeTrampolineInstalledPackageGpuSmoke" in runner
     assert "runAlrRuntimeTrampolineGuestGuiClientIpc" in runner
+    assert "runAlrRuntimeTrampolineGuestGuiClientIpcUnix" in runner
+    assert "runAlrRuntimeTrampolineInstalledPackageGuiClientIpcUnix" in runner
     assert "runAlrRuntimeTrampolineGuestGlesShimSmoke" in runner
     assert "pathRewrite = true" in runner
     assert "pathRewriteLimit = 1" in runner
@@ -86,7 +89,9 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "GUEST X11 GUI GPU BRIDGE EXECUTION" in text
     assert "GUEST GUI GPU SURFACE EXECUTION" in text
     assert "runGuestGuiBridge" in text
+    assert "runGuestGuiBridgeUnix" in text
     assert "ALR_GUI_IPC_ACK" in text
+    assert "ALR_GUI_UNIX_BRIDGE_SOCKET" in text
     assert "guest wayland gui ipc seq gaps" in text
     assert "guest x11 gui ipc seq gaps" in text
     assert "ALR GUEST GPU IPC BRIDGE EXECUTION" in text
@@ -111,6 +116,8 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "gles-unix-batch:${if (alrInstalledPackageGlesUnixBatchIpcBridgePassed)" in text
     assert "wayland:${if (alrInstalledPackageWaylandGuiBridgePassed)" in text
     assert "x11:${if (alrInstalledPackageX11GuiBridgePassed)" in text
+    assert "wayland-unix:${if (alrInstalledPackageWaylandGuiUnixBridgePassed)" in text
+    assert "x11-unix:${if (alrInstalledPackageX11GuiUnixBridgePassed)" in text
     assert "vulkan-discovery:${if (alrInstalledPackageVulkanDiscoveryPassed)" in text
     assert "vulkan-icd:${if (alrInstalledPackageVulkanIcdPassed)" in text
     assert "vulkan-loader:${if (alrInstalledPackageVulkanLoaderInfoPassed)" in text
@@ -135,12 +142,19 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "ALR GUEST X11 GUI GPU BRIDGE EXECUTION" in text
     assert "ALR INSTALLED PACKAGE WAYLAND GUI GPU BRIDGE EXECUTION" in text
     assert "ALR INSTALLED PACKAGE X11 GUI GPU BRIDGE EXECUTION" in text
+    assert "ALR INSTALLED PACKAGE WAYLAND GUI GPU UNIX BRIDGE EXECUTION" in text
+    assert "ALR INSTALLED PACKAGE X11 GUI GPU UNIX BRIDGE EXECUTION" in text
+    assert "GUI BRIDGE UNIX TRANSPORT EXECUTION:" in text
     assert "HOST VULKAN DISCOVERY EXECUTION" in text
     assert "ALR INSTALLED PACKAGE VULKAN DISCOVERY EXECUTION" in text
     assert "runAlrRuntimeTrampolineInstalledPackageGuiClientIpc" in runner
     assert "runAlrRuntimeTrampolineInstalledPackageVulkanDiscovery" in runner
     assert "alr installed package wayland gui ipc received frames" in text
     assert "alr installed package x11 gui ipc received frames" in text
+    assert "alr installed package wayland gui unix ipc ack raw" in text
+    assert "alr installed package x11 gui unix ipc ack raw" in text
+    assert "gui bridge transport wayland unix vs tcp ratio pct=" in text
+    assert "gui bridge transport x11 unix vs tcp ratio pct=" in text
     assert "alr installed package vulkan discovery ack" in text
     assert "alr installed package vulkan discovery device record" in text
     assert "alr installed package vulkan discovery feature record" in text
@@ -483,3 +497,16 @@ def test_native_surface_renderer_accepts_multi_frame_stream_and_reports_bridge()
     assert "guest egl swap via android surface=" in text
     assert "guest gles hardware render=" in text
     assert "eglSwapBuffers" in text
+
+
+def test_guest_gui_client_sources_support_unix_socket_transport():
+    source = (ROOT / "rootfs/guest-src/gui/alr_gui_gpu_client.c").read_text()
+    build_script = (ROOT / "scripts/build-guest-gui-client.sh").read_text()
+
+    assert "ALR_GUI_BRIDGE_SOCKET" in source
+    assert "AF_UNIX" in source
+    assert "ALR_GUI_IPC_HELLO protocol=%s frames=%d transport=%s" in source
+    assert "ALR_GUI_FRAME %s seq=%d" in source
+    assert "ALR_GUI_IPC_CLIENT ok sent=%d transport=%s ack=%s" in source
+    assert "alr-wayland-gpu-client" in build_script
+    assert "alr-x11-gpu-client" in build_script

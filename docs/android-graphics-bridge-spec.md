@@ -711,6 +711,33 @@ right direction for Plib's graphics path: keep Android-native rendering on the
 host side and aggressively reduce guest/host synchronization points before
 adding larger Linux GUI stacks.
 
+Build `0.4.88-gui-unix-bridge` applies the Unix control path to GUI protocol
+smokes as well. The old opaque Wayland/X11 client binaries were replaced with
+`rootfs/guest-src/gui/alr_gui_gpu_client.c`, a source-built static client that
+can use either TCP or `ALR_GUI_BRIDGE_SOCKET=@...`.
+
+```text
+GUI BRIDGE UNIX TRANSPORT EXECUTION: PASS
+WAYLAND GUI UNIX TRANSPORT EXECUTION: PASS
+X11 GUI UNIX TRANSPORT EXECUTION: PASS
+gui bridge transport wayland tcp loader elapsed ms=102
+gui bridge transport wayland unix loader elapsed ms=101
+gui bridge transport wayland unix vs tcp ratio pct=99
+gui bridge transport x11 tcp loader elapsed ms=103
+gui bridge transport x11 unix loader elapsed ms=102
+gui bridge transport x11 unix vs tcp ratio pct=99
+gui bridge wayland unix frames=4/4
+gui bridge x11 unix frames=4/4
+surface wayland frames rendered=16
+surface x11 frames rendered=16
+surface vulkan present=ok
+surface vulkan hardware render=true
+```
+
+This keeps the GUI path aligned with the GLES/Vulkan direction: TCP remains only
+as a fallback and measurement baseline, while Android-native Surface rendering
+is driven through app-private Unix-domain control sockets.
+
 ## Open Questions
 
 - Which bridge should move to shared memory first after the Unix socket control path: GLES frames, Vulkan command batches, or GUI protocol frames?

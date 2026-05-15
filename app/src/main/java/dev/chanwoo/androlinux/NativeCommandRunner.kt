@@ -208,6 +208,21 @@ class NativeCommandRunner(
             ),
         )
 
+    fun runAlrRuntimeTrampolineGuestGuiClientIpcUnix(rootfsDir: File, protocol: String, socketName: String): NativeCommandResult =
+        runAlrRuntimeTrampoline(
+            rootfsDir,
+            if (protocol == "X11") "/usr/bin/alr-x11-gpu-client" else "/usr/bin/alr-wayland-gpu-client",
+            executeEntry = true,
+            timeoutMs = 3000,
+            extraGuestEnvironment = mapOf(
+                "ALR_GUI_BRIDGE_HOST" to "127.0.0.1",
+                "ALR_GUI_BRIDGE_PORT" to "0",
+                "ALR_GUI_BRIDGE_SOCKET" to "@$socketName",
+                "ALR_GUI_BRIDGE_PROTOCOL" to protocol,
+                "ALR_GPU_BRIDGE_TRANSPORT" to "unix-abstract-gui",
+            ),
+        )
+
     fun runAlrRuntimeTrampolineInstalledPackageGuiClientIpc(rootfsDir: File, protocol: String, port: Int): NativeCommandResult =
         runAlrRuntimeTrampoline(
             rootfsDir,
@@ -219,6 +234,21 @@ class NativeCommandRunner(
                 "ALR_GUI_BRIDGE_PORT" to port.toString(),
                 "ALR_GUI_BRIDGE_PROTOCOL" to protocol,
                 "ALR_GPU_BRIDGE_TRANSPORT" to "tcp-loopback-gui",
+            ),
+        )
+
+    fun runAlrRuntimeTrampolineInstalledPackageGuiClientIpcUnix(rootfsDir: File, protocol: String, socketName: String): NativeCommandResult =
+        runAlrRuntimeTrampoline(
+            rootfsDir,
+            if (protocol == "X11") "/usr/local/bin/alr-package-x11-gpu-client" else "/usr/local/bin/alr-package-wayland-gpu-client",
+            executeEntry = true,
+            timeoutMs = 3000,
+            extraGuestEnvironment = mapOf(
+                "ALR_GUI_BRIDGE_HOST" to "127.0.0.1",
+                "ALR_GUI_BRIDGE_PORT" to "0",
+                "ALR_GUI_BRIDGE_SOCKET" to "@$socketName",
+                "ALR_GUI_BRIDGE_PROTOCOL" to protocol,
+                "ALR_GPU_BRIDGE_TRANSPORT" to "unix-abstract-gui",
             ),
         )
 
@@ -892,6 +922,21 @@ class NativeCommandRunner(
                 "ALR_GUI_BRIDGE_PORT" to port.toString(),
                 "ALR_GUI_BRIDGE_PROTOCOL" to protocol,
                 "ALR_GPU_BRIDGE_TRANSPORT" to "tcp-loopback-gui",
+            ),
+        )
+
+    fun runProotRootfsGuestGuiClientIpcUnix(rootfsDir: File, protocol: String, socketName: String): NativeCommandResult =
+        runProotRootfsCommand(
+            rootfsDir,
+            if (protocol == "X11") "/usr/bin/alr-x11-gpu-client" else "/usr/bin/alr-wayland-gpu-client",
+            rootId = true,
+            rawRootfs = true,
+            extraEnvironment = mapOf(
+                "ALR_GUI_BRIDGE_HOST" to "127.0.0.1",
+                "ALR_GUI_BRIDGE_PORT" to "0",
+                "ALR_GUI_BRIDGE_SOCKET" to "@$socketName",
+                "ALR_GUI_BRIDGE_PROTOCOL" to protocol,
+                "ALR_GPU_BRIDGE_TRANSPORT" to "unix-abstract-gui",
             ),
         )
 

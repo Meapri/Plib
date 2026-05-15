@@ -1376,9 +1376,45 @@ ACK paths as baselines, while proving a single-ACK 60-frame GLES batch can still
 feed the Android-native Surface renderer and coexist with the Vulkan Unix loader
 path.
 
+Latest V88 Wayland/X11 GUI Unix-domain bridge evidence:
+
+```text
+build: 0.4.88-gui-unix-bridge
+versionCode=88
+versionName=0.4.88-gui-unix-bridge
+rootfs_version=bookworm-slim-2026-05-gui-gpu-v88
+rootfs sha256=89f15a81dc62880cca64483e3dbb691f8de5240940e263dee305d4a32a0e8e90
+rootfs size bytes=34263040
+rootfs /usr/bin/alr-wayland-gpu-client bytes=32800
+rootfs /usr/bin/alr-x11-gpu-client bytes=32800
+GUI BRIDGE UNIX TRANSPORT EXECUTION: PASS
+WAYLAND GUI UNIX TRANSPORT EXECUTION: PASS
+X11 GUI UNIX TRANSPORT EXECUTION: PASS
+gui bridge transport wayland tcp loader elapsed ms=102
+gui bridge transport wayland unix loader elapsed ms=101
+gui bridge transport wayland unix vs tcp ratio pct=99
+gui bridge transport x11 tcp loader elapsed ms=103
+gui bridge transport x11 unix loader elapsed ms=102
+gui bridge transport x11 unix vs tcp ratio pct=99
+gui bridge wayland unix frames=4/4
+gui bridge x11 unix frames=4/4
+GLES BRIDGE UNIX BATCH TRANSPORT EXECUTION: PASS
+GUEST VULKAN UNIX SOCKET LOADER INFO SURFACE CLEAR EXECUTION: PASS
+surface wayland frames rendered=16
+surface x11 frames rendered=16
+surface vulkan present=ok
+surface vulkan hardware render=true
+```
+
+V88 removes another opaque prebuilt from the graphics path by replacing the
+Wayland/X11-shaped clients with source-built static clients, then proves those
+clients can use Android `LocalServerSocket` Unix transport while still feeding
+the Surface renderer. This makes the next GUI step less about transport and more
+about moving from smoke frames toward a minimal real Wayland socket/proxy shape.
+
 Next implementation batch:
 
-1. Move the Wayland/X11 GUI IPC smoke bridges from loopback TCP to the same Unix-domain control path, keeping TCP only as fallback.
+1. Add a minimal real Wayland socket/proxy shape: advertise `WAYLAND_DISPLAY`, accept a tiny client handshake, and translate a constrained commit into the existing Surface frame command.
 2. Add a shared-memory or ashmem/AHardwareBuffer-backed payload path so batch control frames do not have to carry large image or vertex payloads inline.
 3. Replace the loader-info smoke with the real Khronos Vulkan loader or a stricter ABI-compatible loader subset.
 4. Add a small real toolkit fixture target, likely a tiny GTK/Qt-independent Wayland protocol smoke before pulling in a larger GUI stack.

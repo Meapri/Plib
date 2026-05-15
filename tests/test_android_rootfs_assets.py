@@ -9,7 +9,7 @@ PAYLOAD = ROOT / "app" / "src" / "main" / "assets" / "rootfs" / "payloads" / "ti
 def test_android_assets_include_rootfs_manifest_and_payload():
     assert MANIFEST.is_file()
     assert PAYLOAD.is_file()
-    assert PAYLOAD.stat().st_size == 36136960
+    assert PAYLOAD.stat().st_size == 34263040
 
 
 def test_android_asset_manifest_matches_host_manifest():
@@ -324,6 +324,10 @@ def test_tiny_rootfs_contains_local_deb_install_smoke_package():
         assert gles_procaddr_demo.startswith(b"\x7fELF")
         assert wayland_gui.startswith(b"\x7fELF")
         assert x11_gui.startswith(b"\x7fELF")
+        assert b"ALR_GUI_BRIDGE_SOCKET" in wayland_gui
+        assert b"ALR_GUI_BRIDGE_SOCKET" in x11_gui
+        assert b"unix-abstract-gui" in wayland_gui
+        assert b"unix-abstract-gui" in x11_gui
         assert vulkan_discovery.startswith(b"\x7fELF")
         assert b"ALR_VK_DEVICE_RECORD" in vulkan_discovery
         assert b"ALR_VK_DISCOVERY_DEVICE_RECORD ok" in vulkan_discovery

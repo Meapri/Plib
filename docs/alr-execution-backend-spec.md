@@ -1243,6 +1243,40 @@ real optimization artifact: the old Unix per-frame ACK path is retained as an
 A/B baseline, while the batch path removes almost all ACK round trips for this
 bounded 60-frame workload.
 
+V88 moves the Wayland/X11-shaped GUI smoke clients onto the same Unix-domain
+control style. The GUI clients are now project-owned source-built static aarch64
+ELFs (`rootfs/guest-src/gui/alr_gui_gpu_client.c`) so the transport behavior is
+clean-room and reproducible. `ALR_GUI_BRIDGE_SOCKET=@...` selects Android
+`LocalServerSocket`; TCP remains as the baseline.
+
+```text
+build: 0.4.88-gui-unix-bridge
+versionCode=88
+versionName=0.4.88-gui-unix-bridge
+rootfs_version=bookworm-slim-2026-05-gui-gpu-v88
+rootfs sha256=89f15a81dc62880cca64483e3dbb691f8de5240940e263dee305d4a32a0e8e90
+rootfs size bytes=34263040
+rootfs /usr/bin/alr-wayland-gpu-client bytes=32800
+rootfs /usr/bin/alr-x11-gpu-client bytes=32800
+GUI BRIDGE UNIX TRANSPORT EXECUTION: PASS
+WAYLAND GUI UNIX TRANSPORT EXECUTION: PASS
+X11 GUI UNIX TRANSPORT EXECUTION: PASS
+gui bridge transport wayland tcp loader elapsed ms=102
+gui bridge transport wayland unix loader elapsed ms=101
+gui bridge transport wayland unix vs tcp ratio pct=99
+gui bridge transport x11 tcp loader elapsed ms=103
+gui bridge transport x11 unix loader elapsed ms=102
+gui bridge transport x11 unix vs tcp ratio pct=99
+gui bridge wayland unix frames=4/4
+gui bridge x11 unix frames=4/4
+GLES BRIDGE UNIX BATCH TRANSPORT EXECUTION: PASS
+GUEST VULKAN UNIX SOCKET LOADER INFO SURFACE CLEAR EXECUTION: PASS
+surface wayland frames rendered=16
+surface x11 frames rendered=16
+surface vulkan present=ok
+surface vulkan hardware render=true
+```
+
 Report:
 
 ```text
