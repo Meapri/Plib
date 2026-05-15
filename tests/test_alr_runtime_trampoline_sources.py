@@ -74,6 +74,17 @@ def test_trampoline_report_contract_exists():
     assert "PTRACE_O_TRACECLONE" in handoff
     assert "PTRACE_O_TRACEEXEC" in handoff
     assert "maybe_rewrite_execve_to_loader" in handoff
+    assert "__NR_execveat" in handoff
+    assert "__NR_linkat" in handoff
+    assert "__NR_utimensat" in handoff
+    assert "__NR_fchownat" in handoff
+    assert "__NR_fchmodat" in handoff
+    assert "__NR_setxattr" in handoff
+    assert "copy_file_contents_and_mode" in handoff
+    assert "syscall_sets_guest_file_metadata" in handoff
+    assert "alr handoff execve attempt count=" in handoff
+    assert "alr handoff last exec requested path=" in handoff
+    assert "alr handoff last status path syscall=" in handoff
     assert "alr handoff execve loader rewrite count=" in handoff
     assert "alr handoff traced process count=" in handoff
     assert "alr handoff path rewrite count=" in handoff

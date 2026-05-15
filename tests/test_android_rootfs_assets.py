@@ -9,7 +9,7 @@ PAYLOAD = ROOT / "app" / "src" / "main" / "assets" / "rootfs" / "payloads" / "ti
 def test_android_assets_include_rootfs_manifest_and_payload():
     assert MANIFEST.is_file()
     assert PAYLOAD.is_file()
-    assert PAYLOAD.stat().st_size == 34764800
+    assert PAYLOAD.stat().st_size == 35246080
 
 
 def test_android_asset_manifest_matches_host_manifest():
@@ -251,10 +251,15 @@ def test_tiny_rootfs_contains_local_deb_install_smoke_package():
         names = set(archive.getnames())
         assert "./var/cache/apt/archives/alr-smoke_1.0_arm64.deb" in names
         assert "./usr/bin/dpkg-deb" in names
+        assert "./bin/tar" in names
         assert "./var/log" in names
         deb = archive.extractfile("./var/cache/apt/archives/alr-smoke_1.0_arm64.deb").read()
         assert deb.startswith(b"!<arch>\n")
         assert archive.extractfile("./usr/bin/dpkg-deb").read(4) == b"\x7fELF"
+        assert archive.extractfile("./bin/tar").read(4) == b"\x7fELF"
+        dpkg_deb = archive.extractfile("./usr/bin/dpkg-deb").read()
+        assert b"--warning=no-timestamp" not in dpkg_deb
+        assert b"--warning=none" in dpkg_deb
 
 
 def test_tiny_rootfs_contains_dpkg_install_state_and_dev_placeholders():

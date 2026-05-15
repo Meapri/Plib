@@ -241,8 +241,12 @@ def test_main_activity_reports_local_deb_install_smoke_results():
     assert "rootfs installed alr smoke exists=" in text
     assert "alr dpkg -i local deb handoff=" in text
     assert "alr dpkg -i local deb identity virtualized=" in text
+    assert "alr dpkg -i local deb execve attempts=" in text
     assert "alr dpkg -i local deb execve loader rewrites=" in text
     assert "alr dpkg -i local deb traced processes=" in text
+    assert "alr dpkg -i local deb last exec requested=" in text
+    assert "alr dpkg -i local deb last status syscall=" in text
+    assert "alr dpkg -i local deb last status request=" in text
     assert "alr dpkg -i local deb path rewrite=" in text
     assert "proot dpkg -i local deb exit=" in text
     assert "proot installed package smoke exit=" in text

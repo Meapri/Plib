@@ -35,6 +35,10 @@
 #define AT_EMPTY_PATH 0x1000
 #endif
 
+#ifndef AT_FDCWD
+#define AT_FDCWD -100
+#endif
+
 namespace {
 
 std::string errno_message(const char* action) {
@@ -97,6 +101,7 @@ std::string build_report(const alr::runtime::StaticEntryHandoffResult& result) {
     out << "\nalr handoff fault syscall=" << result.fault_syscall;
     out << "\nalr handoff syscall emulated count=" << result.syscall_emulated_count;
     out << "\nalr handoff identity syscall virtualized count=" << result.identity_syscall_virtualized_count;
+    out << "\nalr handoff execve attempt count=" << result.execve_attempt_count;
     out << "\nalr handoff execve loader rewrite count=" << result.execve_loader_rewrite_count;
     out << "\nalr handoff traced process count=" << result.traced_process_count;
     out << "\nalr handoff path rewrite enabled=" << (result.path_rewrite_enabled ? "true" : "false");
@@ -104,6 +109,11 @@ std::string build_report(const alr::runtime::StaticEntryHandoffResult& result) {
     out << "\nalr handoff path rewrite idle syscall limit=" << result.path_rewrite_idle_syscall_limit;
     out << "\nalr handoff path rewrite syscall count=" << result.path_rewrite_syscall_count;
     out << "\nalr handoff path rewrite count=" << result.path_rewrite_count;
+    out << "\nalr handoff last exec requested path=" << one_line_text(result.last_exec_requested_path);
+    out << "\nalr handoff last status path syscall=" << result.last_status_path_syscall;
+    out << "\nalr handoff last status path request=" << one_line_text(result.last_status_path_request);
+    out << "\nalr handoff last status path guest=" << one_line_text(result.last_status_path_guest);
+    out << "\nalr handoff last status path host=" << one_line_text(result.last_status_path_host);
     out << "\nalr handoff last guest path=" << one_line_text(result.last_guest_path);
     out << "\nalr handoff last host path=" << one_line_text(result.last_host_path);
     out << "\nalr handoff stdout=" << one_line_text(result.stdout_text);
@@ -316,9 +326,60 @@ std::string join_rootfs_path(const std::string& rootfs_path, const std::string& 
     return rootfs_path + guest_path;
 }
 
+std::string join_relative_path(const std::string& base, const std::string& relative) {
+    if (base.empty() || relative.empty()) {
+        return "";
+    }
+    return base.back() == '/' ? base + relative : base + "/" + relative;
+}
+
 bool path_exists(const std::string& path) {
     struct stat st {};
     return !path.empty() && ::stat(path.c_str(), &st) == 0;
+}
+
+bool write_all_fd(int fd, const char* data, std::size_t size);
+
+bool copy_file_contents_and_mode(const std::string& from, const std::string& to) {
+    const int source = ::open(from.c_str(), O_RDONLY | O_CLOEXEC);
+    if (source < 0) {
+        return false;
+    }
+    struct stat source_stat {};
+    if (::fstat(source, &source_stat) != 0) {
+        ::close(source);
+        return false;
+    }
+    const int target = ::open(to.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, source_stat.st_mode & 0777);
+    if (target < 0) {
+        ::close(source);
+        return false;
+    }
+    std::array<char, 16384> buffer {};
+    bool ok = true;
+    for (;;) {
+        const ssize_t count = ::read(source, buffer.data(), buffer.size());
+        if (count < 0 && errno == EINTR) {
+            continue;
+        }
+        if (count < 0) {
+            ok = false;
+            break;
+        }
+        if (count == 0) {
+            break;
+        }
+        if (!write_all_fd(target, buffer.data(), static_cast<std::size_t>(count))) {
+            ok = false;
+            break;
+        }
+    }
+    if (::fchmod(target, source_stat.st_mode & 0777) != 0) {
+        ok = false;
+    }
+    ::close(target);
+    ::close(source);
+    return ok;
 }
 
 bool write_all_fd(int fd, const char* data, std::size_t size) {
@@ -403,8 +464,140 @@ bool guest_path_rewritable(const std::string& guest_path) {
         guest_path.rfind("/sys/", 0) != 0;
 }
 
+std::string read_process_link(pid_t pid, const std::string& link_path) {
+    std::array<char, 4096> buffer {};
+    const std::string proc_path = "/proc/" + std::to_string(pid) + "/" + link_path;
+    const ssize_t count = ::readlink(proc_path.c_str(), buffer.data(), buffer.size() - 1);
+    if (count <= 0) {
+        return "";
+    }
+    buffer[static_cast<std::size_t>(count)] = '\0';
+    return std::string(buffer.data(), static_cast<std::size_t>(count));
+}
+
+bool host_path_to_guest_path(
+    const std::string& rootfs_path,
+    const std::string& host_path,
+    std::string& guest_path) {
+    const std::string rootfs_prefix = rootfs_path + "/";
+    if (host_path == rootfs_path) {
+        guest_path = "/";
+        return true;
+    }
+    if (!rootfs_path.empty() && host_path.rfind(rootfs_prefix, 0) == 0) {
+        guest_path = "/" + host_path.substr(rootfs_prefix.size());
+        return guest_path_rewritable(guest_path);
+    }
+    return false;
+}
+
+int dirfd_arg_index_for_syscall_path_arg(std::uint64_t syscall_number, int path_arg_index) {
+    switch (syscall_number) {
+#if defined(__NR_openat)
+        case __NR_openat:
+#endif
+#if defined(__NR_faccessat)
+        case __NR_faccessat:
+#endif
+#if defined(__NR_newfstatat)
+        case __NR_newfstatat:
+#endif
+#if defined(__NR_readlinkat)
+        case __NR_readlinkat:
+#endif
+#if defined(__NR_mkdirat)
+        case __NR_mkdirat:
+#endif
+#if defined(__NR_unlinkat)
+        case __NR_unlinkat:
+#endif
+#if defined(__NR_statx)
+        case __NR_statx:
+#endif
+#if defined(__NR_openat2)
+        case __NR_openat2:
+#endif
+#if defined(__NR_faccessat2)
+        case __NR_faccessat2:
+#endif
+#if defined(__NR_utimensat)
+        case __NR_utimensat:
+#endif
+#if defined(__NR_utimensat_time64)
+        case __NR_utimensat_time64:
+#endif
+#if defined(__NR_fchmodat)
+        case __NR_fchmodat:
+#endif
+#if defined(__NR_fchmodat2)
+        case __NR_fchmodat2:
+#endif
+#if defined(__NR_mknodat)
+        case __NR_mknodat:
+#endif
+            return path_arg_index == 1 ? 0 : -1;
+#if defined(__NR_renameat)
+        case __NR_renameat:
+            return path_arg_index == 1 ? 0 : (path_arg_index == 3 ? 2 : -1);
+#endif
+#if defined(__NR_renameat2)
+        case __NR_renameat2:
+            return path_arg_index == 1 ? 0 : (path_arg_index == 3 ? 2 : -1);
+#endif
+#if defined(__NR_linkat)
+        case __NR_linkat:
+            return path_arg_index == 1 ? 0 : (path_arg_index == 3 ? 2 : -1);
+#endif
+#if defined(__NR_symlinkat)
+        case __NR_symlinkat:
+            return path_arg_index == 2 ? 1 : -1;
+#endif
+        default:
+            return -1;
+    }
+}
+
+bool resolve_guest_syscall_path(
+    pid_t child,
+    const std::string& rootfs_path,
+    const user_pt_regs& regs,
+    int path_arg_index,
+    const std::string& requested_path,
+    std::string& guest_path,
+    std::string& host_path) {
+    if (guest_path_rewritable(requested_path)) {
+        guest_path = requested_path;
+        host_path = join_rootfs_path(rootfs_path, guest_path);
+        return !host_path.empty();
+    }
+    if (requested_path.empty() || requested_path.front() == '/') {
+        return false;
+    }
+    const int dirfd_arg_index = dirfd_arg_index_for_syscall_path_arg(regs.regs[8], path_arg_index);
+    if (dirfd_arg_index < 0) {
+        return false;
+    }
+    const int dirfd = static_cast<int>(regs.regs[dirfd_arg_index]);
+    const std::string base_host_path = dirfd == AT_FDCWD ?
+        read_process_link(child, "cwd") :
+        read_process_link(child, "fd/" + std::to_string(dirfd));
+    std::string base_guest_path;
+    if (!host_path_to_guest_path(rootfs_path, base_host_path, base_guest_path)) {
+        return false;
+    }
+    host_path = join_relative_path(base_host_path, requested_path);
+    if (!host_path_to_guest_path(rootfs_path, host_path, guest_path)) {
+        return false;
+    }
+    return true;
+}
+
 std::uintptr_t align_up(std::uintptr_t value, std::uintptr_t alignment) {
     return (value + alignment - 1) & ~(alignment - 1);
+}
+
+std::uintptr_t align_down(std::uintptr_t value, std::uintptr_t alignment) {
+    return value & ~(alignment - 1);
 }
 
 std::string rootfs_library_path(const std::string& rootfs_path) {
@@ -415,11 +608,26 @@ std::string rootfs_library_path(const std::string& rootfs_path) {
         rootfs_path + "/usr/lib/androlinux";
 }
 
+std::string rootfs_host_path_env(const std::string& rootfs_path) {
+    return rootfs_path + "/usr/local/sbin:" +
+        rootfs_path + "/usr/local/bin:" +
+        rootfs_path + "/usr/sbin:" +
+        rootfs_path + "/usr/bin:" +
+        rootfs_path + "/sbin:" +
+        rootfs_path + "/bin";
+}
+
 bool resolve_guest_exec_path(
     const std::string& rootfs_path,
     const std::string& requested_path,
     std::string& guest_path,
     std::string& host_path) {
+    const std::string rootfs_prefix = rootfs_path + "/";
+    if (!rootfs_path.empty() && requested_path.rfind(rootfs_prefix, 0) == 0) {
+        guest_path = "/" + requested_path.substr(rootfs_prefix.size());
+        host_path = requested_path;
+        return path_exists(host_path);
+    }
     if (guest_path_rewritable(requested_path)) {
         guest_path = requested_path;
         host_path = join_rootfs_path(rootfs_path, guest_path);
@@ -448,26 +656,57 @@ bool resolve_guest_exec_path(
     return false;
 }
 
+std::vector<std::string> read_child_string_vector(
+    pid_t child,
+    std::uintptr_t vector_address,
+    std::size_t start_index,
+    std::size_t max_items) {
+    std::vector<std::string> values;
+    if (vector_address == 0) {
+        return values;
+    }
+    for (std::size_t index = start_index; index < max_items; ++index) {
+        std::uint64_t item_ptr = 0;
+        if (!read_child_u64(child, vector_address + index * sizeof(std::uint64_t), item_ptr) || item_ptr == 0) {
+            break;
+        }
+        std::string value = read_child_cstring(child, static_cast<std::uintptr_t>(item_ptr), 8192);
+        if (value.empty()) {
+            break;
+        }
+        values.push_back(value);
+    }
+    return values;
+}
+
 std::vector<std::string> read_child_argv_tail(
     pid_t child,
     std::uintptr_t argv_address,
     std::size_t max_args = 48) {
-    std::vector<std::string> args;
-    if (argv_address == 0) {
-        return args;
-    }
-    for (std::size_t index = 1; index < max_args; ++index) {
-        std::uint64_t arg_ptr = 0;
-        if (!read_child_u64(child, argv_address + index * sizeof(std::uint64_t), arg_ptr) || arg_ptr == 0) {
-            break;
+    return read_child_string_vector(child, argv_address, 1, max_args);
+}
+
+std::vector<std::string> read_child_env(pid_t child, std::uintptr_t envp_address, std::size_t max_env = 96) {
+    return read_child_string_vector(child, envp_address, 0, max_env);
+}
+
+std::vector<std::string> build_exec_loader_env(
+    pid_t child,
+    std::uintptr_t envp_address,
+    const std::string& rootfs_path) {
+    std::vector<std::string> env = read_child_env(child, envp_address);
+    const std::string path_env = "PATH=" + rootfs_host_path_env(rootfs_path);
+    bool replaced_path = false;
+    for (auto& value : env) {
+        if (value.rfind("PATH=", 0) == 0) {
+            value = path_env;
+            replaced_path = true;
         }
-        std::string arg = read_child_cstring(child, static_cast<std::uintptr_t>(arg_ptr), 8192);
-        if (arg.empty()) {
-            break;
-        }
-        args.push_back(arg);
     }
-    return args;
+    if (!replaced_path) {
+        env.push_back(path_env);
+    }
+    return env;
 }
 
 int path_arg_index_for_syscall(std::uint64_t syscall_number) {
@@ -524,6 +763,26 @@ int path_arg_index_for_syscall(std::uint64_t syscall_number) {
         case __NR_faccessat2:
             return 1;
 #endif
+#if defined(__NR_utimensat)
+        case __NR_utimensat:
+            return 1;
+#endif
+#if defined(__NR_utimensat_time64)
+        case __NR_utimensat_time64:
+            return 1;
+#endif
+#if defined(__NR_fchmodat)
+        case __NR_fchmodat:
+            return 1;
+#endif
+#if defined(__NR_fchmodat2)
+        case __NR_fchmodat2:
+            return 1;
+#endif
+#if defined(__NR_mknodat)
+        case __NR_mknodat:
+            return 1;
+#endif
         default:
             return -1;
     }
@@ -554,8 +813,16 @@ bool syscall_path_can_target_missing(const user_pt_regs& regs, int path_arg_inde
         case __NR_openat:
             return path_arg_index == 1 && (regs.regs[2] & O_CREAT) != 0;
 #endif
+#if defined(__NR_openat2)
+        case __NR_openat2:
+            return path_arg_index == 1;
+#endif
 #if defined(__NR_mkdirat)
         case __NR_mkdirat:
+            return path_arg_index == 1;
+#endif
+#if defined(__NR_mknodat)
+        case __NR_mknodat:
             return path_arg_index == 1;
 #endif
 #if defined(__NR_renameat)
@@ -631,6 +898,97 @@ bool syscall_sets_guest_root_identity(std::uint64_t syscall_number) {
     }
 }
 
+bool maybe_emulate_linkat_with_copy(
+    pid_t child,
+    const alr::runtime::StaticEntryHandoffOptions& options,
+    user_pt_regs& regs,
+    alr::runtime::StaticEntryHandoffResult& result) {
+#if defined(__NR_linkat)
+    if (!result.path_rewrite_enabled || regs.regs[8] != __NR_linkat) {
+        return false;
+    }
+    const std::uintptr_t old_path_address = static_cast<std::uintptr_t>(regs.regs[1]);
+    const std::uintptr_t new_path_address = static_cast<std::uintptr_t>(regs.regs[3]);
+    if (old_path_address == 0 || new_path_address == 0) {
+        return false;
+    }
+    const std::string old_request = read_child_cstring(child, old_path_address);
+    const std::string new_request = read_child_cstring(child, new_path_address);
+    std::string old_guest_path;
+    std::string old_host_path;
+    std::string new_guest_path;
+    std::string new_host_path;
+    if (!resolve_guest_syscall_path(child, options.rootfs_path, regs, 1, old_request, old_guest_path, old_host_path) ||
+        !resolve_guest_syscall_path(child, options.rootfs_path, regs, 3, new_request, new_guest_path, new_host_path) ||
+        !path_exists(old_host_path) ||
+        path_exists(new_host_path) ||
+        !parent_path_exists(new_host_path)) {
+        return false;
+    }
+    if (!copy_file_contents_and_mode(old_host_path, new_host_path)) {
+        return false;
+    }
+    result.last_guest_path = new_guest_path;
+    result.last_host_path = new_host_path;
+    if (old_request.find("status") != std::string::npos ||
+        new_request.find("status") != std::string::npos ||
+        old_guest_path.find("status") != std::string::npos ||
+        new_guest_path.find("status") != std::string::npos) {
+        result.last_status_path_syscall = regs.regs[8];
+        result.last_status_path_request = new_request;
+        result.last_status_path_guest = new_guest_path;
+        result.last_status_path_host = new_host_path;
+    }
+    regs.regs[8] = static_cast<std::uint64_t>(-1);
+    ++result.path_rewrite_count;
+    return true;
+#else
+    (void)child;
+    (void)options;
+    (void)regs;
+    (void)result;
+    return false;
+#endif
+}
+
+bool syscall_sets_guest_file_metadata(std::uint64_t syscall_number) {
+    switch (syscall_number) {
+#if defined(__NR_fchownat)
+        case __NR_fchownat:
+#endif
+#if defined(__NR_fchown)
+        case __NR_fchown:
+#endif
+#if defined(__NR_chown)
+        case __NR_chown:
+#endif
+#if defined(__NR_lchown)
+        case __NR_lchown:
+#endif
+#if defined(__NR_setxattr)
+        case __NR_setxattr:
+#endif
+#if defined(__NR_lsetxattr)
+        case __NR_lsetxattr:
+#endif
+#if defined(__NR_fsetxattr)
+        case __NR_fsetxattr:
+#endif
+#if defined(__NR_removexattr)
+        case __NR_removexattr:
+#endif
+#if defined(__NR_lremovexattr)
+        case __NR_lremovexattr:
+#endif
+#if defined(__NR_fremovexattr)
+        case __NR_fremovexattr:
+#endif
+            return true;
+        default:
+            return false;
+    }
+}
+
 bool virtualize_guest_identity_syscall_exit(
     pid_t child,
     std::uint64_t syscall_number,
@@ -669,10 +1027,32 @@ bool rewrite_syscall_path_arg(
         return false;
     }
     const std::string guest_path = read_child_cstring(child, guest_path_address);
-    if (!guest_path_rewritable(guest_path)) {
+    std::string resolved_guest_path;
+    std::string host_path;
+    if (guest_path.find("status") != std::string::npos) {
+        result.last_status_path_syscall = regs.regs[8];
+        result.last_status_path_request = guest_path;
+        result.last_status_path_guest.clear();
+        result.last_status_path_host.clear();
+    }
+    if (!resolve_guest_syscall_path(
+            child,
+            options.rootfs_path,
+            regs,
+            path_arg_index,
+            guest_path,
+            resolved_guest_path,
+            host_path)) {
         return false;
     }
-    const std::string host_path = join_rootfs_path(options.rootfs_path, guest_path);
+    if (guest_path.find("status") != std::string::npos ||
+        resolved_guest_path.find("status") != std::string::npos ||
+        host_path.find("status") != std::string::npos) {
+        result.last_status_path_syscall = regs.regs[8];
+        result.last_status_path_request = guest_path;
+        result.last_status_path_guest = resolved_guest_path;
+        result.last_status_path_host = host_path;
+    }
     const bool target_exists = path_exists(host_path);
     const bool missing_target_allowed =
         !target_exists &&
@@ -691,7 +1071,7 @@ bool rewrite_syscall_path_arg(
         return false;
     }
     regs.regs[path_arg_index] = scratch;
-    result.last_guest_path = guest_path;
+    result.last_guest_path = resolved_guest_path;
     result.last_host_path = host_path;
     ++result.path_rewrite_count;
     return true;
@@ -732,18 +1112,31 @@ bool maybe_rewrite_execve_to_loader(
     alr::runtime::StaticEntryHandoffResult& result) {
 #if defined(__NR_execve)
     if (!result.path_rewrite_enabled ||
-        regs.regs[8] != __NR_execve ||
         context.stack.mapped_base == 0 ||
         context.stack.mapped_size < 128 * 1024) {
         return false;
     }
-    const std::uintptr_t guest_path_address = static_cast<std::uintptr_t>(regs.regs[0]);
-    const std::uintptr_t argv_address = static_cast<std::uintptr_t>(regs.regs[1]);
-    const std::uint64_t envp_address = regs.regs[2];
+    const bool is_execve = regs.regs[8] == __NR_execve;
+#if defined(__NR_execveat)
+    const bool is_execveat = regs.regs[8] == __NR_execveat;
+#else
+    const bool is_execveat = false;
+#endif
+    if (!is_execve && !is_execveat) {
+        return false;
+    }
+    const std::uintptr_t guest_path_address = static_cast<std::uintptr_t>(regs.regs[is_execve ? 0 : 1]);
+    const std::uintptr_t argv_address = static_cast<std::uintptr_t>(regs.regs[is_execve ? 1 : 2]);
+    const std::uint64_t envp_address = regs.regs[is_execve ? 2 : 3];
     if (guest_path_address == 0 || argv_address == 0) {
         return false;
     }
     const std::string requested_path = read_child_cstring(child, guest_path_address);
+    if (requested_path.empty()) {
+        return false;
+    }
+    ++result.execve_attempt_count;
+    result.last_exec_requested_path = requested_path;
     std::string guest_path;
     std::string host_path;
     if (!resolve_guest_exec_path(options.rootfs_path, requested_path, guest_path, host_path)) {
@@ -768,7 +1161,8 @@ bool maybe_rewrite_execve_to_loader(
     argv.push_back(host_path);
     const auto original_tail = read_child_argv_tail(child, argv_address);
     for (const auto& arg : original_tail) {
-        if (guest_path == "/usr/bin/tar" && arg.rfind("--warning=", 0) == 0) {
+        if ((guest_path == "/usr/bin/tar" || guest_path == "/bin/tar") &&
+            arg.rfind("--warning=", 0) == 0) {
             continue;
         }
         if (guest_path_rewritable(arg)) {
@@ -780,16 +1174,24 @@ bool maybe_rewrite_execve_to_loader(
         }
         argv.push_back(arg);
     }
+    std::vector<std::string> env = build_exec_loader_env(
+        child,
+        static_cast<std::uintptr_t>(envp_address),
+        options.rootfs_path);
 
-    const std::uintptr_t scratch_start = context.stack.mapped_base + 96 * 1024;
-    const std::uintptr_t scratch_end = context.stack.mapped_base + static_cast<std::uintptr_t>(context.stack.mapped_size);
-    std::uintptr_t cursor = scratch_start + (result.execve_loader_rewrite_count % 2) * 64 * 1024;
-    if (cursor + 64 * 1024 >= scratch_end) {
-        cursor = scratch_start;
+    const std::uintptr_t current_sp = static_cast<std::uintptr_t>(regs.sp);
+    if (current_sp < 96 * 1024) {
+        return false;
     }
+    const std::uintptr_t scratch_end = align_down(current_sp - 4096, 16);
+    std::uintptr_t cursor = scratch_end - 64 * 1024;
     std::array<std::uint64_t, 64> child_argv {};
     if (argv.size() + 1 > child_argv.size()) {
         argv.resize(child_argv.size() - 1);
+    }
+    std::array<std::uint64_t, 128> child_env {};
+    if (env.size() + 1 > child_env.size()) {
+        env.resize(child_env.size() - 1);
     }
     for (std::size_t index = 0; index < argv.size(); ++index) {
         if (argv[index].size() + 1 > 8192 || cursor + argv[index].size() + 1 >= scratch_end) {
@@ -801,6 +1203,16 @@ bool maybe_rewrite_execve_to_loader(
         }
         cursor = align_up(cursor + argv[index].size() + 1, 8);
     }
+    for (std::size_t index = 0; index < env.size(); ++index) {
+        if (env[index].size() + 1 > 8192 || cursor + env[index].size() + 1 >= scratch_end) {
+            return false;
+        }
+        child_env[index] = cursor;
+        if (!write_child_bytes(child, cursor, env[index] + '\0')) {
+            return false;
+        }
+        cursor = align_up(cursor + env[index].size() + 1, 8);
+    }
     const std::uintptr_t argv_vector_address = cursor;
     const std::size_t argv_vector_size = (argv.size() + 1) * sizeof(std::uint64_t);
     if (argv_vector_address + argv_vector_size >= scratch_end) {
@@ -809,10 +1221,18 @@ bool maybe_rewrite_execve_to_loader(
     if (!write_child_data(child, argv_vector_address, child_argv.data(), argv_vector_size)) {
         return false;
     }
+    const std::uintptr_t env_vector_address = align_up(argv_vector_address + argv_vector_size, 8);
+    const std::size_t env_vector_size = (env.size() + 1) * sizeof(std::uint64_t);
+    if (env_vector_address + env_vector_size >= scratch_end) {
+        return false;
+    }
+    if (!write_child_data(child, env_vector_address, child_env.data(), env_vector_size)) {
+        return false;
+    }
 
 #if defined(__NR_execveat)
     if (loader_exec_fd >= 0) {
-        const std::uintptr_t empty_path_address = argv_vector_address + argv_vector_size;
+        const std::uintptr_t empty_path_address = env_vector_address + env_vector_size;
         if (empty_path_address + 1 >= scratch_end || !write_child_bytes(child, empty_path_address, std::string("\0", 1))) {
             return false;
         }
@@ -820,15 +1240,19 @@ bool maybe_rewrite_execve_to_loader(
         regs.regs[0] = static_cast<std::uint64_t>(loader_exec_fd);
         regs.regs[1] = empty_path_address;
         regs.regs[2] = argv_vector_address;
-        regs.regs[3] = envp_address;
+        regs.regs[3] = env_vector_address;
         regs.regs[4] = AT_EMPTY_PATH;
     } else {
+        regs.regs[8] = __NR_execve;
         regs.regs[0] = child_argv[0];
         regs.regs[1] = argv_vector_address;
+        regs.regs[2] = env_vector_address;
     }
 #else
+    regs.regs[8] = __NR_execve;
     regs.regs[0] = child_argv[0];
     regs.regs[1] = argv_vector_address;
+    regs.regs[2] = env_vector_address;
 #endif
     result.last_guest_path = guest_path;
     result.last_host_path = host_path;
@@ -1029,6 +1453,7 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
     struct TraceState {
         bool entering_syscall = true;
         bool stop_tracing_after_syscall_exit = false;
+        bool force_success_on_syscall_exit = false;
         std::uint32_t syscalls_since_last_rewrite = 0;
         std::uint64_t pending_syscall_number = 0;
     };
@@ -1162,6 +1587,36 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
             } else if (trace_syscalls && stop_signal == (SIGTRAP | 0x80)) {
                 auto& trace_state = trace_states[waited];
                 const bool was_entering_syscall = trace_state.entering_syscall;
+                user_pt_regs opportunistic_regs {};
+                if (get_child_registers(waited, opportunistic_regs)) {
+                    const std::uint32_t execve_rewrite_count_before = result.execve_loader_rewrite_count;
+                    ++result.path_rewrite_syscall_count;
+                    if (maybe_rewrite_execve_to_loader(
+                            waited,
+                            context,
+                            options,
+                            loader_exec_path,
+                            loader_exec_fd,
+                            opportunistic_regs,
+                            result)) {
+                        (void)set_child_registers(waited, opportunistic_regs);
+                        trace_state.pending_syscall_number = opportunistic_regs.regs[8];
+                        trace_state.entering_syscall = false;
+                        trace_state.syscalls_since_last_rewrite = 0;
+                        if (result.execve_loader_rewrite_count > execve_rewrite_count_before &&
+                            !continue_child_syscall(waited) &&
+                            result.error.empty()) {
+                            result.error = errno_message("ptrace opportunistic exec continue");
+                            kill_live_traced_processes();
+                            do {
+                                waited = ::waitpid(child, &status, 0);
+                            } while (waited < 0 && errno == EINTR);
+                            break;
+                        }
+                        waited = 0;
+                        continue;
+                    }
+                }
                 if (was_entering_syscall) {
                     user_pt_regs regs {};
                     const std::uint32_t rewrite_count_before = result.path_rewrite_count;
@@ -1170,7 +1625,14 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
                     ++result.path_rewrite_syscall_count;
                     if (get_child_registers(waited, regs)) {
                         trace_state.pending_syscall_number = regs.regs[8];
-                        if (maybe_rewrite_execve_to_loader(waited, context, options, loader_exec_path, loader_exec_fd, regs, result) ||
+                        if (syscall_sets_guest_file_metadata(regs.regs[8])) {
+                            regs.regs[8] = static_cast<std::uint64_t>(-1);
+                            trace_state.force_success_on_syscall_exit = true;
+                            (void)set_child_registers(waited, regs);
+                        } else if (maybe_emulate_linkat_with_copy(waited, options, regs, result)) {
+                            trace_state.force_success_on_syscall_exit = true;
+                            (void)set_child_registers(waited, regs);
+                        } else if (maybe_rewrite_execve_to_loader(waited, context, options, loader_exec_path, loader_exec_fd, regs, result) ||
                             maybe_rewrite_syscall_path(waited, context, options, regs, result)) {
                             (void)set_child_registers(waited, regs);
                         }
@@ -1189,6 +1651,13 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
                             trace_state.stop_tracing_after_syscall_exit = true;
                         }
                     }
+                } else if (trace_state.force_success_on_syscall_exit) {
+                    user_pt_regs regs {};
+                    if (get_child_registers(waited, regs)) {
+                        regs.regs[0] = 0;
+                        (void)set_child_registers(waited, regs);
+                    }
+                    trace_state.force_success_on_syscall_exit = false;
                 } else if (options.virtual_root_identity && trace_state.pending_syscall_number != 0) {
                     (void)virtualize_guest_identity_syscall_exit(waited, trace_state.pending_syscall_number, result);
                 }
@@ -1316,6 +1785,7 @@ std::string build_static_entry_handoff_skip_report() {
         "alr handoff fault syscall=0\n"
         "alr handoff syscall emulated count=0\n"
         "alr handoff identity syscall virtualized count=0\n"
+        "alr handoff execve attempt count=0\n"
         "alr handoff execve loader rewrite count=0\n"
         "alr handoff traced process count=0\n"
         "alr handoff path rewrite enabled=false\n"
@@ -1323,6 +1793,11 @@ std::string build_static_entry_handoff_skip_report() {
         "alr handoff path rewrite idle syscall limit=0\n"
         "alr handoff path rewrite syscall count=0\n"
         "alr handoff path rewrite count=0\n"
+        "alr handoff last exec requested path=\n"
+        "alr handoff last status path syscall=0\n"
+        "alr handoff last status path request=\n"
+        "alr handoff last status path guest=\n"
+        "alr handoff last status path host=\n"
         "alr handoff last guest path=\n"
         "alr handoff last host path=\n"
         "alr handoff stdout=\n"

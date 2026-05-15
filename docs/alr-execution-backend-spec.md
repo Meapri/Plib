@@ -157,7 +157,7 @@ Required behavior:
 - `dpkg-query --version` passes.
 - `apt --version`, `apt-get --version`, `apt-cache --version`, and `apt-config --version` pass.
 - Minimal device binds such as `/dev/null`, `/dev/zero`, and `/dev/urandom` work.
-- Local `.deb` install either passes or fails with a classified unsupported syscall/path/fakeroot reason.
+- Local `.deb` install passes for the smoke package, including helper `execve`, `dpkg-deb`, `tar`, status-file backup, fakeroot ownership, timestamp, and metadata operations.
 
 Acceptance:
 
@@ -165,8 +165,16 @@ Acceptance:
 ALR DPKG VERSION: PASS
 ALR DPKG ARCH: PASS
 ALR APT VERSION: PASS
-ALR DPKG LOCAL INSTALL: PASS/KNOWN_FAIL:<reason>
+ALR DPKG LOCAL INSTALL: PASS
 ```
+
+Implementation rule:
+
+- Treat package-manager mutation as a cold compatibility path. It may use ptrace-backed mediation while ALR is still discovering required Linux filesystem semantics.
+- Do not let this cold path define the long-term GUI/runtime hot path. Interactive Linux app execution must move toward preload/fd-broker/native bridge coverage where ordinary syscalls run without global ptrace stop/resume.
+- Keep PRoot and Termux-derived behavior as compatibility baselines, not performance targets.
+- Use proroot-class evidence to decide which Linux ABI seams matter, then implement only the necessary open ALR behavior.
+- Use Termux as Android packaging and app-UID prior art: writable app-private prefixes, Android-friendly helper placement, no assumption that `chown`, hardlinks, mounts, or FHS paths behave like a privileged Linux system.
 
 ### ALR Exec v5: Direct Syscall Coverage
 

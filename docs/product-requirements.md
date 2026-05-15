@@ -165,6 +165,13 @@ Initial success is not full Linux parity. Initial success is a measured path fro
 hello -> shell -> child process -> dynamic glibc binary -> dpkg preflight -> package install subset
 ```
 
+The runtime must separate cold compatibility from hot execution:
+
+- Package installation, rootfs mutation, and distro maintenance may use a heavier compatibility layer while ALR is still learning required Linux semantics.
+- Interactive application launch, event loops, IPC, and GUI/GPU work must not depend on trapping every syscall through a PRoot-style loop.
+- Termux is a packaging and Android-prefix reference, not the final product UX.
+- proroot-class behavior is a performance and compatibility target, but ALR remains an open implementation with documented clean-room boundaries.
+
 ## Graphics Strategy
 
 ### Stage 1: Host Surface Renderer

@@ -99,6 +99,19 @@ Top candidates for Track B follow-up:
 
 For Track B, do not replace the current PRoot backend yet. Add a research branch/prototype that layers a minimal preload path mapper under the existing launcher and measures controlled commands (`/bin/sh`, package-manager-free utilities, app-owned rootfs files). In parallel, spike `proot-rs` cross-compilation to Android to compare stability and maintainability against Termux PRoot. Treat bubblewrap/nsjail/gVisor as references unless target devices explicitly permit user namespaces/caps. Treat seccomp user notification as a device-capability probe and selective-interception experiment rather than the primary runtime.
 
+## Practical split after ALR package-install evidence
+
+The current Android-device evidence shows that `.deb` installation hits cold-path compatibility problems that should not define the steady-state app runtime: helper `execve` chains, `dpkg-deb`/`tar` execution, hardlink-based status backups, fakeroot ownership, timestamp updates, and metadata operations. These operations are important for package management but are not representative of GUI frame submission, input, IPC, or normal dynamic-library calls.
+
+Use the projects this way:
+
+- **Termux:** reference for Android-friendly package layout, app-private prefixes, update/install UX, shell integration, and practical treatment of Android filesystem restrictions.
+- **PRoot / Termux PRoot:** compatibility fallback and regression oracle for rootfs launch behavior.
+- **proroot-class runtimes:** black-box evidence for which compatibility shortcuts are worthwhile and what low-overhead behavior is realistic.
+- **ALR:** open implementation that keeps package-manager compatibility in a cold mediation layer while moving supported application hot paths toward preload, fd broker, and Android-native graphics bridges.
+
+Near-term rule: accepting ptrace in package installation is fine; accepting ptrace on every hot GUI/runtime syscall is not.
+
 ## Validation checklist for future work
 
 - Probe target devices for ptrace, seccomp, seccomp user notification, user namespace, mount namespace, and `unshare` behavior from an APK UID.

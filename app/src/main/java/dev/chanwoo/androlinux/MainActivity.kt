@@ -608,8 +608,14 @@ class MainActivity : Activity() {
             "\nalr apt-config --version stdout=${alrAptConfigVersionResult.stdout.alrHandoffStdoutText()}" +
             "\nalr dpkg -i local deb handoff=${alrDpkgInstallLocalResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
             "\nalr dpkg -i local deb identity virtualized=${alrDpkgInstallLocalResult.stdout.lineStartingWith("alr handoff identity syscall virtualized count=")}" +
+            "\nalr dpkg -i local deb execve attempts=${alrDpkgInstallLocalResult.stdout.lineStartingWith("alr handoff execve attempt count=")}" +
             "\nalr dpkg -i local deb execve loader rewrites=${alrDpkgInstallLocalResult.stdout.lineStartingWith("alr handoff execve loader rewrite count=")}" +
             "\nalr dpkg -i local deb traced processes=${alrDpkgInstallLocalResult.stdout.lineStartingWith("alr handoff traced process count=")}" +
+            "\nalr dpkg -i local deb last exec requested=${alrDpkgInstallLocalResult.stdout.lineStartingWith("alr handoff last exec requested path=")}" +
+            "\nalr dpkg -i local deb last status syscall=${alrDpkgInstallLocalResult.stdout.lineStartingWith("alr handoff last status path syscall=")}" +
+            "\nalr dpkg -i local deb last status request=${alrDpkgInstallLocalResult.stdout.lineStartingWith("alr handoff last status path request=")}" +
+            "\nalr dpkg -i local deb last status guest=${alrDpkgInstallLocalResult.stdout.lineStartingWith("alr handoff last status path guest=")}" +
+            "\nalr dpkg -i local deb last status host=${alrDpkgInstallLocalResult.stdout.lineStartingWith("alr handoff last status path host=")}" +
             "\nalr dpkg -i local deb path rewrite=${alrDpkgInstallLocalResult.stdout.lineStartingWith("alr handoff path rewrite count=")}" +
             "\nalr dpkg -i local deb stdout=${alrDpkgInstallLocalResult.stdout.alrHandoffStdoutText()}" +
             "\nalr dpkg -i local deb stderr=${alrDpkgInstallLocalResult.stdout.alrHandoffStderrText()}" +
