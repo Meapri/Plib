@@ -4,7 +4,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stddef.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <unistd.h>
 
 #define VK_SUCCESS 0
@@ -35,6 +37,39 @@ static int connect_loopback(const char* host, int port) {
         return -1;
     }
     if (connect(fd, (struct sockaddr*)&addr, sizeof(addr)) != 0) {
+        close(fd);
+        return -1;
+    }
+    return fd;
+}
+
+static int connect_unix_socket(const char* socket_name) {
+    if (socket_name == 0 || socket_name[0] == '\0') return -1;
+    int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (fd < 0) return -1;
+
+    struct sockaddr_un addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    size_t name_len = strlen(socket_name);
+    socklen_t addr_len = 0;
+    if (socket_name[0] == '@') {
+        if (name_len - 1 >= sizeof(addr.sun_path)) {
+            close(fd);
+            return -1;
+        }
+        addr.sun_path[0] = '\0';
+        memcpy(addr.sun_path + 1, socket_name + 1, name_len - 1);
+        addr_len = (socklen_t)(offsetof(struct sockaddr_un, sun_path) + name_len);
+    } else {
+        if (name_len >= sizeof(addr.sun_path)) {
+            close(fd);
+            return -1;
+        }
+        memcpy(addr.sun_path, socket_name, name_len + 1);
+        addr_len = (socklen_t)(offsetof(struct sockaddr_un, sun_path) + name_len + 1);
+    }
+    if (connect(fd, (struct sockaddr*)&addr, addr_len) != 0) {
         close(fd);
         return -1;
     }
@@ -132,10 +167,15 @@ void* vkGetInstanceProcAddr(VkInstance instance, const char* name) {
 int alrVkProxyRequestSurfaceClear(const char* host, const char* port_text, char* response, size_t response_size) {
     if (response == 0 || response_size == 0) return -1;
     response[0] = '\0';
-    int port = parse_port(port_text == 0 ? "0" : port_text);
-    if (host == 0 || host[0] == '\0' || port == 0) return -2;
-
-    int fd = connect_loopback(host, port);
+    const char* socket_name = getenv("ALR_VK_BRIDGE_SOCKET");
+    int fd = -1;
+    if (socket_name != 0 && socket_name[0] != '\0') {
+        fd = connect_unix_socket(socket_name);
+    } else {
+        int port = parse_port(port_text == 0 ? "0" : port_text);
+        if (host == 0 || host[0] == '\0' || port == 0) return -2;
+        fd = connect_loopback(host, port);
+    }
     if (fd < 0) return -3;
 
     const char* tag = "guest-vulkan-proxy-clear-0001";

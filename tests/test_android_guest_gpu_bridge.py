@@ -110,6 +110,7 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "vulkan-discovery:${if (alrInstalledPackageVulkanDiscoveryPassed)" in text
     assert "vulkan-icd:${if (alrInstalledPackageVulkanIcdPassed)" in text
     assert "vulkan-loader:${if (alrInstalledPackageVulkanLoaderInfoPassed)" in text
+    assert "vulkan-loader-unix:${if (alrInstalledPackageVulkanUnixLoaderInfoPassed)" in text
     assert "alr installed package gles ipc draw frames" in text
     assert "alr installed package gles ipc ack frames" in text
     assert "alr installed package gles ipc ack raw" in text
@@ -142,6 +143,10 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "alr installed package vulkan loader info surface clear request" in text
     assert "alr installed package vulkan loader info surface clear accepted" in text
     assert "alr installed package vulkan loader info stdout" in text
+    assert "alr installed package vulkan unix loader info surface clear request" in text
+    assert "alr installed package vulkan unix loader info surface clear accepted" in text
+    assert "alr installed package vulkan unix loader info stdout" in text
+    assert "vulkan bridge transport unix vs tcp ratio pct=" in text
     assert "alr installed package vulkan discovery ack lines" in text
     assert "alr installed package vulkan discovery stdout" in text
     assert "nativeHostVulkanProbe" in text
@@ -171,6 +176,7 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "ANDROID HOST VULKAN SURFACE EXECUTION:" in text
     assert "GUEST VULKAN SURFACE CLEAR REQUEST EXECUTION:" in text
     assert "GUEST VULKAN LOADER INFO SURFACE CLEAR EXECUTION:" in text
+    assert "GUEST VULKAN UNIX SOCKET LOADER INFO SURFACE CLEAR EXECUTION:" in text
     assert "surface vulkan clear request source=guest-request" in text
     assert "surface vulkan present=ok" in text
     assert "surface vulkan hardware render=true" in text
@@ -295,6 +301,8 @@ def test_guest_vulkan_discovery_client_is_source_built_ipc_probe():
     assert "vkEnumerateInstanceVersion" in proxy_source
     assert "vkGetInstanceProcAddr" in proxy_source
     assert "alrVkProxyRequestSurfaceClear" in proxy_source
+    assert "ALR_VK_BRIDGE_SOCKET" in proxy_source
+    assert "AF_UNIX" in proxy_source
     assert '"ALVB"' in proxy_source
     assert '"ALVR"' in proxy_source
     assert "ALR_VK_BINARY_BRIDGE_ACK" in proxy_source

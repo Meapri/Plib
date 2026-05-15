@@ -1288,9 +1288,34 @@ surface vulkan render elapsed us=19415
 surface gles shim vs native average ratio pct=100
 ```
 
+Latest V85 Unix-domain Vulkan loader bridge evidence:
+
+```text
+build: 0.4.85-vulkan-unix-loader-bridge
+versionCode=85
+versionName=0.4.85-vulkan-unix-loader-bridge
+rootfs_version=bookworm-slim-2026-05-gui-gpu-v85
+rootfs sha256=6d782ed01d9dae8e071fe805b8121cb3ee93bb92842900a302f652f37cddadc3
+rootfs size bytes=36116480
+installed alr-package-vulkan-loader-info bytes=7896
+installed libvulkan.so.1 bytes=6368
+installed alr_vulkan_icd.aarch64.json bytes=120
+GUEST VULKAN UNIX SOCKET LOADER INFO SURFACE CLEAR EXECUTION: PASS
+VULKAN BRIDGE UNIX TRANSPORT EXECUTION: PASS
+surface vulkan clear request=ALR_VK_SURFACE_CLEAR_REQUEST version=1 red=0.33 green=0.22 blue=0.88 alpha=1.0 tag=guest-vulkan-proxy-clear-0001 source=libvulkan-proxy protocol=binary-frame-v1 transport=unix-abstract
+surface vulkan device=Mali-G615 MC2
+surface vulkan present=ok
+surface vulkan hardware render=true
+vulkan bridge transport tcp loader elapsed ms=303
+vulkan bridge transport unix loader elapsed ms=202
+vulkan bridge transport unix vs tcp ratio pct=66
+vulkan bridge transport unix faster than tcp=true
+surface gles shim vs native average ratio pct=100
+```
+
 Next implementation batch:
 
-1. Replace the loader-info smoke with the real Khronos Vulkan loader or a stricter ABI-compatible loader subset.
-2. Move the binary bridge from loopback TCP to a lower-overhead Unix-domain socket or shared-memory control path.
-3. Split known-fail legacy dpkg/proot diagnostics away from the active ALR summary.
+1. Move the GLES and GUI IPC smoke bridges from loopback TCP to the same Unix-domain control path, keeping TCP only as fallback.
+2. Replace the loader-info smoke with the real Khronos Vulkan loader or a stricter ABI-compatible loader subset.
+3. Add a batched Vulkan/GLES command transport so per-frame command submission does not pay one round trip per tiny command.
 4. Add a small real toolkit fixture target, likely a tiny GTK/Qt-independent Wayland protocol smoke before pulling in a larger GUI stack.

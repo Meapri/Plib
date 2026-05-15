@@ -319,6 +319,36 @@ class NativeCommandRunner(
         )
     }
 
+    fun runAlrRuntimeTrampolineInstalledPackageVulkanLoaderInfoUnix(rootfsDir: File, socketName: String): NativeCommandResult {
+        val program = "/usr/local/bin/alr-package-vulkan-loader-info"
+        val manifest = "/usr/share/vulkan/icd.d/alr_vulkan_icd.aarch64.json"
+        val libraryPath = glibcLibraryPath(rootfsDir) + ":" + File(rootfsDir, "usr/lib/androlinux").absolutePath
+        return runAlrRuntimeTrampoline(
+            rootfsDir,
+            "/lib/ld-linux-aarch64.so.1",
+            executeEntry = true,
+            extraArgs = listOf(
+                "--argv0",
+                program,
+                "--library-path",
+                libraryPath,
+                translateGuestPath(rootfsDir, program),
+            ),
+            timeoutMs = 3000,
+            extraGuestEnvironment = mapOf(
+                "ALR_VK_BRIDGE_HOST" to "127.0.0.1",
+                "ALR_VK_BRIDGE_PORT" to "0",
+                "ALR_VK_BRIDGE_SOCKET" to "@$socketName",
+                "ALR_GPU_BRIDGE_TRANSPORT" to "unix-abstract-vulkan-loader-info",
+                "VK_ICD_FILENAMES" to manifest,
+                "VK_DRIVER_FILES" to manifest,
+            ),
+            pathRewrite = true,
+            pathRewriteLimit = 32,
+            pathRewriteIdleSyscallLimit = 32,
+        )
+    }
+
     fun runAlrRuntimeTrampolineDpkgVersion(rootfsDir: File): NativeCommandResult =
         runAlrRuntimeTrampolineGlibcRootfsProgram(rootfsDir, "/usr/bin/dpkg", listOf("--version"))
 

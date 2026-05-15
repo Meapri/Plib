@@ -1132,6 +1132,40 @@ Surface clear. This is still a loader-info smoke rather than the Khronos Vulkan
 loader, but it proves the rootfs packaging and Android runner now exercise the
 same discovery shape a real loader/vulkaninfo path will need.
 
+Current V85 Unix-domain Vulkan loader bridge snapshot:
+
+```text
+build: 0.4.85-vulkan-unix-loader-bridge
+versionCode=85
+versionName=0.4.85-vulkan-unix-loader-bridge
+rootfs_version=bookworm-slim-2026-05-gui-gpu-v85
+rootfs sha256=6d782ed01d9dae8e071fe805b8121cb3ee93bb92842900a302f652f37cddadc3
+rootfs size bytes=36116480
+installed alr-package-vulkan-loader-info bytes=7896
+installed libvulkan.so.1 bytes=6368
+installed alr_vulkan_icd.aarch64.json bytes=120
+GUEST VULKAN UNIX SOCKET LOADER INFO SURFACE CLEAR EXECUTION: PASS
+VULKAN BRIDGE UNIX TRANSPORT EXECUTION: PASS
+surface vulkan clear request=ALR_VK_SURFACE_CLEAR_REQUEST version=1 red=0.33 green=0.22 blue=0.88 alpha=1.0 tag=guest-vulkan-proxy-clear-0001 source=libvulkan-proxy protocol=binary-frame-v1 transport=unix-abstract
+surface vulkan device=Mali-G615 MC2
+surface vulkan present=ok
+surface vulkan hardware render=true
+vulkan bridge transport tcp loader elapsed ms=303
+vulkan bridge transport unix loader elapsed ms=202
+vulkan bridge transport unix vs tcp ratio pct=66
+vulkan bridge transport unix faster than tcp=true
+surface gles shim vs native average ratio pct=100
+```
+
+V85 keeps the TCP binary bridge as a fallback but adds `ALR_VK_BRIDGE_SOCKET`
+support to the guest `libvulkan.so.1` proxy. When set to an `@name`, the proxy
+connects to a Linux abstract Unix-domain socket. Android hosts the peer through
+`LocalServerSocket`, parses the same bounded `ALVB` request, emits the same
+`ALVR` response, and now feeds the Unix-backed loader-info clear request into
+the native Vulkan Surface renderer. The first device-side timing sample is not a
+benchmark suite, but it proves the lower-overhead transport path is viable and
+measurably shorter for this installed loader-info workload.
+
 Report:
 
 ```text

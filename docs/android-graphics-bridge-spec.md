@@ -646,9 +646,28 @@ surface vulkan present=ok
 surface vulkan hardware render=true
 ```
 
+Build `0.4.85-vulkan-unix-loader-bridge` moves the active loader-info Surface
+clear path off loopback TCP and onto an abstract Unix-domain socket. The same
+`ALVB`/`ALVR` binary frame protocol is preserved, but the guest proxy now
+honors `ALR_VK_BRIDGE_SOCKET=@...` and Android accepts it through
+`LocalServerSocket`:
+
+```text
+GUEST VULKAN UNIX SOCKET LOADER INFO SURFACE CLEAR EXECUTION: PASS
+VULKAN BRIDGE UNIX TRANSPORT EXECUTION: PASS
+surface vulkan clear request=ALR_VK_SURFACE_CLEAR_REQUEST ... protocol=binary-frame-v1 transport=unix-abstract
+surface vulkan device=Mali-G615 MC2
+surface vulkan present=ok
+surface vulkan hardware render=true
+vulkan bridge transport tcp loader elapsed ms=303
+vulkan bridge transport unix loader elapsed ms=202
+vulkan bridge transport unix vs tcp ratio pct=66
+vulkan bridge transport unix faster than tcp=true
+```
+
 ## Open Questions
 
-- Which transport should replace loopback TCP first: Unix socket, binary TCP, or shared memory?
+- Which bridge should move to shared memory first after the Unix socket control path: GLES frames, Vulkan command batches, or GUI protocol frames?
 - Can `AHardwareBuffer` provide a practical cross-boundary buffer path for guest-generated frames?
 - How much Wayland protocol is worth implementing before using an existing compositor/proxy component?
 - Should X11 support begin with image transport, GLX proxy research, or Xvfb/VNC comparison?

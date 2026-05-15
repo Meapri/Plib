@@ -343,6 +343,7 @@ def test_tiny_rootfs_contains_local_deb_install_smoke_package():
         assert b"libvulkan-proxy-binary" in vulkan_proxy_lib
         assert b"ALR_VK_BINARY_BRIDGE_ACK" in vulkan_proxy_lib
         assert b"alr-guest-libvulkan-proxy-v1" in vulkan_proxy_lib
+        assert b"ALR_VK_BRIDGE_SOCKET" in vulkan_proxy_lib
         assert archive.extractfile("./usr/bin/dpkg-deb").read(4) == b"\x7fELF"
         assert archive.extractfile("./bin/tar").read(4) == b"\x7fELF"
         dpkg_deb = archive.extractfile("./usr/bin/dpkg-deb").read()
