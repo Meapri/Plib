@@ -29,7 +29,8 @@ class MainActivity : Activity() {
         val prootCandidateResult = nativeCommandRunner.runProotCandidateSmokeTest()
         val prootHelloResult = nativeCommandRunner.runProotRootfsProgram(rootfsStatus.rootfsDir, "/bin/hello")
 
-        val executionSummary = "execution summary" +
+        val executionSummary = "build: 0.2.0-proot-smoke" +
+            "\nexecution summary" +
             "\nrootfs verified=${rootfsStatus.verified} extracted=${rootfsStatus.extracted}" +
             "\nnative smoke exit=${nativeCommandResult.exitCode}" +
             "\nnative smoke stdout=${nativeCommandResult.stdout}" +
