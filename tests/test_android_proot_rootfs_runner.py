@@ -79,3 +79,24 @@ def test_main_activity_reports_clean_guest_environment_smoke():
     assert "ANDROID_ROOT=" in text
     assert "BOOTCLASSPATH=" in text
     assert "DEX2OATBOOTCLASSPATH=" in text
+
+
+def test_native_command_runner_can_attempt_proot_root_identity_command():
+    text = RUNNER.read_text()
+    assert "runProotRootfsProgramAsRoot" in text
+    assert '"-0"' in text
+    assert '"/usr/bin/id"' in text
+
+
+def test_main_activity_reports_identity_nss_smoke_result():
+    text = MAIN.read_text()
+    assert "IDENTITY NSS EXECUTION:" in text
+    assert "rootfs /etc/passwd exists=" in text
+    assert "rootfs /etc/group exists=" in text
+    assert "rootfs /etc/nsswitch.conf exists=" in text
+    assert "rootfs /usr/bin/id exists=" in text
+    assert "rootfs libselinux exists=" in text
+    assert "rootfs libpcre2 exists=" in text
+    assert "proot id exit=" in text
+    assert "proot id stdout=" in text
+    assert "proot id stderr=" in text

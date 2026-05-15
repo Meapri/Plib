@@ -9,7 +9,7 @@ PAYLOAD = ROOT / "app" / "src" / "main" / "assets" / "rootfs" / "payloads" / "ti
 def test_android_assets_include_rootfs_manifest_and_payload():
     assert MANIFEST.is_file()
     assert PAYLOAD.is_file()
-    assert PAYLOAD.stat().st_size == 8499200
+    assert PAYLOAD.stat().st_size == 9359360
 
 
 def test_android_asset_manifest_matches_host_manifest():
@@ -117,3 +117,45 @@ def test_real_distro_dynamic_userland_binaries_request_rootfs_loader():
                 tmp.flush()
                 program_headers = subprocess.check_output(["readelf", "-l", tmp.name], text=True)
             assert "Requesting program interpreter: /lib/ld-linux-aarch64.so.1" in program_headers
+
+
+def test_tiny_rootfs_contains_identity_nss_files_and_id_binary():
+    import tarfile
+
+    with tarfile.open(PAYLOAD) as archive:
+        names = set(archive.getnames())
+        expected = [
+            "./etc/passwd",
+            "./etc/group",
+            "./etc/nsswitch.conf",
+            "./usr/bin/id",
+            "./lib/aarch64-linux-gnu/libselinux.so.1",
+            "./lib/aarch64-linux-gnu/libpcre2-8.so.0",
+        ]
+        for member in expected:
+            assert member in names
+        passwd = archive.extractfile("./etc/passwd").read().decode()
+        group = archive.extractfile("./etc/group").read().decode()
+        nsswitch = archive.extractfile("./etc/nsswitch.conf").read().decode()
+        assert "root:x:0:0:root:/root:/bin/dash" in passwd
+        assert "root:x:0:" in group
+        assert "passwd: files" in nsswitch
+        assert "group: files" in nsswitch
+        assert archive.extractfile("./usr/bin/id").read(4) == b"\x7fELF"
+        assert archive.extractfile("./lib/aarch64-linux-gnu/libselinux.so.1").read(4) == b"\x7fELF"
+        assert archive.extractfile("./lib/aarch64-linux-gnu/libpcre2-8.so.0").read(4) == b"\x7fELF"
+
+
+def test_real_distro_id_requests_rootfs_loader():
+    import subprocess
+    import tarfile
+    import tempfile
+
+    with tarfile.open(PAYLOAD) as archive, tempfile.NamedTemporaryFile() as tmp:
+        tmp.write(archive.extractfile("./usr/bin/id").read())
+        tmp.flush()
+        program_headers = subprocess.check_output(["readelf", "-l", tmp.name], text=True)
+        dynamic = subprocess.check_output(["readelf", "-d", tmp.name], text=True)
+    assert "Requesting program interpreter: /lib/ld-linux-aarch64.so.1" in program_headers
+    assert "libselinux.so.1" in dynamic
+    assert "libc.so.6" in dynamic

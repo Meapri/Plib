@@ -45,6 +45,7 @@ class MainActivity : Activity() {
             rootfsStatus.rootfsDir,
             "echo dash-c ok; /usr/bin/env | /bin/cat",
         )
+        val prootIdResult = nativeCommandRunner.runProotRootfsIdAsRoot(rootfsStatus.rootfsDir)
         val prootHelloVerboseResult = if (prootHelloResult.exitCode == 0) {
             null
         } else {
@@ -60,6 +61,12 @@ class MainActivity : Activity() {
         val rootfsLibcFile = File(rootfsStatus.rootfsDir, "lib/aarch64-linux-gnu/libc.so.6")
         val rootfsDashFile = File(rootfsStatus.rootfsDir, "bin/dash")
         val rootfsEnvFile = File(rootfsStatus.rootfsDir, "usr/bin/env")
+        val rootfsPasswdFile = File(rootfsStatus.rootfsDir, "etc/passwd")
+        val rootfsGroupFile = File(rootfsStatus.rootfsDir, "etc/group")
+        val rootfsNsswitchFile = File(rootfsStatus.rootfsDir, "etc/nsswitch.conf")
+        val rootfsIdFile = File(rootfsStatus.rootfsDir, "usr/bin/id")
+        val rootfsLibselinuxFile = File(rootfsStatus.rootfsDir, "lib/aarch64-linux-gnu/libselinux.so.1")
+        val rootfsLibpcre2File = File(rootfsStatus.rootfsDir, "lib/aarch64-linux-gnu/libpcre2-8.so.0")
         val rootfsExecutionPassed = prootHelloResult.exitCode == 0 &&
             prootHelloResult.stdout.contains("hello from static arm64 rootfs")
         val shellScriptExecutionPassed = prootScriptResult.exitCode == 0 &&
@@ -88,8 +95,11 @@ class MainActivity : Activity() {
             prootDashResult.stdout.contains("ALR_ROOTFS=") &&
             prootDashResult.stdout.contains("PATH=") &&
             !guestEnvLeakedAndroidVars
+        val identityNssExecutionPassed = prootIdResult.exitCode == 0 &&
+            prootIdResult.stdout.contains("uid=0(root)") &&
+            prootIdResult.stdout.contains("gid=0(root)")
 
-        val executionSummary = "build: 0.3.9-clean-guest-env" +
+        val executionSummary = "build: 0.4.0-identity-nss-smoke" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -97,6 +107,7 @@ class MainActivity : Activity() {
             "\nGLIBC DYNAMIC EXECUTION: ${if (glibcDynamicExecutionPassed) "PASS" else "FAIL"}" +
             "\nDISTRO USERLAND EXECUTION: ${if (distroUserlandExecutionPassed) "PASS" else "FAIL"}" +
             "\nCLEAN GUEST ENVIRONMENT: ${if (!guestEnvLeakedAndroidVars) "PASS" else "FAIL"}" +
+            "\nIDENTITY NSS EXECUTION: ${if (identityNssExecutionPassed) "PASS" else "FAIL"}" +
             "\nguest env leaked android vars=$guestEnvLeakedAndroidVars" +
             "\nrootfs verified=${rootfsStatus.verified} extracted=${rootfsStatus.extracted}" +
             "\nrootfs /bin/hello exists=${rootfsHelloFile.isFile} executable=${rootfsHelloFile.canExecute()} bytes=${rootfsHelloFile.length()}" +
@@ -108,6 +119,12 @@ class MainActivity : Activity() {
             "\nrootfs libc exists=${rootfsLibcFile.isFile} executable=${rootfsLibcFile.canExecute()} bytes=${rootfsLibcFile.length()}" +
             "\nrootfs /bin/dash exists=${rootfsDashFile.isFile} executable=${rootfsDashFile.canExecute()} bytes=${rootfsDashFile.length()}" +
             "\nrootfs /usr/bin/env exists=${rootfsEnvFile.isFile} executable=${rootfsEnvFile.canExecute()} bytes=${rootfsEnvFile.length()}" +
+            "\nrootfs /etc/passwd exists=${rootfsPasswdFile.isFile} bytes=${rootfsPasswdFile.length()}" +
+            "\nrootfs /etc/group exists=${rootfsGroupFile.isFile} bytes=${rootfsGroupFile.length()}" +
+            "\nrootfs /etc/nsswitch.conf exists=${rootfsNsswitchFile.isFile} bytes=${rootfsNsswitchFile.length()}" +
+            "\nrootfs /usr/bin/id exists=${rootfsIdFile.isFile} executable=${rootfsIdFile.canExecute()} bytes=${rootfsIdFile.length()}" +
+            "\nrootfs libselinux exists=${rootfsLibselinuxFile.isFile} executable=${rootfsLibselinuxFile.canExecute()} bytes=${rootfsLibselinuxFile.length()}" +
+            "\nrootfs libpcre2 exists=${rootfsLibpcre2File.isFile} executable=${rootfsLibpcre2File.canExecute()} bytes=${rootfsLibpcre2File.length()}" +
             "\nnative smoke exit=${nativeCommandResult.exitCode}" +
             "\nnative smoke stdout=${nativeCommandResult.stdout}" +
             "\nproot --version exit=${prootCandidateResult.exitCode}" +
@@ -127,6 +144,9 @@ class MainActivity : Activity() {
             "\nproot dash exit=${prootDashResult.exitCode}" +
             "\nproot dash stdout=${prootDashResult.stdout}" +
             "\nproot dash stderr=${prootDashResult.stderr}" +
+            "\nproot id exit=${prootIdResult.exitCode}" +
+            "\nproot id stdout=${prootIdResult.stdout}" +
+            "\nproot id stderr=${prootIdResult.stderr}" +
             "\nprobe dlopen talloc=${nativeProbe.lineStartingWith("dlopen libtalloc.so")}" +
             "\nprobe dlopen proot=${nativeProbe.lineStartingWith("dlopen libalr_proot.so")}" +
             "\nproot loader=${prootCandidateResult.environment["PROOT_LOADER"]}" +
@@ -171,6 +191,7 @@ class MainActivity : Activity() {
             resultBlock("proot shell -c", prootShellResult) +
             resultBlock("proot glibc", prootGlibcResult) +
             resultBlock("proot dash", prootDashResult) +
+            resultBlock("proot id", prootIdResult) +
             optionalResultBlock("proot hello verbose on failure", prootHelloVerboseResult)
 
         val report = executionSummary + "\n\n--- verbose report ---\n" + verboseReport
