@@ -43,3 +43,7 @@ android {
         }
     }
 }
+
+dependencies {
+    implementation("org.apache.commons:commons-compress:1.26.2")
+}

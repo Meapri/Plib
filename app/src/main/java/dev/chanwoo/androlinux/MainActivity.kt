@@ -32,7 +32,10 @@ class MainActivity : Activity() {
         ) + "\n\nrootfs install dir: ${rootfsPlan.rootfsDir.absolutePath}" +
             "\nrootfs marker: ${rootfsPlan.markerPath.absolutePath}" +
             "\nrootfs status: ${rootfsStatus.manifestName}/${rootfsStatus.assetPath} verified=${rootfsStatus.verified}" +
-            "\nrootfs staged archive: ${rootfsStatus.stagedArchive.absolutePath}"
+            " extracted=${rootfsStatus.extracted}" +
+            "\nrootfs staged archive: ${rootfsStatus.stagedArchive.absolutePath}" +
+            "\nrootfs extracted dir: ${rootfsStatus.rootfsDir.absolutePath}" +
+            "\nrootfs marker=${rootfsStatus.markerPath.absolutePath}"
 
         val view = TextView(this).apply {
             text = report

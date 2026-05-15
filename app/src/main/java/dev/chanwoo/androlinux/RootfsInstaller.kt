@@ -1,6 +1,8 @@
 package dev.chanwoo.androlinux
 
 import android.content.Context
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.json.JSONObject
 import java.io.File
 import java.security.MessageDigest
@@ -9,7 +11,10 @@ data class RootfsInstallStatus(
     val manifestName: String,
     val assetPath: String,
     val verified: Boolean,
+    val extracted: Boolean,
     val stagedArchive: File,
+    val rootfsDir: File,
+    val markerPath: File,
 )
 
 class RootfsInstaller(private val context: Context) {
@@ -38,11 +43,22 @@ class RootfsInstaller(private val context: Context) {
         context.assets.open("rootfs/payloads/${asset.path}").use { input ->
             stagedArchive.outputStream().use { output -> input.copyTo(output) }
         }
+        val verified = verifyAsset(stagedArchive, asset)
+        val extracted = if (verified) {
+            extractVerifiedTar(stagedArchive, plan.rootfsDir)
+            writeInstallMarker(plan.markerPath)
+            isExtracted(plan)
+        } else {
+            false
+        }
         return RootfsInstallStatus(
             manifestName = manifest.name,
             assetPath = asset.path,
-            verified = verifyAsset(stagedArchive, asset),
+            verified = verified,
+            extracted = extracted,
             stagedArchive = stagedArchive,
+            rootfsDir = plan.rootfsDir,
+            markerPath = plan.markerPath,
         )
     }
 
@@ -58,5 +74,56 @@ class RootfsInstaller(private val context: Context) {
             }
         }
         return digest.digest().joinToString(separator = "") { byte -> "%02x".format(byte) } == asset.sha256.lowercase()
+    }
+
+    fun extractVerifiedTar(archive: File, rootfsDir: File) {
+        rootfsDir.mkdirs()
+        val rootCanonical = rootfsDir.canonicalPath
+        TarArchiveInputStream(archive.inputStream().buffered()).use { tar ->
+            while (true) {
+                val entry = tar.getNextEntry() ?: break
+                validateTarEntry(entry)
+                val target = File(rootfsDir, entry.name.removePrefix("./"))
+                val targetCanonical = target.canonicalPath
+                if (!targetCanonical.startsWith(rootfsDir.canonicalPath + File.separator) && targetCanonical != rootCanonical) {
+                    throw IllegalArgumentException("unsafe tar extraction target: ${entry.name}")
+                }
+                when {
+                    entry.isDirectory -> target.mkdirs()
+                    entry.isSymbolicLink || entry.isLink -> {
+                        // Early PoC policy: reject links instead of creating them. This avoids link-target escape bugs.
+                        throw IllegalArgumentException("tar links are not supported yet: ${entry.name}")
+                    }
+                    entry.isFile -> {
+                        target.parentFile?.mkdirs()
+                        target.outputStream().use { output -> tar.copyTo(output) }
+                        target.setReadable(true, true)
+                        if (entry.mode and 0b001_001_001 != 0) {
+                            target.setExecutable(true, true)
+                        }
+                    }
+                    else -> throw IllegalArgumentException("unsupported tar entry type: ${entry.name}")
+                }
+            }
+        }
+    }
+
+    fun writeInstallMarker(markerPath: File) {
+        markerPath.parentFile?.mkdirs()
+        markerPath.writeText("installed\n")
+    }
+
+    fun isExtracted(plan: RootfsInstallPlan): Boolean {
+        return plan.markerPath.isFile && File(plan.rootfsDir, "etc/os-release").isFile
+    }
+
+    private fun validateTarEntry(entry: TarArchiveEntry) {
+        val name = entry.name
+        require(name.isNotBlank()) { "empty tar entry name" }
+        require(!name.startsWith("/")) { "absolute tar entry path is not allowed: $name" }
+        require(name.split('/').none { it == ".." }) { "parent traversal is not allowed: $name" }
+        require(!entry.isCharacterDevice && !entry.isBlockDevice && !entry.isFIFO) {
+            "device-like tar entry is not allowed: $name"
+        }
     }
 }
