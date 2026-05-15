@@ -23,7 +23,9 @@ class MainActivity : Activity() {
         )
         val rootfsPlan = buildRootfsInstallPlan(rootfsManifest, filesDir)
         val rootfsStatus = RootfsInstaller(this).prepareBundledTinyRootfs()
-        val nativeCommandResult = NativeCommandRunner(File(applicationInfo.nativeLibraryDir)).runSmokeTest()
+        val nativeCommandRunner = NativeCommandRunner(File(applicationInfo.nativeLibraryDir))
+        val nativeCommandResult = nativeCommandRunner.runSmokeTest()
+        val prootCandidateResult = nativeCommandRunner.runProotCandidateSmokeTest()
 
         val report = nativeRuntimeReport(
             packageName,
@@ -44,7 +46,10 @@ class MainActivity : Activity() {
             "\nnative command stdout=${nativeCommandResult.stdout}" +
             "\nnative command stderr=${nativeCommandResult.stderr}" +
             "\n\nproot backend candidate: packaged native executable" +
-            "\nproot command: ${applicationInfo.nativeLibraryDir}/libalr_proot.so"
+            "\nproot command: ${applicationInfo.nativeLibraryDir}/libalr_proot.so" +
+            "\nproot candidate exit=${prootCandidateResult.exitCode}" +
+            "\nproot candidate stdout=${prootCandidateResult.stdout}" +
+            "\nproot candidate stderr=${prootCandidateResult.stderr}"
 
         val view = TextView(this).apply {
             text = report

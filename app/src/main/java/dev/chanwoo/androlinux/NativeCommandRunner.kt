@@ -10,9 +10,14 @@ data class NativeCommandResult(
 )
 
 class NativeCommandRunner(private val nativeLibraryDir: File) {
-    fun runSmokeTest(): NativeCommandResult {
-        val command = File(nativeLibraryDir, "libalr_test_command.so")
-        val process = ProcessBuilder(command.absolutePath, "smoke")
+    fun runSmokeTest(): NativeCommandResult = runPackagedCommand("libalr_test_command.so", "smoke")
+
+    fun runProotCandidateSmokeTest(): NativeCommandResult =
+        runPackagedCommand("libalr_proot.so", "candidate-smoke")
+
+    private fun runPackagedCommand(fileName: String, argument: String): NativeCommandResult {
+        val command = File(nativeLibraryDir, fileName)
+        val process = ProcessBuilder(command.absolutePath, argument)
             .redirectErrorStream(false)
             .start()
         val stdout = process.inputStream.bufferedReader().use { it.readText() }.trim()
