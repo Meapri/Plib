@@ -613,6 +613,18 @@ surface vulkan present=ok
 surface vulkan hardware render=true
 ```
 
+Build `0.4.83-vulkan-icd-manifest-smoke` adds a guest-visible Vulkan ICD
+manifest and proves that the installed glibc smoke can discover the proxy via
+manifest metadata before issuing the same binary-framed Surface clear:
+
+```text
+VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/alr_vulkan_icd.aarch64.json
+VK_DRIVER_FILES=/usr/share/vulkan/icd.d/alr_vulkan_icd.aarch64.json
+ALR_VK_ICD_LIBRARY_PATH libvulkan.so.1
+ALR_VK_ICD_BINARY_BRIDGE ok
+GUEST VULKAN ICD MANIFEST SURFACE CLEAR EXECUTION: PASS
+```
+
 ## Open Questions
 
 - Which transport should replace loopback TCP first: Unix socket, binary TCP, or shared memory?

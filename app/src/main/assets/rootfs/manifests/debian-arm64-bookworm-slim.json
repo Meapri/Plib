@@ -1,12 +1,12 @@
 {
   "name": "debian-arm64",
-  "version": "bookworm-slim-2026-05-gui-gpu-v82",
-  "description": "Tiny PoC rootfs with source-built guest GLES/EGL shim API smoke, libEGL/libGLESv2 ABI-name smoke, eglGetProcAddress GLES demo workload, es2gears-like GLES demo workload, syscall-heavy benchmark fixture, LD_PRELOAD path fast path shim with glibc stat metadata directory stream realpath mkstemp rename mkdir unlink rmdir and fakeroot chown compatibility, multi-frame clear and triangle draw GLES workloads, TCP loopback guest GPU bridge client, GLES shim TCP bridge submit and ACK timing path, clean extraction schema, dpkg-split smoke, apt/dpkg bundle, installed-script smoke, installed-package GPU IPC smoke, installed-package GLES demo smoke, installed-package GLES IPC ACK smoke, installed-package eglGetProcAddress GLES procaddr demo smoke, installed-package Wayland/X11 GUI GPU bridge client smoke, installed-package Vulkan discovery IPC client smoke with structured Android device and feature records plus guest-requested Vulkan Surface clear, and a minimal guest libvulkan proxy smoke using a bounded binary bridge frame.",
+  "version": "bookworm-slim-2026-05-gui-gpu-v83",
+  "description": "Tiny PoC rootfs with source-built guest GLES/EGL shim API smoke, libEGL/libGLESv2 ABI-name smoke, eglGetProcAddress GLES demo workload, es2gears-like GLES demo workload, syscall-heavy benchmark fixture, LD_PRELOAD path fast path shim with glibc stat metadata directory stream realpath mkstemp rename mkdir unlink rmdir and fakeroot chown compatibility, multi-frame clear and triangle draw GLES workloads, TCP loopback guest GPU bridge client, GLES shim TCP bridge submit and ACK timing path, clean extraction schema, dpkg-split smoke, apt/dpkg bundle, installed-script smoke, installed-package GPU IPC smoke, installed-package GLES demo smoke, installed-package GLES IPC ACK smoke, installed-package eglGetProcAddress GLES procaddr demo smoke, installed-package Wayland/X11 GUI GPU bridge client smoke, installed-package Vulkan discovery IPC client smoke with structured Android device and feature records plus guest-requested Vulkan Surface clear, a minimal guest libvulkan proxy smoke using a bounded binary bridge frame, and a Vulkan ICD manifest discovery smoke.",
   "assets": [
     {
       "path": "tiny-rootfs.tar",
-      "sha256": "0c5bfa6d15b09ebc074222f0f8a8f11be4de49ad2f5223e3155798e169aee6a3",
-      "size_bytes": 36087296
+      "sha256": "0a6df36f01d6acba6fd6a11f0916563c95f8491711aa7a6b0790da198b50242e",
+      "size_bytes": 36106240
     }
   ],
   "unsupported_features": [

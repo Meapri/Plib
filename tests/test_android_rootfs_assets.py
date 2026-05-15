@@ -9,7 +9,7 @@ PAYLOAD = ROOT / "app" / "src" / "main" / "assets" / "rootfs" / "payloads" / "ti
 def test_android_assets_include_rootfs_manifest_and_payload():
     assert MANIFEST.is_file()
     assert PAYLOAD.is_file()
-    assert PAYLOAD.stat().st_size == 36087296
+    assert PAYLOAD.stat().st_size == 36106240
 
 
 def test_android_asset_manifest_matches_host_manifest():
@@ -311,7 +311,9 @@ def test_tiny_rootfs_contains_local_deb_install_smoke_package():
             x11_gui = data_archive.extractfile("./usr/local/bin/alr-package-x11-gpu-client").read()
             vulkan_discovery = data_archive.extractfile("./usr/local/bin/alr-package-vulkan-discovery-client").read()
             vulkan_proxy_smoke = data_archive.extractfile("./usr/local/bin/alr-package-vulkan-proxy-smoke").read()
+            vulkan_icd_smoke = data_archive.extractfile("./usr/local/bin/alr-package-vulkan-icd-manifest-smoke").read()
             vulkan_proxy_lib = data_archive.extractfile("./usr/lib/androlinux/libvulkan.so.1").read()
+            vulkan_icd_manifest = data_archive.extractfile("./usr/share/vulkan/icd.d/alr_vulkan_icd.aarch64.json").read()
         assert b"ALR_SMOKE_PACKAGE_SCRIPT=1" in script
         assert b"ALR_SMOKE_ARCH=$(dpkg --print-architecture" in script
         assert b"ALR_SMOKE_ENV_ARCH=$(/usr/bin/env dpkg --print-architecture" in script
@@ -326,9 +328,14 @@ def test_tiny_rootfs_contains_local_deb_install_smoke_package():
         assert b"ALR_VK_SURFACE_CLEAR_REQUEST" in vulkan_discovery
         assert b"ALR_VK_SURFACE_CLEAR_REQUEST_ACCEPTED ok" in vulkan_discovery
         assert vulkan_proxy_smoke.startswith(b"\x7fELF")
+        assert vulkan_icd_smoke.startswith(b"\x7fELF")
         assert vulkan_proxy_lib.startswith(b"\x7fELF")
         assert b"ALR_VK_PROXY_SURFACE_CLEAR_REQUEST_ACCEPTED ok" in vulkan_proxy_smoke
         assert b"ALR_VK_PROXY_BINARY_BRIDGE ok" in vulkan_proxy_smoke
+        assert b"ALR_VK_ICD_LIBRARY_PATH" in vulkan_icd_smoke
+        assert b"ALR_VK_ICD_SURFACE_CLEAR_REQUEST_ACCEPTED ok" in vulkan_icd_smoke
+        assert b'"library_path": "libvulkan.so.1"' in vulkan_icd_manifest
+        assert b'"api_version": "1.3.247"' in vulkan_icd_manifest
         assert b"libvulkan-proxy-binary" in vulkan_proxy_lib
         assert b"ALR_VK_BINARY_BRIDGE_ACK" in vulkan_proxy_lib
         assert b"alr-guest-libvulkan-proxy-v1" in vulkan_proxy_lib
