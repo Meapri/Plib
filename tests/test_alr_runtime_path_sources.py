@@ -57,7 +57,10 @@ def test_cmake_compiles_alr_runtime_sources_for_android_builds():
     assert "add_library(alr_runtime STATIC" in text
     assert "alr_runtime/alr_path.cpp" in text
     assert "alr_runtime/alr_env.cpp" in text
+    assert "add_library(alr_runtime_launcher SHARED" in text
+    assert "alr_runtime_launcher.cpp" in text
     assert "target_compile_features(alr_runtime PRIVATE cxx_std_20)" in text
+    assert "target_compile_features(alr_runtime_launcher PRIVATE cxx_std_20)" in text
 
 
 def test_native_path_test_covers_normalization_and_translation_cases():

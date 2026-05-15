@@ -90,6 +90,18 @@ def build_launch_plan(
             "--program",
             program,
         ]
+    elif backend == "alr-runtime":
+        executable = _normalize(str(PurePosixPath(native_dir) / "libalr_runtime_launcher.so"))
+        argv = [
+            executable,
+            "--rootfs",
+            rootfs_dir,
+            "--cwd",
+            "/",
+            "--program",
+            program,
+            "--dry-run",
+        ]
     elif backend == "proot":
         executable = _normalize(str(PurePosixPath(native_dir) / "libalr_proot.so"))
         argv = [
@@ -114,6 +126,11 @@ def build_launch_plan(
     }
     if backend == "proot":
         env["PROOT_NO_SECCOMP"] = "1"
+    if backend == "alr-runtime":
+        env["ALR_HOOK_PATH"] = _normalize(str(PurePosixPath(native_dir) / "libalr_runtime_hook.so"))
+        env["ALR_BRIDGE_PATH"] = _normalize(str(PurePosixPath(native_dir) / "libalr_runtime_bridge.so"))
+        env["ALR_FAKE_ROOT"] = "0"
+        env["ALR_VERBOSE"] = "0"
     return LaunchPlan(
         executable=executable,
         native_library_dir=native_dir,

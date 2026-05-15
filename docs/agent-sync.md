@@ -64,3 +64,68 @@ Blockers:
 
 Next recommended action:
 - Create public GitHub repo, push `main`, configure labels, and open initial coordination issues.
+
+## 2026-05-15 - Codex - Bundle C Start
+
+Branch/worktree:
+- `codex/alr-runtime-launcher` at `/Users/naen/Documents/Plib/androlinux-runtime-lab`
+
+Touched files:
+- Pending
+
+What changed:
+- Starting GitHub Issue #2 / Bundle C: ALR runtime launcher skeleton.
+
+Commands/tests:
+- Pending
+
+Evidence:
+- Local test environment restored before start: `/Users/naen/.venvs/plib-py313/bin/python -m pytest tests -q` -> PASS, 137 passed.
+
+Blockers:
+- None known.
+
+Next recommended action:
+- Add ALR runtime launcher/config/report skeleton without claiming guest execution.
+
+## 2026-05-15 - Codex - Bundle C Implementation
+
+Branch/worktree:
+- `codex/alr-runtime-launcher` at `/Users/naen/Documents/Plib/androlinux-runtime-lab`
+
+Touched files:
+- `app/src/main/cpp/CMakeLists.txt`
+- `app/src/main/cpp/alr_runtime_launcher.cpp`
+- `app/src/main/cpp/runtime_plan.hpp`
+- `app/src/main/cpp/runtime_plan.cpp`
+- `app/src/main/cpp/runtime_report.cpp`
+- `tools/runtime_launch_plan.py`
+- `tests/native_runtime_plan_test.cpp`
+- `tests/native_backend_policy_test.cpp`
+- `tests/test_alr_runtime_launcher_sources.py`
+- `tests/test_alr_runtime_path_sources.py`
+- `tests/test_android_loader_plan_report.py`
+- `tests/test_runtime_launch_plan.py`
+
+What changed:
+- Added a packaged `libalr_runtime_launcher.so` skeleton and ALR runtime launch-plan/config report plumbing.
+- Added absent-safe report lines for `ALR RUNTIME LAUNCHER AVAILABLE`, `ALR RUNTIME CONFIG BUILD`, and `ALR RUNTIME DIRECT APP-DATA EXEC POLICY`.
+- Preserved `can_execute=false` for ALR runtime because guest execution is not implemented yet.
+- Kept PRoot launch plan and fallback behavior intact.
+
+Commands/tests:
+- `/Users/naen/.venvs/plib-py313/bin/python -m pytest tests -q` -> PASS, 142 passed.
+- `scripts/test-native-core.sh` -> PASS.
+- `JAVA_HOME=/Users/naen/.jdks/jdk-17.0.19+10/Contents/Home ./gradlew :app:assembleDebug --no-daemon` -> PASS.
+- `unzip -l app/build/outputs/apk/debug/app-debug.apk | rg 'libalr_runtime_launcher'` -> PASS.
+
+Evidence:
+- Debug APK: `app/build/outputs/apk/debug/app-debug.apk`
+- APK sha256: `40365e0c48e6a560c07d807bb776d960c7391dc0f7f060e1edfefd93c36e0597`
+- APK contains `libalr_runtime_launcher.so` for `arm64-v8a`, `armeabi-v7a`, `x86`, and `x86_64`.
+
+Blockers:
+- None for Bundle C source/build verification.
+
+Next recommended action:
+- Open a PR for Issue #2, then start Bundle D path hook MVP after review/merge.

@@ -48,3 +48,31 @@ def test_launch_plan_env_points_tools_inside_rootfs_without_claiming_chroot():
     assert plan.env["ALR_PROGRAM"] == "/usr/bin/python3"
     assert plan.env["PATH"] == "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
     assert "CHROOT" not in plan.env
+
+
+def test_alr_runtime_launch_plan_is_packaged_dry_run_skeleton():
+    plan = build_launch_plan(
+        package_name="dev.chanwoo.androlinux",
+        native_library_dir="/data/app/~~token/dev.chanwoo.androlinux-abc/lib/arm64",
+        app_files_dir="/data/user/0/dev.chanwoo.androlinux/files",
+        rootfs_name="debian-arm64",
+        program="/bin/hello",
+        backend="alr-runtime",
+    )
+
+    assert plan.executable == "/data/app/~~token/dev.chanwoo.androlinux-abc/lib/arm64/libalr_runtime_launcher.so"
+    assert plan.argv == [
+        "/data/app/~~token/dev.chanwoo.androlinux-abc/lib/arm64/libalr_runtime_launcher.so",
+        "--rootfs",
+        "/data/user/0/dev.chanwoo.androlinux/files/rootfs/debian-arm64",
+        "--cwd",
+        "/",
+        "--program",
+        "/bin/hello",
+        "--dry-run",
+    ]
+    assert plan.env["ALR_BACKEND"] == "alr-runtime"
+    assert plan.env["ALR_HOOK_PATH"].endswith("/libalr_runtime_hook.so")
+    assert plan.env["ALR_BRIDGE_PATH"].endswith("/libalr_runtime_bridge.so")
+    assert plan.env["ALR_FAKE_ROOT"] == "0"
+    assert plan.env["ALR_VERBOSE"] == "0"

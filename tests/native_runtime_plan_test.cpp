@@ -20,6 +20,11 @@ int main() {
     const bool report_ok =
         text.find("loader executable: /data/app/pkg/lib/arm64/libalr-loader.so") != std::string::npos &&
         text.find("rootfs dir: /data/user/0/dev.chanwoo.androlinux/files/rootfs/debian-arm64") != std::string::npos &&
+        text.find("ALR RUNTIME LAUNCHER AVAILABLE: PASS") != std::string::npos &&
+        text.find("ALR RUNTIME CONFIG BUILD: PASS") != std::string::npos &&
+        text.find("ALR RUNTIME DIRECT APP-DATA EXEC POLICY: PASS") != std::string::npos &&
+        text.find("alr runtime launcher path=/data/app/pkg/lib/arm64/libalr_runtime_launcher.so") != std::string::npos &&
+        text.find("alr runtime guest execution=not-claimed") != std::string::npos &&
         text.find("LOW-OVERHEAD BACKEND PROBE FRAMEWORK: PASS") != std::string::npos &&
         text.find("OPTIONAL RUNTIME BACKEND AVAILABLE: SKIP") != std::string::npos &&
         text.find("optional runtime backend source=none") != std::string::npos &&
@@ -39,6 +44,28 @@ int main() {
         std::cerr << text << "\n";
         return EXIT_FAILURE;
     }
+
+    const auto alr_runtime = alr::build_alr_runtime_launch_plan(input);
+    const bool alr_runtime_ok =
+        alr_runtime.executable == "/data/app/pkg/lib/arm64/libalr_runtime_launcher.so" &&
+        alr_runtime.argv.size() == 8 &&
+        alr_runtime.argv[1] == "--rootfs" &&
+        alr_runtime.argv[2] == "/data/user/0/dev.chanwoo.androlinux/files/rootfs/debian-arm64" &&
+        alr_runtime.argv[3] == "--cwd" &&
+        alr_runtime.argv[4] == "/" &&
+        alr_runtime.argv[5] == "--program" &&
+        alr_runtime.argv[6] == "/bin/hello" &&
+        alr_runtime.argv[7] == "--dry-run" &&
+        alr_runtime.env.at("ALR_BACKEND") == "alr-runtime" &&
+        alr_runtime.env.at("ALR_HOOK_PATH") == "/data/app/pkg/lib/arm64/libalr_runtime_hook.so" &&
+        alr_runtime.env.at("ALR_BRIDGE_PATH") == "/data/app/pkg/lib/arm64/libalr_runtime_bridge.so" &&
+        alr_runtime.env.at("ALR_FAKE_ROOT") == "0";
+
+    if (!alr_runtime_ok) {
+        std::cerr << "bad alr runtime launch plan\n";
+        return EXIT_FAILURE;
+    }
+
     std::cout << "native core report and launch plan test ok\n";
     return EXIT_SUCCESS;
 }
