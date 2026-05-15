@@ -42,6 +42,9 @@ def test_trampoline_report_contract_exists():
     assert "ALR_TRAMPOLINE_TARGET_HOST_PATH" in source
     assert "build_static_image_plan" in source
     assert "load_static_image_for_preflight" in main
+    assert "ALR_TRAMPOLINE_EXECUTE_ENTRY" in main
+    assert "maybe_run_static_entry_handoff" in main
+    assert "ALR STATIC ENTRY HANDOFF:" in (ROOT / "app/src/main/cpp/alr_runtime/alr_handoff.cpp").read_text()
 
 
 def test_launch_report_and_runtime_plan_include_trampoline():

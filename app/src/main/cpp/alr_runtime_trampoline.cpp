@@ -4,6 +4,7 @@
 
 #include "alr_runtime/alr_elf.hpp"
 #include "alr_runtime/alr_entry.hpp"
+#include "alr_runtime/alr_handoff.hpp"
 #include "alr_runtime/alr_image.hpp"
 #include "alr_runtime/alr_transfer.hpp"
 
@@ -12,6 +13,14 @@ namespace {
 const char* env_or_none(const char* key) {
     const char* value = std::getenv(key);
     return value == nullptr || value[0] == '\0' ? "none" : value;
+}
+
+bool env_enabled(const char* key) {
+    const char* value = std::getenv(key);
+    return value != nullptr &&
+        (std::string_view(value) == "1" ||
+            std::string_view(value) == "true" ||
+            std::string_view(value) == "yes");
 }
 
 }  // namespace
@@ -29,6 +38,7 @@ int main(int argc, char** argv) {
     std::cout << "alr trampoline target guest=" << env_or_none("ALR_TRAMPOLINE_TARGET_GUEST_PATH") << "\n";
     std::cout << "alr trampoline target host=" << env_or_none("ALR_TRAMPOLINE_TARGET_HOST_PATH") << "\n";
     std::cout << "alr trampoline elf status=" << env_or_none("ALR_TRAMPOLINE_ELF_STATUS") << "\n";
+    std::cout << "alr trampoline execute entry=" << (env_enabled("ALR_TRAMPOLINE_EXECUTE_ENTRY") ? "true" : "false") << "\n";
     const char* target_host = std::getenv("ALR_TRAMPOLINE_TARGET_HOST_PATH");
     if (target_host != nullptr && target_host[0] != '\0') {
         const auto elf_plan = alr::runtime::build_elf_load_plan(target_host);
@@ -47,11 +57,16 @@ int main(int argc, char** argv) {
             target_host,
             image_plan,
             entry_plan);
+        const auto handoff_result = alr::runtime::maybe_run_static_entry_handoff(
+            transfer_context,
+            env_enabled("ALR_TRAMPOLINE_EXECUTE_ENTRY"));
+        std::cout << handoff_result.report << "\n";
         alr::runtime::cleanup_static_entry_transfer_context(transfer_context);
         std::cout << transfer_context.report << "\n";
     } else {
         std::cout << alr::runtime::build_entry_stack_skip_report() << "\n";
         std::cout << alr::runtime::build_static_image_load_skip_report() << "\n";
+        std::cout << alr::runtime::build_static_entry_handoff_skip_report() << "\n";
         std::cout << alr::runtime::build_static_entry_transfer_skip_report() << "\n";
     }
     return 0;

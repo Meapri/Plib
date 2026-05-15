@@ -366,6 +366,7 @@ class MainActivity : Activity() {
             "\nalr trampoline image load=${alrTrampolinePreflightResult.stdout.lineStartingWith("ALR STATIC IMAGE LOAD PREFLIGHT:")}" +
             "\nalr trampoline entry stack=${alrTrampolinePreflightResult.stdout.lineStartingWith("ALR STATIC ENTRY STACK PLAN:")}" +
             "\nalr trampoline transfer context=${alrTrampolinePreflightResult.stdout.lineStartingWith("ALR STATIC ENTRY TRANSFER CONTEXT:")}" +
+            "\nalr trampoline handoff=${alrTrampolinePreflightResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
             "\nproot --version exit=${prootCandidateResult.exitCode}" +
             "\nlinker64 proot --version exit=${prootViaLinkerResult.exitCode}" +
             "\nproot hello quiet exit=${prootHelloResult.exitCode}" +

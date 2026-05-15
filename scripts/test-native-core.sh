@@ -13,6 +13,7 @@ cxx="${CXX:-g++}"
   app/src/main/cpp/alr_runtime/alr_entry.cpp \
   app/src/main/cpp/alr_runtime/alr_elf.cpp \
   app/src/main/cpp/alr_runtime/alr_exec.cpp \
+  app/src/main/cpp/alr_runtime/alr_handoff.cpp \
   app/src/main/cpp/alr_runtime/alr_image.cpp \
   app/src/main/cpp/alr_runtime/alr_launch.cpp \
   app/src/main/cpp/alr_runtime/alr_trampoline.cpp \
@@ -30,6 +31,7 @@ cxx="${CXX:-g++}"
   app/src/main/cpp/alr_runtime/alr_entry.cpp \
   app/src/main/cpp/alr_runtime/alr_elf.cpp \
   app/src/main/cpp/alr_runtime/alr_exec.cpp \
+  app/src/main/cpp/alr_runtime/alr_handoff.cpp \
   app/src/main/cpp/alr_runtime/alr_image.cpp \
   app/src/main/cpp/alr_runtime/alr_launch.cpp \
   app/src/main/cpp/alr_runtime/alr_trampoline.cpp \
@@ -83,6 +85,7 @@ cxx="${CXX:-g++}"
   app/src/main/cpp/alr_runtime/alr_entry.cpp \
   app/src/main/cpp/alr_runtime/alr_elf.cpp \
   app/src/main/cpp/alr_runtime/alr_exec.cpp \
+  app/src/main/cpp/alr_runtime/alr_handoff.cpp \
   app/src/main/cpp/alr_runtime/alr_image.cpp \
   app/src/main/cpp/alr_runtime/alr_launch.cpp \
   app/src/main/cpp/alr_runtime/alr_trampoline.cpp \
@@ -108,6 +111,7 @@ cxx="${CXX:-g++}"
   app/src/main/cpp/alr_runtime/alr_entry.cpp \
   app/src/main/cpp/alr_runtime/alr_elf.cpp \
   app/src/main/cpp/alr_runtime/alr_exec.cpp \
+  app/src/main/cpp/alr_runtime/alr_handoff.cpp \
   app/src/main/cpp/alr_runtime/alr_image.cpp \
   app/src/main/cpp/alr_runtime/alr_launch.cpp \
   app/src/main/cpp/alr_runtime/alr_trampoline.cpp \
