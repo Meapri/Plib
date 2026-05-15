@@ -22,7 +22,7 @@ class MainActivity : Activity() {
 
         val rootfsManifest = RootfsManifest(
             name = "debian-arm64",
-            version = "bookworm-slim-2026-05-gpu-ipc-v30",
+            version = "bookworm-slim-2026-05-gui-gpu-v35",
             assets = listOf(
                 RootfsAsset(
                     path = "rootfs.tar.zst",
@@ -70,7 +70,13 @@ class MainActivity : Activity() {
         val guestGpuIpcBridgeResult = runGuestGpuIpcBridge(nativeCommandRunner, rootfsStatus.rootfsDir)
         val prootGuestGlesShimSmokeResult = nativeCommandRunner.runProotRootfsGuestGlesShimSmoke(rootfsStatus.rootfsDir)
         val guestGlesShimCommand = parseGuestGlesShimCommand(prootGuestGlesShimSmokeResult.stdout)
+        val prootGuestWaylandGuiResult = nativeCommandRunner.runProotRootfsGuestGuiClient(rootfsStatus.rootfsDir, "WAYLAND")
+        val prootGuestX11GuiResult = nativeCommandRunner.runProotRootfsGuestGuiClient(rootfsStatus.rootfsDir, "X11")
+        val guestWaylandGuiBridgeResult = runGuestGuiBridge(nativeCommandRunner, rootfsStatus.rootfsDir, "WAYLAND")
+        val guestX11GuiBridgeResult = runGuestGuiBridge(nativeCommandRunner, rootfsStatus.rootfsDir, "X11")
+        val guestGuiSurfaceCommands = guestWaylandGuiBridgeResult.commands + guestX11GuiBridgeResult.commands
         val surfaceGpuCommands = when {
+            guestGuiSurfaceCommands.isNotEmpty() -> guestGuiSurfaceCommands
             guestGpuIpcBridgeResult.commands.isNotEmpty() -> guestGpuIpcBridgeResult.commands
             guestGpuCommands.isNotEmpty() -> guestGpuCommands
             guestGlesShimCommand != null -> listOf(guestGlesShimCommand)
@@ -137,6 +143,8 @@ class MainActivity : Activity() {
         val rootfsGuestGpuClientFile = File(rootfsStatus.rootfsDir, "usr/bin/alr-gpu-client")
         val rootfsGuestGlesShimSmokeFile = File(rootfsStatus.rootfsDir, "usr/bin/alr-gles-shim-smoke")
         val rootfsGuestGlesShimLibraryFile = File(rootfsStatus.rootfsDir, "usr/lib/androlinux/libalr_gles_shim.so")
+        val rootfsWaylandGuiClientFile = File(rootfsStatus.rootfsDir, "usr/bin/alr-wayland-gpu-client")
+        val rootfsX11GuiClientFile = File(rootfsStatus.rootfsDir, "usr/bin/alr-x11-gpu-client")
         val rootfsExecutionPassed = prootHelloResult.exitCode == 0 &&
             prootHelloResult.stdout.contains("hello from static arm64 rootfs")
         val shellScriptExecutionPassed = prootScriptResult.exitCode == 0 &&
@@ -212,9 +220,17 @@ class MainActivity : Activity() {
             prootGuestGlesShimSmokeResult.stdout.contains("alr guest gles shim smoke ok") &&
             prootGuestGlesShimSmokeResult.stdout.contains("ALR_GLES_SHIM_LOAD ok") &&
             guestGlesShimCommand != null
+        val guestWaylandGuiBridgePassed = guestWaylandGuiBridgeResult.clientResult.exitCode == 0 &&
+            guestWaylandGuiBridgeResult.commands.size == guestWaylandGuiBridgeResult.expectedFrames &&
+            guestWaylandGuiBridgeResult.expectedFrames > 0 &&
+            guestWaylandGuiBridgeResult.error == null
+        val guestX11GuiBridgePassed = guestX11GuiBridgeResult.clientResult.exitCode == 0 &&
+            guestX11GuiBridgeResult.commands.size == guestX11GuiBridgeResult.expectedFrames &&
+            guestX11GuiBridgeResult.expectedFrames > 0 &&
+            guestX11GuiBridgeResult.error == null
         val hostGpuHardwareCandidate = hostGpuProbe.lineStartingWith("host gpu hardware candidate=") == "host gpu hardware candidate=true"
 
-        val executionSummary = "build: 0.4.17-native-gpu-ipc-gui-path" +
+        val executionSummary = "build: 0.4.22-gui-gpu-proof-v35" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -239,6 +255,9 @@ class MainActivity : Activity() {
             "\nGUEST GPU IPC BRIDGE EXECUTION: ${if (guestGpuIpcBridgePassed) "PASS" else "FAIL"}" +
             "\nGUEST GLES SHIM SMOKE EXECUTION: ${if (guestGlesShimSmokePassed) "PASS" else "FAIL"}" +
             "\nGUEST GPU MULTI-FRAME SURFACE EXECUTION: PENDING_SURFACE_CALLBACK" +
+            "\nGUEST WAYLAND GUI GPU BRIDGE EXECUTION: ${if (guestWaylandGuiBridgePassed) "PASS" else "FAIL"}" +
+            "\nGUEST X11 GUI GPU BRIDGE EXECUTION: ${if (guestX11GuiBridgePassed) "PASS" else "FAIL"}" +
+            "\nGUEST GUI GPU SURFACE EXECUTION: PENDING_SURFACE_CALLBACK" +
             "\nANDROID PERMISSION MODEL: ${if (internetPermissionDeclared && networkStatePermissionDeclared && !broadStoragePermissionDeclared) "PASS" else "FAIL"}" +
             "\nidentity numeric root=$identityNumericRoot" +
             "\nidentity named root=$identityNamedRoot" +
@@ -295,6 +314,8 @@ class MainActivity : Activity() {
             "\nrootfs /usr/bin/alr-gpu-client exists=${rootfsGuestGpuClientFile.isFile} executable=${rootfsGuestGpuClientFile.canExecute()} bytes=${rootfsGuestGpuClientFile.length()}" +
             "\nrootfs /usr/bin/alr-gles-shim-smoke exists=${rootfsGuestGlesShimSmokeFile.isFile} executable=${rootfsGuestGlesShimSmokeFile.canExecute()} bytes=${rootfsGuestGlesShimSmokeFile.length()}" +
             "\nrootfs /usr/lib/androlinux/libalr_gles_shim.so exists=${rootfsGuestGlesShimLibraryFile.isFile} executable=${rootfsGuestGlesShimLibraryFile.canExecute()} bytes=${rootfsGuestGlesShimLibraryFile.length()}" +
+            "\nrootfs /usr/bin/alr-wayland-gpu-client exists=${rootfsWaylandGuiClientFile.isFile} executable=${rootfsWaylandGuiClientFile.canExecute()} bytes=${rootfsWaylandGuiClientFile.length()}" +
+            "\nrootfs /usr/bin/alr-x11-gpu-client exists=${rootfsX11GuiClientFile.isFile} executable=${rootfsX11GuiClientFile.canExecute()} bytes=${rootfsX11GuiClientFile.length()}" +
             "\nproot guest gpu client exit=${prootGuestGpuClientResult.exitCode}" +
             "\nproot guest gpu client stdout=${prootGuestGpuClientResult.stdout}" +
             "\nproot guest gpu client stderr=${prootGuestGpuClientResult.stderr}" +
@@ -314,6 +335,20 @@ class MainActivity : Activity() {
             "\nproot guest gles shim smoke stdout=${prootGuestGlesShimSmokeResult.stdout}" +
             "\nproot guest gles shim smoke stderr=${prootGuestGlesShimSmokeResult.stderr}" +
             "\nguest gles shim command parsed=${guestGlesShimCommand != null}" +
+            "\nproot guest wayland gui client exit=${prootGuestWaylandGuiResult.exitCode}" +
+            "\nproot guest wayland gui client stdout=${prootGuestWaylandGuiResult.stdout}" +
+            "\nproot guest x11 gui client exit=${prootGuestX11GuiResult.exitCode}" +
+            "\nproot guest x11 gui client stdout=${prootGuestX11GuiResult.stdout}" +
+            "\nguest wayland gui ipc expected frames=${guestWaylandGuiBridgeResult.expectedFrames}" +
+            "\nguest wayland gui ipc received frames=${guestWaylandGuiBridgeResult.commands.size}" +
+            "\nguest wayland gui ipc lossless=${guestWaylandGuiBridgeResult.expectedFrames > 0 && guestWaylandGuiBridgeResult.expectedFrames == guestWaylandGuiBridgeResult.commands.size}" +
+            "\nguest wayland gui ipc raw=${guestWaylandGuiBridgeResult.rawLines.joinToString("|")}" +
+            "\nguest wayland gui ipc error=${guestWaylandGuiBridgeResult.error ?: "none"}" +
+            "\nguest x11 gui ipc expected frames=${guestX11GuiBridgeResult.expectedFrames}" +
+            "\nguest x11 gui ipc received frames=${guestX11GuiBridgeResult.commands.size}" +
+            "\nguest x11 gui ipc lossless=${guestX11GuiBridgeResult.expectedFrames > 0 && guestX11GuiBridgeResult.expectedFrames == guestX11GuiBridgeResult.commands.size}" +
+            "\nguest x11 gui ipc raw=${guestX11GuiBridgeResult.rawLines.joinToString("|")}" +
+            "\nguest x11 gui ipc error=${guestX11GuiBridgeResult.error ?: "none"}" +
             "\nsurface gpu command source frames=${surfaceGpuCommands.size}" +
             "\nproot dpkg-split --version exit=${prootDpkgSplitVersionResult.exitCode}" +
             "\nproot dpkg-split --version stdout=${prootDpkgSplitVersionResult.stdout}" +
@@ -435,6 +470,10 @@ class MainActivity : Activity() {
             resultBlock("proot guest gpu client", prootGuestGpuClientResult) +
             resultBlock("proot guest gpu ipc client", guestGpuIpcBridgeResult.clientResult) +
             resultBlock("proot guest gles shim smoke", prootGuestGlesShimSmokeResult) +
+            resultBlock("proot guest wayland gui client", prootGuestWaylandGuiResult) +
+            resultBlock("proot guest x11 gui client", prootGuestX11GuiResult) +
+            resultBlock("proot guest wayland gui ipc client", guestWaylandGuiBridgeResult.clientResult) +
+            resultBlock("proot guest x11 gui ipc client", guestX11GuiBridgeResult.clientResult) +
             optionalResultBlock("proot hello verbose on failure", prootHelloVerboseResult)
 
         val report = executionSummary + "\n\n--- verbose report ---\n" + verboseReport
@@ -450,7 +489,7 @@ class MainActivity : Activity() {
                 override fun surfaceCreated(holder: SurfaceHolder) {
                     val encodedFrames = encodeSurfaceFrames(surfaceGpuCommands)
                     val surfaceReport = nativeRenderGpuSurfaceFrames(holder.surface, encodedFrames)
-                    view.append("\n\n--- Linux guest IPC multi-frame GPU surface renderer ---\n$surfaceReport")
+                    view.append("\n\n--- Linux guest Wayland/X11 GUI GPU surface renderer ---\n$surfaceReport")
                 }
 
                 override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) = Unit
@@ -476,6 +515,8 @@ class MainActivity : Activity() {
         val green: Float,
         val blue: Float,
         val tag: String,
+        val protocol: String = "GPU",
+        val seq: Int = 0,
     )
 
     private data class GuestGpuIpcBridgeResult(
@@ -537,11 +578,81 @@ class MainActivity : Activity() {
         )
     }
 
+
+    private fun runGuestGuiBridge(
+        nativeCommandRunner: NativeCommandRunner,
+        rootfsDir: File,
+        protocol: String,
+    ): GuestGpuIpcBridgeResult {
+        val host = "127.0.0.1"
+        val server = ServerSocket(0, 1, InetAddress.getByName(host)).apply { soTimeout = 3000 }
+        val port = server.localPort
+        val rawLines = mutableListOf<String>()
+        val errors = mutableListOf<String>()
+        val acceptThread = thread(name = "alr-gui-ipc-bridge-$protocol", start = true) {
+            try {
+                server.use { srv ->
+                    val socket = srv.accept()
+                    socket.use { accepted ->
+                        accepted.soTimeout = 3000
+                        accepted.getInputStream().bufferedReader().useLines { lines ->
+                            lines.forEach { rawLines += it }
+                        }
+                        accepted.getOutputStream().write("ACK protocol=$protocol frames=${rawLines.count { it.startsWith("ALR_GUI_FRAME ") }}\n".toByteArray())
+                    }
+                }
+            } catch (error: SocketTimeoutException) {
+                errors += "timeout waiting for guest gui ipc client $protocol"
+            } catch (error: Exception) {
+                errors += error.javaClass.simpleName + ": " + (error.message ?: "unknown")
+            }
+        }
+        val clientResult = nativeCommandRunner.runProotRootfsGuestGuiClientIpc(rootfsDir, protocol, port)
+        acceptThread.join(3500)
+        if (acceptThread.isAlive) {
+            errors += "gui accept thread still alive after join $protocol"
+            server.close()
+        }
+        val commands = parseGuestGuiCommands(rawLines.joinToString("\n"), protocol)
+        val expectedFrames = rawLines.firstOrNull { it.startsWith("ALR_GUI_IPC_HELLO ") }
+            ?.substringAfter("frames=", "0")
+            ?.substringBefore(" ")
+            ?.toIntOrNull()
+            ?: commands.size
+        return GuestGpuIpcBridgeResult(
+            host = host,
+            port = port,
+            expectedFrames = expectedFrames,
+            commands = commands,
+            rawLines = rawLines.toList(),
+            error = errors.firstOrNull(),
+            clientResult = clientResult,
+        )
+    }
+
     private fun parseGuestGpuCommands(text: String): List<GuestGpuCommand> =
         text.lineSequence()
             .filter { it.startsWith("ALR_GPU_CLEAR ") }
             .mapNotNull { parseGuestGpuClearLine(it) }
             .toList()
+
+    private fun parseGuestGuiCommands(text: String, expectedProtocol: String): List<GuestGpuCommand> =
+        text.lineSequence()
+            .filter { it.startsWith("ALR_GUI_FRAME ") }
+            .mapNotNull { parseGuestGuiFrameLine(it, expectedProtocol) }
+            .toList()
+
+    private fun parseGuestGuiFrameLine(line: String, expectedProtocol: String): GuestGpuCommand? {
+        val parts = line.trim().split(Regex("\\s+"))
+        if (parts.size < 7 || parts[0] != "ALR_GUI_FRAME") return null
+        val protocol = parts[1]
+        if (protocol != expectedProtocol) return null
+        val seq = parts[2].substringAfter("seq=", "0").toIntOrNull() ?: return null
+        val red = parts[3].toFloatOrNull()?.coerceIn(0f, 1f) ?: return null
+        val green = parts[4].toFloatOrNull()?.coerceIn(0f, 1f) ?: return null
+        val blue = parts[5].toFloatOrNull()?.coerceIn(0f, 1f) ?: return null
+        return GuestGpuCommand(red, green, blue, parts[6], protocol, seq)
+    }
 
     private fun parseGuestGlesShimCommand(stdout: String): GuestGpuCommand? =
         stdout.lineSequence()
@@ -559,7 +670,7 @@ class MainActivity : Activity() {
     }
 
     private fun encodeSurfaceFrames(commands: List<GuestGpuCommand>): String =
-        commands.joinToString(separator = "\n") { "${it.red} ${it.green} ${it.blue} ${it.tag}" }
+        commands.joinToString(separator = "\n") { "${it.red} ${it.green} ${it.blue} ${it.protocol}-seq${it.seq}-${it.tag}" }
 
     private fun resultBlock(label: String, result: NativeCommandResult): String =
         "\n\n$label command=${result.command.absolutePath}" +

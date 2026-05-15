@@ -15,6 +15,8 @@ def test_rootfs_contains_guest_gpu_ipc_client_and_gles_shim():
             "./usr/bin/alr-gpu-client",
             "./usr/bin/alr-gles-shim-smoke",
             "./usr/lib/androlinux/libalr_gles_shim.so",
+            "./usr/bin/alr-wayland-gpu-client",
+            "./usr/bin/alr-x11-gpu-client",
         ]:
             assert name in names
             assert archive.getmember(name).mode & 0o111
@@ -22,6 +24,9 @@ def test_rootfs_contains_guest_gpu_ipc_client_and_gles_shim():
         assert "tcp-loopback" in payload
         assert "multi-frame" in payload
         assert "gles-shim-smoke" in payload
+        gui_payload = archive.extractfile("./usr/share/androlinux/gui-gpu-bridge.txt").read().decode()
+        assert "Wayland/X11" in gui_payload
+        assert "ALR_GUI_FRAME" in gui_payload
 
 
 def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
@@ -35,7 +40,11 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "GUEST GPU MULTI-FRAME SURFACE EXECUTION" in text
     assert "guest gpu ipc received frames" in text
     assert "guest gpu ipc lossless" in text
-    assert "Linux guest IPC multi-frame GPU surface renderer" in text
+    assert "Linux guest Wayland/X11 GUI GPU surface renderer" in text
+    assert "GUEST WAYLAND GUI GPU BRIDGE EXECUTION" in text
+    assert "GUEST X11 GUI GPU BRIDGE EXECUTION" in text
+    assert "GUEST GUI GPU SURFACE EXECUTION" in text
+    assert "runGuestGuiBridge" in text
 
 
 def test_native_surface_renderer_accepts_multi_frame_stream_and_reports_bridge():
@@ -46,4 +55,6 @@ def test_native_surface_renderer_accepts_multi_frame_stream_and_reports_bridge()
     assert "surface frames dropped=" in text
     assert "surface frame lossless=" in text
     assert "guest gpu ipc bridge hardware render=" in text
+    assert "guest gui gpu compositor hardware render=" in text
+    assert "guest wayland/x11 gui gpu surface hardware render=" in text
     assert "eglSwapBuffers" in text

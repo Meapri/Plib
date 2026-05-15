@@ -119,6 +119,28 @@ class NativeCommandRunner(
     fun runProotRootfsGuestGlesShimSmoke(rootfsDir: File): NativeCommandResult =
         runProotRootfsCommand(rootfsDir, "/usr/bin/alr-gles-shim-smoke", rootId = true, rawRootfs = true)
 
+    fun runProotRootfsGuestGuiClient(rootfsDir: File, protocol: String): NativeCommandResult =
+        runProotRootfsCommand(
+            rootfsDir,
+            if (protocol == "X11") "/usr/bin/alr-x11-gpu-client" else "/usr/bin/alr-wayland-gpu-client",
+            rootId = true,
+            rawRootfs = true,
+        )
+
+    fun runProotRootfsGuestGuiClientIpc(rootfsDir: File, protocol: String, port: Int): NativeCommandResult =
+        runProotRootfsCommand(
+            rootfsDir,
+            if (protocol == "X11") "/usr/bin/alr-x11-gpu-client" else "/usr/bin/alr-wayland-gpu-client",
+            rootId = true,
+            rawRootfs = true,
+            extraEnvironment = mapOf(
+                "ALR_GUI_BRIDGE_HOST" to "127.0.0.1",
+                "ALR_GUI_BRIDGE_PORT" to port.toString(),
+                "ALR_GUI_BRIDGE_PROTOCOL" to protocol,
+                "ALR_GPU_BRIDGE_TRANSPORT" to "tcp-loopback-gui",
+            ),
+        )
+
     fun runProotRootfsProgramVerbose(rootfsDir: File, program: String): NativeCommandResult =
         runProotRootfsCommand(rootfsDir, program, verbose = "9")
 

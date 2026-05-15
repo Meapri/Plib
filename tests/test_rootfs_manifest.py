@@ -9,7 +9,7 @@ from tools.rootfs_manifest import RootfsManifest, RootfsAsset, plan_rootfs_insta
 def test_rootfs_manifest_computes_install_paths_under_app_files_rootfs():
     manifest = RootfsManifest(
         name="debian-arm64",
-        version="bookworm-slim-2026-05-gpu-ipc-v30",
+        version="bookworm-slim-2026-05-gui-gpu-v35",
         assets=[
             RootfsAsset(path="rootfs.tar.zst", sha256="a" * 64, size_bytes=123),
         ],
@@ -21,9 +21,9 @@ def test_rootfs_manifest_computes_install_paths_under_app_files_rootfs():
     )
 
     assert plan.rootfs_dir == "/data/user/0/dev.chanwoo.androlinux/files/rootfs/debian-arm64"
-    assert plan.marker_path == "/data/user/0/dev.chanwoo.androlinux/files/rootfs/debian-arm64/.alr-installed-bookworm-slim-2026-05-gpu-ipc-v30"
+    assert plan.marker_path == "/data/user/0/dev.chanwoo.androlinux/files/rootfs/debian-arm64/.alr-installed-bookworm-slim-2026-05-gui-gpu-v35"
     assert plan.asset_destinations == {
-        "rootfs.tar.zst": "/data/user/0/dev.chanwoo.androlinux/files/rootfs/.downloads/debian-arm64/bookworm-slim-2026-05-gpu-ipc-v30/rootfs.tar.zst"
+        "rootfs.tar.zst": "/data/user/0/dev.chanwoo.androlinux/files/rootfs/.downloads/debian-arm64/bookworm-slim-2026-05-gui-gpu-v35/rootfs.tar.zst"
     }
 
 

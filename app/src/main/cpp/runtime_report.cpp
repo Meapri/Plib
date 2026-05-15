@@ -199,7 +199,7 @@ std::string render_to_android_surface_frames(JNIEnv* env, jobject surface_obj, c
     const auto frames = parse_surface_frames(encoded_frames);
     std::ostringstream out;
     out << "host gpu surface renderer=android-surface-egl-gles";
-    out << "\nsurface frame stream protocol=clear-color-v3";
+    out << "\nsurface frame stream protocol=gui-compositor-clear-color-v4";
     out << "\nsurface requested frames=" << frames.size();
     if (surface_obj == nullptr) {
         out << "\nsurface render=fail reason=null-surface";
@@ -320,6 +320,8 @@ std::string render_to_android_surface_frames(JNIEnv* env, jobject surface_obj, c
     out << "\nsurface gpu software renderer=" << (software ? "true" : "false");
     out << "\nsurface gpu hardware render=" << (!software && last_gl_error == GL_NO_ERROR && last_swapped == EGL_TRUE ? "true" : "false");
     out << "\nguest gpu ipc bridge hardware render=" << (!software && rendered == static_cast<int>(frames.size()) && rendered > 0 ? "true" : "false");
+    out << "\nguest gui gpu compositor hardware render=" << (!software && rendered == static_cast<int>(frames.size()) && rendered > 0 ? "true" : "false");
+    out << "\nguest wayland/x11 gui gpu surface hardware render=" << (!software && rendered == static_cast<int>(frames.size()) && rendered > 0 ? "true" : "false");
     out << "\nguest gpu bridge hardware render=" << (!software && rendered > 0 ? "true" : "false");
 
     eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
