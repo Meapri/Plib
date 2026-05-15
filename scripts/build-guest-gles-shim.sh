@@ -47,9 +47,19 @@ done
   -Wl,-rpath,/usr/lib/androlinux \
   -o "$OUT_DIR/alr-gles-abi-smoke"
 
+"$ZIG_BIN" cc -target aarch64-linux-gnu -O2 -s \
+  "$SRC_DIR/alr_gles_demo_gears.c" \
+  -L"$OUT_DIR" \
+  -Wl,--no-as-needed \
+  -lEGL \
+  -lGLESv2 \
+  -Wl,-rpath,/usr/lib/androlinux \
+  -o "$OUT_DIR/alr-gles-demo-gears"
+
 file \
   "$OUT_DIR/libalr_gles_shim.so" \
   "$OUT_DIR/libEGL.so" \
   "$OUT_DIR/libGLESv2.so" \
   "$OUT_DIR/alr-gles-shim-smoke" \
-  "$OUT_DIR/alr-gles-abi-smoke"
+  "$OUT_DIR/alr-gles-abi-smoke" \
+  "$OUT_DIR/alr-gles-demo-gears"

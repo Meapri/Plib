@@ -25,17 +25,17 @@ Device-proven milestones:
 Latest V50 device evidence:
 
 ```text
-surface frames rendered=125
+surface frames rendered=185
 surface frames dropped=0
-surface gles shim render elapsed us=579562
-surface gles shim average frame render us=16098
-surface gles shim draw frames rendered=35
-surface gles shim draw render elapsed us=513270
-surface gles shim draw average frame render us=14664
+surface gles shim render elapsed us=573476
+surface gles shim average frame render us=15929
+surface gles shim draw frames rendered=95
+surface gles shim draw render elapsed us=1168045
+surface gles shim draw average frame render us=12295
 surface native gles frames rendered=32
-surface native gles render elapsed us=349958
-surface native gles average frame render us=10936
-surface gles shim vs native average ratio pct=147
+surface native gles render elapsed us=351467
+surface native gles average frame render us=10983
+surface gles shim vs native average ratio pct=145
 surface frame lossless=true
 surface gl renderer=Mali-G615 MC2
 surface gpu hardware render=true
@@ -223,8 +223,8 @@ surface wayland frames rendered=4
 surface x11 frames rendered=4
 surface gui total frames rendered=8
 surface frames dropped=0
-surface render elapsed us=1768099
-surface average frame render us=14144
+surface render elapsed us=2430883
+surface average frame render us=13139
 surface gles shim render elapsed us=548132
 surface gles shim average frame render us=16121
 surface native gles frames rendered=32
@@ -259,8 +259,8 @@ GUEST GUI GPU SURFACE EXECUTION: PASS or Surface callback PASS section present
 guest wayland/x11 gui gpu surface hardware render=true
 surface gpu hardware render=true
 surface frames dropped=0
-surface render elapsed us=1768099
-surface average frame render us=14144
+surface render elapsed us=2430883
+surface average frame render us=13139
 surface gles shim render elapsed us=548132
 surface gles shim average frame render us=16121
 surface native gles frames rendered=32
@@ -281,8 +281,8 @@ surface callback hardware render=true
 surface gl renderer=Mali-G615 MC2
 surface frames rendered=16
 surface frames dropped=0
-surface render elapsed us=1768099
-surface average frame render us=14144
+surface render elapsed us=2430883
+surface average frame render us=13139
 surface gles shim render elapsed us=548132
 surface gles shim average frame render us=16121
 surface native gles frames rendered=32
@@ -508,13 +508,15 @@ GUEST EGL SWAP VIA ANDROID SURFACE: PASS
 GUEST GLES HARDWARE RENDER: PASS
 ```
 
-Current device evidence from build `0.4.51-gles-abi-names`:
+Current device evidence from build `0.4.52-gles-demo-gears`:
 
 ```text
 GUEST GLES SHIM SMOKE EXECUTION: PASS
 ALR GUEST GLES SHIM SMOKE EXECUTION: PASS
 GUEST EGL/GLES ABI LIB EXECUTION: PASS
 ALR GUEST EGL/GLES ABI LIB EXECUTION: PASS
+GUEST GLES DEMO GEARS EXECUTION: PASS
+ALR GUEST GLES DEMO GEARS EXECUTION: PASS
 GUEST EGL INIT VIA SHIM EXECUTION: PASS
 GUEST EGL CONTEXT VIA SHIM EXECUTION: PASS
 GUEST GLES CLEAR VIA SHIM EXECUTION: PASS
@@ -545,17 +547,19 @@ ALR_GLES_API_STEP eglSwapBuffers ok
 ALR_GLES_ABI_LIBS visible libEGL.so libGLESv2.so
 ALR_GLES_ABI_STEP eglGetProcAddress ok
 ALR_GLES_ABI_STEP eglSwapBuffersDraw ok
-surface frames rendered=125
+ALR_GLES_DEMO_KIND es2gears-like-triangle-strip-subset
+ALR_GLES_DEMO_WORKLOAD requested=60 submitted=60
+surface frames rendered=185
 surface frames dropped=0
-surface gles shim render elapsed us=579562
-surface gles shim average frame render us=16098
-surface gles shim draw frames rendered=35
-surface gles shim draw render elapsed us=513270
-surface gles shim draw average frame render us=14664
+surface gles shim render elapsed us=573476
+surface gles shim average frame render us=15929
+surface gles shim draw frames rendered=95
+surface gles shim draw render elapsed us=1168045
+surface gles shim draw average frame render us=12295
 surface native gles frames rendered=32
-surface native gles render elapsed us=349958
-surface native gles average frame render us=10936
-surface gles shim vs native average ratio pct=147
+surface native gles render elapsed us=351467
+surface native gles average frame render us=10983
+surface gles shim vs native average ratio pct=145
 surface frame lossless=true
 surface gles shim frames rendered=36
 guest egl swap via android surface=true

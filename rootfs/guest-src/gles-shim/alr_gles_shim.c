@@ -15,6 +15,8 @@ static float g_draw_blue = 0.18f;
 static int g_initialized = 0;
 static int g_context_created = 0;
 static int g_current = 0;
+static unsigned int g_next_shader = 1;
+static unsigned int g_next_program = 1;
 static int g_program_selected = 0;
 static int g_vertex_attrib_enabled = 0;
 static int g_vertex_attrib_pointer = 0;
@@ -34,7 +36,17 @@ int eglTerminate(void* display);
 void glViewport(int x, int y, int width, int height);
 void glClearColor(float red, float green, float blue, float alpha);
 void glClear(unsigned int mask);
+unsigned int glCreateShader(unsigned int type);
+void glShaderSource(unsigned int shader, int count, const char* const* string, const int* length);
+void glCompileShader(unsigned int shader);
+void glGetShaderiv(unsigned int shader, unsigned int pname, int* params);
+unsigned int glCreateProgram(void);
+void glAttachShader(unsigned int program, unsigned int shader);
+void glBindAttribLocation(unsigned int program, unsigned int index, const char* name);
+void glLinkProgram(unsigned int program);
+void glGetProgramiv(unsigned int program, unsigned int pname, int* params);
 void glUseProgram(unsigned int program);
+void glUniform4f(int location, float v0, float v1, float v2, float v3);
 void glEnableVertexAttribArray(unsigned int index);
 void glVertexAttribPointer(unsigned int index, int size, unsigned int type, unsigned char normalized, int stride, const void* pointer);
 void glDrawArrays(unsigned int mode, int first, int count);
@@ -136,6 +148,55 @@ int alr_gl_draw_arrays(unsigned int mode, int first, int count) {
     if (mode != ALR_GL_TRIANGLES || first != 0 || count < 3) return 0;
     g_pending_draw = 1;
     return 1;
+}
+
+unsigned int alr_gl_create_shader(unsigned int type) {
+    (void)type;
+    if (!g_current) return 0;
+    return g_next_shader++;
+}
+
+void alr_gl_shader_source(unsigned int shader, int count, const char* const* string, const int* length) {
+    (void)shader;
+    (void)count;
+    (void)string;
+    (void)length;
+}
+
+void alr_gl_compile_shader(unsigned int shader) {
+    (void)shader;
+}
+
+void alr_gl_get_shaderiv(unsigned int shader, unsigned int pname, int* params) {
+    (void)shader;
+    (void)pname;
+    if (params != 0) *params = 1;
+}
+
+unsigned int alr_gl_create_program(void) {
+    if (!g_current) return 0;
+    return g_next_program++;
+}
+
+void alr_gl_attach_shader(unsigned int program, unsigned int shader) {
+    (void)program;
+    (void)shader;
+}
+
+void alr_gl_bind_attrib_location(unsigned int program, unsigned int index, const char* name) {
+    (void)program;
+    (void)index;
+    (void)name;
+}
+
+void alr_gl_link_program(unsigned int program) {
+    (void)program;
+}
+
+void alr_gl_get_programiv(unsigned int program, unsigned int pname, int* params) {
+    (void)program;
+    (void)pname;
+    if (params != 0) *params = 1;
 }
 
 int alr_egl_swap_buffers(void* display, void* surface) {
@@ -274,7 +335,17 @@ void* eglGetProcAddress(const char* procname) {
     if (strcmp(procname, "glViewport") == 0) return (void*)glViewport;
     if (strcmp(procname, "glClearColor") == 0) return (void*)glClearColor;
     if (strcmp(procname, "glClear") == 0) return (void*)glClear;
+    if (strcmp(procname, "glCreateShader") == 0) return (void*)glCreateShader;
+    if (strcmp(procname, "glShaderSource") == 0) return (void*)glShaderSource;
+    if (strcmp(procname, "glCompileShader") == 0) return (void*)glCompileShader;
+    if (strcmp(procname, "glGetShaderiv") == 0) return (void*)glGetShaderiv;
+    if (strcmp(procname, "glCreateProgram") == 0) return (void*)glCreateProgram;
+    if (strcmp(procname, "glAttachShader") == 0) return (void*)glAttachShader;
+    if (strcmp(procname, "glBindAttribLocation") == 0) return (void*)glBindAttribLocation;
+    if (strcmp(procname, "glLinkProgram") == 0) return (void*)glLinkProgram;
+    if (strcmp(procname, "glGetProgramiv") == 0) return (void*)glGetProgramiv;
     if (strcmp(procname, "glUseProgram") == 0) return (void*)glUseProgram;
+    if (strcmp(procname, "glUniform4f") == 0) return (void*)glUniform4f;
     if (strcmp(procname, "glEnableVertexAttribArray") == 0) return (void*)glEnableVertexAttribArray;
     if (strcmp(procname, "glVertexAttribPointer") == 0) return (void*)glVertexAttribPointer;
     if (strcmp(procname, "glDrawArrays") == 0) return (void*)glDrawArrays;
@@ -293,8 +364,50 @@ void glClear(unsigned int mask) {
     (void)alr_gl_clear(mask);
 }
 
+unsigned int glCreateShader(unsigned int type) {
+    return alr_gl_create_shader(type);
+}
+
+void glShaderSource(unsigned int shader, int count, const char* const* string, const int* length) {
+    alr_gl_shader_source(shader, count, string, length);
+}
+
+void glCompileShader(unsigned int shader) {
+    alr_gl_compile_shader(shader);
+}
+
+void glGetShaderiv(unsigned int shader, unsigned int pname, int* params) {
+    alr_gl_get_shaderiv(shader, pname, params);
+}
+
+unsigned int glCreateProgram(void) {
+    return alr_gl_create_program();
+}
+
+void glAttachShader(unsigned int program, unsigned int shader) {
+    alr_gl_attach_shader(program, shader);
+}
+
+void glBindAttribLocation(unsigned int program, unsigned int index, const char* name) {
+    alr_gl_bind_attrib_location(program, index, name);
+}
+
+void glLinkProgram(unsigned int program) {
+    alr_gl_link_program(program);
+}
+
+void glGetProgramiv(unsigned int program, unsigned int pname, int* params) {
+    alr_gl_get_programiv(program, pname, params);
+}
+
 void glUseProgram(unsigned int program) {
     (void)alr_gl_use_program(program);
+}
+
+void glUniform4f(int location, float v0, float v1, float v2, float v3) {
+    (void)location;
+    (void)v3;
+    alr_gl_draw_color(v0, v1, v2);
 }
 
 void glEnableVertexAttribArray(unsigned int index) {

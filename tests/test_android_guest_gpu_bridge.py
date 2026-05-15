@@ -15,6 +15,7 @@ def test_rootfs_contains_guest_gpu_ipc_client_and_gles_shim():
             "./usr/bin/alr-gpu-client",
             "./usr/bin/alr-gles-shim-smoke",
             "./usr/bin/alr-gles-abi-smoke",
+            "./usr/bin/alr-gles-demo-gears",
             "./usr/lib/androlinux/libalr_gles_shim.so",
             "./usr/lib/androlinux/libEGL.so",
             "./usr/lib/androlinux/libGLESv2.so",
@@ -28,6 +29,7 @@ def test_rootfs_contains_guest_gpu_ipc_client_and_gles_shim():
         assert "multi-frame" in payload
         assert "gles-shim-smoke" in payload
         assert "gles-abi-lib-names" in payload
+        assert "gles-demo-gears" in payload
         assert "libEGL.so" in payload
         assert "libGLESv2.so" in payload
         assert "gles-shim-api-subset" in payload
@@ -56,6 +58,8 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "GUEST GLES SHIM SMOKE EXECUTION" in text
     assert "GUEST EGL/GLES ABI LIB EXECUTION" in text
     assert "ALR GUEST EGL/GLES ABI LIB EXECUTION" in text
+    assert "GUEST GLES DEMO GEARS EXECUTION" in text
+    assert "ALR GUEST GLES DEMO GEARS EXECUTION" in text
     assert "GUEST GLES SHIM FRAME WORKLOAD EXECUTION:" in text
     assert "ALR GUEST GLES SHIM FRAME WORKLOAD EXECUTION:" in text
     assert "GUEST GLES DRAW VIA SHIM EXECUTION:" in text
@@ -103,6 +107,8 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "runAlrRuntimeTrampolineGuestGlesShimDrawBenchmark" in runner
     assert "runProotRootfsGuestGlesAbiSmoke" in runner
     assert "runAlrRuntimeTrampolineGuestGlesAbiSmoke" in runner
+    assert "runProotRootfsGuestGlesDemoGears" in runner
+    assert "runAlrRuntimeTrampolineGuestGlesDemoGears" in runner
     assert "hasGlesApiSteps" in text
     assert "alrHandoffStdoutText" in text
 
@@ -112,6 +118,7 @@ def test_guest_gles_shim_is_source_built_api_subset():
     shim_source = (source_root / "alr_gles_shim.c").read_text()
     smoke_source = (source_root / "alr_gles_api_smoke.c").read_text()
     abi_smoke_source = (source_root / "alr_gles_abi_smoke.c").read_text()
+    demo_source = (source_root / "alr_gles_demo_gears.c").read_text()
     build_script = (ROOT / "scripts/build-guest-gles-shim.sh").read_text()
 
     for symbol in [
@@ -130,6 +137,8 @@ def test_guest_gles_shim_is_source_built_api_subset():
         "alr_gl_enable_vertex_attrib_array",
         "alr_gl_vertex_attrib_pointer",
         "alr_gl_draw_arrays",
+        "alr_gl_create_shader",
+        "alr_gl_create_program",
     ]:
         assert symbol in shim_source
     assert "ALR_GLES_API_STEP %s %s" in smoke_source
@@ -155,14 +164,23 @@ def test_guest_gles_shim_is_source_built_api_subset():
         "glUseProgram",
         "glVertexAttribPointer",
         "glDrawArrays",
+        "glCreateShader",
+        "glCreateProgram",
+        "glUniform4f",
     ]:
         assert public_symbol in shim_source
-        assert public_symbol in abi_smoke_source
+        assert public_symbol in (abi_smoke_source + demo_source)
+    assert "ALR_GLES_DEMO_KIND es2gears-like-triangle-strip-subset" in demo_source
+    assert "ALR_GLES_DEMO_WORKLOAD requested=%d submitted=%d" in demo_source
+    assert "glCreateShader" in demo_source
+    assert "glLinkProgram" in demo_source
+    assert "glUniform4f" in demo_source
     assert "ALR_GLES_ABI_LIBS visible libEGL.so libGLESv2.so" in abi_smoke_source
     assert "-target aarch64-linux-gnu" in build_script
     assert "libEGL.so" in build_script
     assert "libGLESv2.so" in build_script
     assert "alr-gles-abi-smoke" in build_script
+    assert "alr-gles-demo-gears" in build_script
     assert "-Wl,--no-as-needed" in build_script
     assert "-Wl,-rpath,/usr/lib/androlinux" in build_script
 
@@ -175,16 +193,19 @@ def test_guest_gles_shim_binaries_link_rootfs_libraries_without_libdl():
         tmp_path = Path(tmp)
         smoke = tmp_path / "alr-gles-shim-smoke"
         abi_smoke = tmp_path / "alr-gles-abi-smoke"
+        demo = tmp_path / "alr-gles-demo-gears"
         shim = tmp_path / "libalr_gles_shim.so"
         egl = tmp_path / "libEGL.so"
         glesv2 = tmp_path / "libGLESv2.so"
         smoke.write_bytes(archive.extractfile("./usr/bin/alr-gles-shim-smoke").read())
         abi_smoke.write_bytes(archive.extractfile("./usr/bin/alr-gles-abi-smoke").read())
+        demo.write_bytes(archive.extractfile("./usr/bin/alr-gles-demo-gears").read())
         shim.write_bytes(archive.extractfile("./usr/lib/androlinux/libalr_gles_shim.so").read())
         egl.write_bytes(archive.extractfile("./usr/lib/androlinux/libEGL.so").read())
         glesv2.write_bytes(archive.extractfile("./usr/lib/androlinux/libGLESv2.so").read())
         smoke_dynamic = subprocess.check_output(["readelf", "-d", smoke], text=True)
         abi_smoke_dynamic = subprocess.check_output(["readelf", "-d", abi_smoke], text=True)
+        demo_dynamic = subprocess.check_output(["readelf", "-d", demo], text=True)
         shim_dynamic = subprocess.check_output(["readelf", "-d", shim], text=True)
         egl_dynamic = subprocess.check_output(["readelf", "-d", egl], text=True)
         glesv2_dynamic = subprocess.check_output(["readelf", "-d", glesv2], text=True)
@@ -193,12 +214,17 @@ def test_guest_gles_shim_binaries_link_rootfs_libraries_without_libdl():
     assert "libalr_gles_shim.so" in smoke_dynamic
     assert "libEGL.so" in abi_smoke_dynamic
     assert "libGLESv2.so" in abi_smoke_dynamic
+    assert "libEGL.so" in demo_dynamic
+    assert "libGLESv2.so" in demo_dynamic
     assert "RUNPATH" in smoke_dynamic
     assert "RUNPATH" in abi_smoke_dynamic
+    assert "RUNPATH" in demo_dynamic
     assert "/usr/lib/androlinux" in smoke_dynamic
     assert "/usr/lib/androlinux" in abi_smoke_dynamic
+    assert "/usr/lib/androlinux" in demo_dynamic
     assert "libdl.so" not in smoke_dynamic
     assert "libdl.so" not in abi_smoke_dynamic
+    assert "libdl.so" not in demo_dynamic
     assert "SONAME" in shim_dynamic
     assert "libalr_gles_shim.so" in shim_dynamic
     assert "SONAME" in egl_dynamic

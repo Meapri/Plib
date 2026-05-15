@@ -159,6 +159,7 @@ Acceptance lines:
 ```text
 GUEST EGL/GLES SHIM LIBRARIES VISIBLE: PASS
 GUEST EGL/GLES ABI LIB EXECUTION: PASS
+GUEST GLES DEMO GEARS EXECUTION: PASS
 GLES SHIM REQUIRED SUBSET LISTED: PASS
 GLES SHIM SCOPE IS CONSTRAINED: PASS
 ```
@@ -242,23 +243,23 @@ software renderer rejected=true
 surface frames submitted=<n>
 surface frames rendered=<n>
 surface frames dropped=0
-surface gles shim render elapsed us=579562
-surface gles shim average frame render us=16098
-surface gles shim draw frames rendered=35
-surface gles shim draw render elapsed us=513270
-surface gles shim draw average frame render us=14664
+surface gles shim render elapsed us=573476
+surface gles shim average frame render us=15929
+surface gles shim draw frames rendered=95
+surface gles shim draw render elapsed us=1168045
+surface gles shim draw average frame render us=12295
 surface native gles frames rendered=32
-surface native gles render elapsed us=349958
-surface native gles average frame render us=10936
-surface gles shim vs native average ratio pct=147
+surface native gles render elapsed us=351467
+surface native gles average frame render us=10983
+surface gles shim vs native average ratio pct=145
 ```
 
 Do not mark V51–V60 complete unless Android Surface/EGL hardware proof is present in the same evidence bundle as the guest proxy/shim result.
 
 ## Latest Device Evidence
 
-Build `0.4.51-gles-abi-names` now feeds GUI, IPC, GLES clear,
-GLES triangle draw, and `libEGL.so`/`libGLESv2.so` ABI-name smoke commands into the same Android Surface/EGL/GLES stream, including 32-frame clear and draw workloads. ADB UI-tree evidence
+Build `0.4.52-gles-demo-gears` now feeds GUI, IPC, GLES clear,
+GLES triangle draw, `libEGL.so`/`libGLESv2.so` ABI-name smoke, and an es2gears-like demo command stream into the same Android Surface/EGL/GLES stream, including 32-frame clear/draw workloads and a 60-frame demo loop. ADB UI-tree evidence
 from device `R5KL20B6S3X`:
 
 ```text
@@ -266,6 +267,8 @@ GUEST GLES SHIM SMOKE EXECUTION: PASS
 ALR GUEST GLES SHIM SMOKE EXECUTION: PASS
 GUEST EGL/GLES ABI LIB EXECUTION: PASS
 ALR GUEST EGL/GLES ABI LIB EXECUTION: PASS
+GUEST GLES DEMO GEARS EXECUTION: PASS
+ALR GUEST GLES DEMO GEARS EXECUTION: PASS
 GUEST EGL INIT VIA SHIM EXECUTION: PASS
 GUEST EGL CONTEXT VIA SHIM EXECUTION: PASS
 GUEST GLES CLEAR VIA SHIM EXECUTION: PASS
@@ -296,20 +299,22 @@ ALR_GLES_API_STEP eglSwapBuffers ok
 ALR_GLES_ABI_LIBS visible libEGL.so libGLESv2.so
 ALR_GLES_ABI_STEP eglGetProcAddress ok
 ALR_GLES_ABI_STEP eglSwapBuffersDraw ok
-surface callback frames rendered=125
+ALR_GLES_DEMO_KIND es2gears-like-triangle-strip-subset
+ALR_GLES_DEMO_WORKLOAD requested=60 submitted=60
+surface callback frames rendered=185
 surface callback hardware render=true
 surface gl renderer=Mali-G615 MC2
-surface frames rendered=125
+surface frames rendered=185
 surface frames dropped=0
-surface gles shim render elapsed us=579562
-surface gles shim average frame render us=16098
-surface gles shim draw frames rendered=35
-surface gles shim draw render elapsed us=513270
-surface gles shim draw average frame render us=14664
+surface gles shim render elapsed us=573476
+surface gles shim average frame render us=15929
+surface gles shim draw frames rendered=95
+surface gles shim draw render elapsed us=1168045
+surface gles shim draw average frame render us=12295
 surface native gles frames rendered=32
-surface native gles render elapsed us=349958
-surface native gles average frame render us=10936
-surface gles shim vs native average ratio pct=147
+surface native gles render elapsed us=351467
+surface native gles average frame render us=10983
+surface gles shim vs native average ratio pct=145
 surface frame lossless=true
 surface gpu hardware render=true
 surface gles shim frames rendered=36

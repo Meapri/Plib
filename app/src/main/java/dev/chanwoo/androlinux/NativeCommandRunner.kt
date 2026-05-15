@@ -88,6 +88,14 @@ class NativeCommandRunner(
     fun runAlrRuntimeTrampolineGuestGlesAbiSmoke(rootfsDir: File): NativeCommandResult =
         runAlrRuntimeTrampolineGuestGlesShim(rootfsDir, binaryPath = "/usr/bin/alr-gles-abi-smoke")
 
+    fun runAlrRuntimeTrampolineGuestGlesDemoGears(rootfsDir: File, frameCount: Int): NativeCommandResult =
+        runAlrRuntimeTrampolineGuestGlesShim(
+            rootfsDir,
+            mapOf("ALR_GLES_DEMO_FRAME_COUNT" to frameCount.coerceIn(1, 240).toString()),
+            timeoutMs = 4000,
+            binaryPath = "/usr/bin/alr-gles-demo-gears",
+        )
+
     fun runAlrRuntimeTrampolineGuestGlesShimBenchmark(rootfsDir: File, frameCount: Int): NativeCommandResult =
         runAlrRuntimeTrampolineGuestGlesShim(
             rootfsDir,
@@ -425,6 +433,15 @@ class NativeCommandRunner(
 
     fun runProotRootfsGuestGlesAbiSmoke(rootfsDir: File): NativeCommandResult =
         runProotRootfsCommand(rootfsDir, "/usr/bin/alr-gles-abi-smoke", rootId = true, rawRootfs = true)
+
+    fun runProotRootfsGuestGlesDemoGears(rootfsDir: File, frameCount: Int): NativeCommandResult =
+        runProotRootfsCommand(
+            rootfsDir,
+            "/usr/bin/alr-gles-demo-gears",
+            rootId = true,
+            rawRootfs = true,
+            extraEnvironment = mapOf("ALR_GLES_DEMO_FRAME_COUNT" to frameCount.coerceIn(1, 240).toString()),
+        )
 
     fun runProotRootfsGuestGlesShimBenchmark(rootfsDir: File, frameCount: Int): NativeCommandResult =
         runProotRootfsCommand(
