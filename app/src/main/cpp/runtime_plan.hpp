@@ -43,6 +43,7 @@ struct ExecutionBackend {
 RuntimeReport build_runtime_report(const RuntimeReportInput& input);
 RuntimeReport build_runtime_report(const RuntimeReportInput& input, const ExecutionBackend& backend);
 LoaderLaunchPlan build_loader_launch_plan(const RuntimeReportInput& input);
+LoaderLaunchPlan build_proot_launch_plan(const RuntimeReportInput& input);
 ExecutionBackend select_execution_backend(ExecutionBackendKind kind);
 
 }  // namespace alr

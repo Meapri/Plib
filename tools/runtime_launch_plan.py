@@ -26,6 +26,7 @@ def build_launch_plan(
     app_files_dir: str,
     rootfs_name: str,
     program: str,
+    backend: str = "loader",
 ) -> LaunchPlan:
     if not package_name:
         raise ValueError("package_name is required")
@@ -35,23 +36,39 @@ def build_launch_plan(
     native_dir = _normalize(native_library_dir)
     files_dir = _normalize(app_files_dir)
     rootfs_dir = _normalize(str(PurePosixPath(files_dir) / "rootfs" / rootfs_name))
-    executable = _normalize(str(PurePosixPath(native_dir) / "libalr-loader.so"))
+    if backend == "loader":
+        executable = _normalize(str(PurePosixPath(native_dir) / "libalr-loader.so"))
+        argv = [
+            executable,
+            "--rootfs",
+            rootfs_dir,
+            "--program",
+            program,
+        ]
+    elif backend == "proot":
+        executable = _normalize(str(PurePosixPath(native_dir) / "libalr_proot.so"))
+        argv = [
+            executable,
+            "-R",
+            rootfs_dir,
+            "-w",
+            "/root",
+            program,
+        ]
+    else:
+        raise ValueError(f"unknown launch backend: {backend}")
 
-    argv = [
-        executable,
-        "--rootfs",
-        rootfs_dir,
-        "--program",
-        program,
-    ]
     env = {
         "ALR_PACKAGE": package_name,
         "ALR_ROOTFS": rootfs_dir,
         "ALR_PROGRAM": program,
+        "ALR_BACKEND": backend,
         "HOME": "/root",
         "TMPDIR": "/tmp",
         "PATH": "/bin:/usr/bin:/usr/local/bin",
     }
+    if backend == "proot":
+        env["PROOT_NO_SECCOMP"] = "1"
     return LaunchPlan(
         executable=executable,
         native_library_dir=native_dir,

@@ -39,6 +39,7 @@ Java_dev_chanwoo_androlinux_MainActivity_nativeRuntimeReport(
     };
     const auto report = alr::build_runtime_report(input);
     const auto launch = alr::build_loader_launch_plan(input);
+    const auto proot = alr::build_proot_launch_plan(input);
 
     std::ostringstream out;
     out << report.text << "\n\nloader argv:";
@@ -49,5 +50,14 @@ Java_dev_chanwoo_androlinux_MainActivity_nativeRuntimeReport(
     out << "\n  ALR_ROOTFS=" << launch.env.at("ALR_ROOTFS");
     out << "\n  ALR_PROGRAM=" << launch.env.at("ALR_PROGRAM");
     out << "\n  PATH=" << launch.env.at("PATH");
+    out << "\n\nproot argv:";
+    for (const auto& arg : proot.argv) {
+        out << "\n  " << arg;
+    }
+    out << "\n\nproot env:";
+    out << "\n  ALR_ROOTFS=" << proot.env.at("ALR_ROOTFS");
+    out << "\n  ALR_PROGRAM=" << proot.env.at("ALR_PROGRAM");
+    out << "\n  PROOT_NO_SECCOMP=" << proot.env.at("PROOT_NO_SECCOMP");
+    out << "\n  PATH=" << proot.env.at("PATH");
     return env->NewStringUTF(out.str().c_str());
 }

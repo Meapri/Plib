@@ -75,6 +75,33 @@ LoaderLaunchPlan build_loader_launch_plan(const RuntimeReportInput& input) {
         {"ALR_PACKAGE", input.package_name},
         {"ALR_ROOTFS", rootfs_dir},
         {"ALR_PROGRAM", input.program},
+        {"ALR_BACKEND", "loader"},
+        {"HOME", "/root"},
+        {"TMPDIR", "/tmp"},
+        {"PATH", "/bin:/usr/bin:/usr/local/bin"},
+    };
+    return plan;
+}
+
+LoaderLaunchPlan build_proot_launch_plan(const RuntimeReportInput& input) {
+    validate_input(input);
+    LoaderLaunchPlan plan;
+    const std::string rootfs_dir = rootfs_dir_for(input);
+    plan.executable = join_path(input.native_library_dir, "libalr_proot.so");
+    plan.argv = {
+        plan.executable,
+        "-R",
+        rootfs_dir,
+        "-w",
+        "/root",
+        input.program,
+    };
+    plan.env = {
+        {"ALR_PACKAGE", input.package_name},
+        {"ALR_ROOTFS", rootfs_dir},
+        {"ALR_PROGRAM", input.program},
+        {"ALR_BACKEND", "proot"},
+        {"PROOT_NO_SECCOMP", "1"},
         {"HOME", "/root"},
         {"TMPDIR", "/tmp"},
         {"PATH", "/bin:/usr/bin:/usr/local/bin"},

@@ -65,12 +65,29 @@ tasks.register("packageNativeTestCommand") {
     }
 }
 
+tasks.register("packageProotCandidate") {
+    val generatedDir = layout.buildDirectory.dir("generated/native-test-command/jniLibs")
+    outputs.dir(generatedDir)
+    doLast {
+        val abis = listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+        abis.forEach { abi ->
+            val built = fileTree(layout.buildDirectory.dir("intermediates/cxx/Debug")) {
+                include("**/obj/$abi/alr-proot-candidate")
+            }.files.singleOrNull()
+                ?: throw GradleException("missing alr-proot-candidate for $abi; run buildCMakeDebug[$abi] first")
+            val destDir = generatedDir.get().dir(abi).asFile
+            destDir.mkdirs()
+            built.copyTo(destDir.resolve("libalr_proot.so"), overwrite = true)
+        }
+    }
+}
+
 tasks.matching { it.name == "mergeDebugJniLibFolders" }.configureEach {
-    dependsOn("packageNativeTestCommand")
+    dependsOn("packageNativeTestCommand", "packageProotCandidate")
 }
 
 tasks.matching { it.name.startsWith("buildCMakeDebug") }.configureEach {
-    finalizedBy("packageNativeTestCommand")
+    finalizedBy("packageNativeTestCommand", "packageProotCandidate")
 }
 
 dependencies {

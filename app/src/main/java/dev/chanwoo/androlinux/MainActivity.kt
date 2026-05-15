@@ -42,7 +42,9 @@ class MainActivity : Activity() {
             "\npackaged command: ${applicationInfo.nativeLibraryDir}/libalr_test_command.so" +
             "\nnative command exit=${nativeCommandResult.exitCode}" +
             "\nnative command stdout=${nativeCommandResult.stdout}" +
-            "\nnative command stderr=${nativeCommandResult.stderr}"
+            "\nnative command stderr=${nativeCommandResult.stderr}" +
+            "\n\nproot backend candidate: packaged native executable" +
+            "\nproot command: ${applicationInfo.nativeLibraryDir}/libalr_proot.so"
 
         val view = TextView(this).apply {
             text = report
