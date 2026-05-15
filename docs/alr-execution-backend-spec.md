@@ -1277,6 +1277,42 @@ surface vulkan present=ok
 surface vulkan hardware render=true
 ```
 
+V89 moves the GUI path one step closer to a real Linux desktop entry point by
+adding a minimal clean-room `WAYLAND_DISPLAY` endpoint. The new guest client is
+source-built from `rootfs/guest-src/gui/alr_wayland_display_client.c`, installed
+both directly as `/usr/bin/alr-wayland-display-client` and through the local
+`.deb` as `/usr/local/bin/alr-package-wayland-display-client`. Android hosts an
+app-private `LocalServerSocket`, exports `WAYLAND_DISPLAY=alr-wayland-0`,
+`XDG_RUNTIME_DIR=/tmp/alr-wayland-runtime`, and
+`ALR_WAYLAND_DISPLAY_SOCKET=@...`, then translates bounded
+`ALR_WL_SURFACE_COMMIT` records into the existing Surface renderer queue.
+
+```text
+build: 0.4.89-wayland-display-bridge
+versionCode=89
+versionName=0.4.89-wayland-display-bridge
+rootfs_version=bookworm-slim-2026-05-wayland-display-v89
+rootfs sha256=51d8795a26ef91f371b580db6b00fd088cc2eec12b00fe95d8cf9408afbdae3c
+rootfs size bytes=34078720
+rootfs /usr/bin/alr-wayland-display-client bytes=30312
+rootfs installed alr wayland display client bytes=30312
+WAYLAND DISPLAY SOCKET AVAILABLE: PASS
+WAYLAND DISPLAY COMMIT SURFACE EXECUTION: PASS
+alr installed package wayland display ipc received frames=3/3
+alr installed package wayland display ipc ack raw=ALR_WL_DISPLAY_ACK display=alr-wayland-0 commits=3 expected=3 lossless=true transport=unix-abstract-wayland
+alr installed package wayland display ipc error=none
+surface wayland frames rendered=19
+surface x11 frames rendered=16
+surface vulkan present=ok
+surface vulkan hardware render=true
+```
+
+This is not a full Wayland compositor yet. It is the smallest useful bridge
+shape for the next clean-room phase: real guest programs should see a
+`WAYLAND_DISPLAY`-style endpoint first, while Plib keeps Android-native
+Surface/EGL/Vulkan ownership on the host side and avoids PRoot-style syscall
+mediation for every graphics operation.
+
 Report:
 
 ```text

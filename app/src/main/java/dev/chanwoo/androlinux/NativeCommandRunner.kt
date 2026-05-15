@@ -252,6 +252,24 @@ class NativeCommandRunner(
             ),
         )
 
+    fun runAlrRuntimeTrampolineInstalledPackageWaylandDisplayClientUnix(
+        rootfsDir: File,
+        socketName: String,
+        displayName: String,
+    ): NativeCommandResult =
+        runAlrRuntimeTrampoline(
+            rootfsDir,
+            "/usr/local/bin/alr-package-wayland-display-client",
+            executeEntry = true,
+            timeoutMs = 3000,
+            extraGuestEnvironment = mapOf(
+                "ALR_WAYLAND_DISPLAY_SOCKET" to "@$socketName",
+                "WAYLAND_DISPLAY" to displayName,
+                "XDG_RUNTIME_DIR" to "/tmp/alr-wayland-runtime",
+                "ALR_GPU_BRIDGE_TRANSPORT" to "unix-abstract-wayland-display",
+            ),
+        )
+
     fun runAlrRuntimeTrampolineInstalledPackageVulkanDiscovery(rootfsDir: File, port: Int): NativeCommandResult =
         runAlrRuntimeTrampolineGlibcRootfsProgram(
             rootfsDir,

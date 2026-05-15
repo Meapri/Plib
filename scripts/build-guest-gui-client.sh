@@ -26,6 +26,12 @@ for client in alr-wayland-gpu-client alr-x11-gpu-client; do
     -o "$OUT_DIR/$client"
 done
 
+"$ZIG_BIN" cc -target aarch64-linux-musl -O2 -s \
+  "$SRC_DIR/alr_wayland_display_client.c" \
+  -static \
+  -o "$OUT_DIR/alr-wayland-display-client"
+
 file \
   "$OUT_DIR/alr-wayland-gpu-client" \
-  "$OUT_DIR/alr-x11-gpu-client"
+  "$OUT_DIR/alr-x11-gpu-client" \
+  "$OUT_DIR/alr-wayland-display-client"

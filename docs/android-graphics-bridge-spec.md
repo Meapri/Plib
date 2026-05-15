@@ -738,9 +738,44 @@ This keeps the GUI path aligned with the GLES/Vulkan direction: TCP remains only
 as a fallback and measurement baseline, while Android-native Surface rendering
 is driven through app-private Unix-domain control sockets.
 
+Build `0.4.89-wayland-display-bridge` adds the first minimal
+`WAYLAND_DISPLAY`-shaped endpoint. The guest side is the new source-built static
+client `rootfs/guest-src/gui/alr_wayland_display_client.c`. The host side
+creates an Android `LocalServerSocket`, passes
+`ALR_WAYLAND_DISPLAY_SOCKET=@...`, `WAYLAND_DISPLAY=alr-wayland-0`, and
+`XDG_RUNTIME_DIR=/tmp/alr-wayland-runtime`, and then ACKs the commit stream with
+`ALR_WL_DISPLAY_ACK`.
+
+```text
+WAYLAND DISPLAY SOCKET AVAILABLE: PASS
+WAYLAND DISPLAY COMMIT SURFACE EXECUTION: PASS
+alr installed package wayland display ipc received frames=3/3
+alr installed package wayland display ipc ack raw=ALR_WL_DISPLAY_ACK display=alr-wayland-0 commits=3 expected=3 lossless=true transport=unix-abstract-wayland
+surface wayland frames rendered=19
+surface x11 frames rendered=16
+surface vulkan present=ok
+surface vulkan hardware render=true
+```
+
+Current V89 protocol records:
+
+```text
+ALR_WL_CONNECT display=alr-wayland-0 runtime=/tmp/alr-wayland-runtime transport=unix-abstract-wayland
+ALR_WL_REGISTRY global=wl_compositor version=4 id=1
+ALR_WL_REGISTRY global=wl_shm version=1 id=2
+ALR_WL_BIND name=wl_compositor id=1 version=4
+ALR_WL_SURFACE_CREATE id=10 compositor=1
+ALR_WL_BUFFER_CREATE id=20 width=320 height=180 format=argb8888
+ALR_WL_SURFACE_COMMIT surface=10 buffer=20 seq=1 ...
+```
+
+This is still a clean-room bridge probe, not a drop-in Wayland compositor. The
+important design decision is that Android remains the native renderer owner,
+while the guest sees a progressively more Linux-like display endpoint.
+
 ## Open Questions
 
-- Which bridge should move to shared memory first after the Unix socket control path: GLES frames, Vulkan command batches, or GUI protocol frames?
+- Which bridge should move to shared memory first after the Unix socket control path: GLES frames, Vulkan command batches, or Wayland buffer commits?
 - Can `AHardwareBuffer` provide a practical cross-boundary buffer path for guest-generated frames?
 - How much Wayland protocol is worth implementing before using an existing compositor/proxy component?
 - Should X11 support begin with image transport, GLX proxy research, or Xvfb/VNC comparison?

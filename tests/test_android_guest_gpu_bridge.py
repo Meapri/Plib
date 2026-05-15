@@ -27,6 +27,7 @@ def test_rootfs_contains_guest_gpu_ipc_client_and_gles_shim():
             "./usr/lib/androlinux/libvulkan.so.1",
             "./usr/bin/alr-wayland-gpu-client",
             "./usr/bin/alr-x11-gpu-client",
+            "./usr/bin/alr-wayland-display-client",
         ]:
             assert name in names
             assert archive.getmember(name).mode & 0o111
@@ -52,6 +53,14 @@ def test_rootfs_contains_guest_gpu_ipc_client_and_gles_shim():
         assert "Wayland/X11" in gui_payload
         assert "ALR_GUI_FRAME" in gui_payload
         assert "unix-abstract-gui" in gui_payload
+        assert "WAYLAND_DISPLAY" in gui_payload
+        assert "ALR_WL_SURFACE_COMMIT" in gui_payload
+        assert "unix-abstract-wayland" in gui_payload
+        wayland_display = archive.extractfile("./usr/bin/alr-wayland-display-client").read()
+        assert wayland_display.startswith(b"\x7fELF")
+        assert b"ALR_WAYLAND_DISPLAY_SOCKET" in wayland_display
+        assert b"WAYLAND_DISPLAY" in wayland_display
+        assert b"ALR_WL_SURFACE_COMMIT" in wayland_display
 
 
 def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
@@ -149,10 +158,24 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "ALR INSTALLED PACKAGE VULKAN DISCOVERY EXECUTION" in text
     assert "runAlrRuntimeTrampolineInstalledPackageGuiClientIpc" in runner
     assert "runAlrRuntimeTrampolineInstalledPackageVulkanDiscovery" in runner
+    assert "runAlrRuntimeTrampolineInstalledPackageWaylandDisplayClientUnix" in runner
+    assert "ALR_WAYLAND_DISPLAY_SOCKET" in runner
+    assert "WAYLAND_DISPLAY" in runner
+    assert "XDG_RUNTIME_DIR" in runner
     assert "alr installed package wayland gui ipc received frames" in text
     assert "alr installed package x11 gui ipc received frames" in text
     assert "alr installed package wayland gui unix ipc ack raw" in text
     assert "alr installed package x11 gui unix ipc ack raw" in text
+    assert "WAYLAND DISPLAY SOCKET AVAILABLE:" in text
+    assert "WAYLAND DISPLAY COMMIT SURFACE EXECUTION:" in text
+    assert "ALR_DEVICE_EVIDENCE" in text
+    assert "ALR_SURFACE_EVIDENCE" in text
+    assert "runInstalledPackageWaylandDisplayBridge" in text
+    assert "ALR_WL_SURFACE_COMMIT" in text
+    assert "ALR_WL_DISPLAY_ACK" in text
+    assert "alr installed package wayland display ipc ack raw" in text
+    assert "wayland-display:${if (alrInstalledPackageWaylandDisplayBridgePassed)" in text
+    assert "wayland display surface commits=" in text
     assert "gui bridge transport wayland unix vs tcp ratio pct=" in text
     assert "gui bridge transport x11 unix vs tcp ratio pct=" in text
     assert "alr installed package vulkan discovery ack" in text
@@ -501,6 +524,7 @@ def test_native_surface_renderer_accepts_multi_frame_stream_and_reports_bridge()
 
 def test_guest_gui_client_sources_support_unix_socket_transport():
     source = (ROOT / "rootfs/guest-src/gui/alr_gui_gpu_client.c").read_text()
+    display_source = (ROOT / "rootfs/guest-src/gui/alr_wayland_display_client.c").read_text()
     build_script = (ROOT / "scripts/build-guest-gui-client.sh").read_text()
 
     assert "ALR_GUI_BRIDGE_SOCKET" in source
@@ -508,5 +532,16 @@ def test_guest_gui_client_sources_support_unix_socket_transport():
     assert "ALR_GUI_IPC_HELLO protocol=%s frames=%d transport=%s" in source
     assert "ALR_GUI_FRAME %s seq=%d" in source
     assert "ALR_GUI_IPC_CLIENT ok sent=%d transport=%s ack=%s" in source
+    assert "ALR_WAYLAND_DISPLAY_SOCKET" in display_source
+    assert "WAYLAND_DISPLAY" in display_source
+    assert "XDG_RUNTIME_DIR" in display_source
+    assert "AF_UNIX" in display_source
+    assert "ALR_WL_CONNECT display=%s runtime=%s transport=unix-abstract-wayland" in display_source
+    assert "ALR_WL_REGISTRY global=wl_compositor" in display_source
+    assert "ALR_WL_SURFACE_CREATE id=10 compositor=1" in display_source
+    assert "ALR_WL_BUFFER_CREATE id=20 width=320 height=180 format=argb8888" in display_source
+    assert "ALR_WL_SURFACE_COMMIT surface=10 buffer=20 seq=%d" in display_source
+    assert "ALR_WL_DISPLAY_CLIENT ok display=%s commits=3 ack=%s" in display_source
     assert "alr-wayland-gpu-client" in build_script
     assert "alr-x11-gpu-client" in build_script
+    assert "alr-wayland-display-client" in build_script

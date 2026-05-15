@@ -1412,9 +1412,39 @@ clients can use Android `LocalServerSocket` Unix transport while still feeding
 the Surface renderer. This makes the next GUI step less about transport and more
 about moving from smoke frames toward a minimal real Wayland socket/proxy shape.
 
+Latest V89 minimal `WAYLAND_DISPLAY` bridge evidence:
+
+```text
+build: 0.4.89-wayland-display-bridge
+versionCode=89
+versionName=0.4.89-wayland-display-bridge
+rootfs_version=bookworm-slim-2026-05-wayland-display-v89
+rootfs sha256=51d8795a26ef91f371b580db6b00fd088cc2eec12b00fe95d8cf9408afbdae3c
+rootfs size bytes=34078720
+rootfs /usr/bin/alr-wayland-display-client bytes=30312
+rootfs installed alr wayland display client bytes=30312
+WAYLAND DISPLAY SOCKET AVAILABLE: PASS
+WAYLAND DISPLAY COMMIT SURFACE EXECUTION: PASS
+alr installed package wayland display ipc received frames=3/3
+alr installed package wayland display ipc ack raw=ALR_WL_DISPLAY_ACK display=alr-wayland-0 commits=3 expected=3 lossless=true transport=unix-abstract-wayland
+surface wayland frames rendered=19
+surface x11 frames rendered=16
+surface vulkan present=ok
+surface vulkan hardware render=true
+```
+
+V89 completes the first item from the previous batch: Android now exposes a
+minimal app-private `WAYLAND_DISPLAY`-style socket and a source-built guest
+client performs connect, registry, bind, surface create, buffer create, and
+three surface commit records through ALR. The bridge still uses a constrained
+text protocol, but the app-facing shape is intentionally closer to what real
+Linux GUI launchers expect: `WAYLAND_DISPLAY`, `XDG_RUNTIME_DIR`, and a Unix
+socket endpoint instead of a generic frame-smoke client.
+
 Next implementation batch:
 
-1. Add a minimal real Wayland socket/proxy shape: advertise `WAYLAND_DISPLAY`, accept a tiny client handshake, and translate a constrained commit into the existing Surface frame command.
-2. Add a shared-memory or ashmem/AHardwareBuffer-backed payload path so batch control frames do not have to carry large image or vertex payloads inline.
+1. Add a shared-memory or ashmem/AHardwareBuffer-backed payload path so batch control frames do not have to carry large image or vertex payloads inline.
+2. Expand the minimal Wayland bridge from ALR_WL text records to a stricter subset of real Wayland wire opcodes for registry, compositor, shm, surface, and buffer lifetimes.
 3. Replace the loader-info smoke with the real Khronos Vulkan loader or a stricter ABI-compatible loader subset.
 4. Add a small real toolkit fixture target, likely a tiny GTK/Qt-independent Wayland protocol smoke before pulling in a larger GUI stack.
+5. Turn the current evidence logs into a reusable adb verification script so device regressions are cheaper to catch while implementation is moving quickly.
