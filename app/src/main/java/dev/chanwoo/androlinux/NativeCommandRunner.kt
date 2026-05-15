@@ -28,6 +28,15 @@ class NativeCommandRunner(
         return runAlrRuntimeTrampoline(rootfsDir, program, executeEntry = true)
     }
 
+    fun runAlrRuntimeTrampolineEntryBenchmark(rootfsDir: File, repeatCount: Int = 10): NativeCommandResult {
+        return runAlrRuntimeTrampoline(
+            rootfsDir,
+            "/bin/hello",
+            executeEntry = true,
+            repeatCount = repeatCount,
+        )
+    }
+
     fun runAlrRuntimeTrampolineLoaderHelpProbe(rootfsDir: File): NativeCommandResult {
         return runAlrRuntimeTrampoline(
             rootfsDir,
@@ -52,6 +61,24 @@ class NativeCommandRunner(
                 translateGuestPath(rootfsDir, "/bin/glibc-hello"),
             ),
             timeoutMs = 1500,
+        )
+    }
+
+    fun runAlrRuntimeTrampolineGlibcHelloBenchmark(rootfsDir: File, repeatCount: Int = 10): NativeCommandResult {
+        val libraryPath = glibcLibraryPath(rootfsDir)
+        return runAlrRuntimeTrampoline(
+            rootfsDir,
+            "/lib/ld-linux-aarch64.so.1",
+            executeEntry = true,
+            extraArgs = listOf(
+                "--argv0",
+                "/bin/glibc-hello",
+                "--library-path",
+                libraryPath,
+                translateGuestPath(rootfsDir, "/bin/glibc-hello"),
+            ),
+            timeoutMs = 1500,
+            repeatCount = repeatCount,
         )
     }
 
@@ -87,6 +114,7 @@ class NativeCommandRunner(
         executeEntry: Boolean,
         extraArgs: List<String> = emptyList(),
         timeoutMs: Int = 1000,
+        repeatCount: Int = 1,
     ): NativeCommandResult {
         require(program.startsWith("/")) { "ALR trampoline program must be an absolute guest path" }
         require(!program.split('/').any { it == ".." }) { "ALR trampoline program must not contain .." }
@@ -109,6 +137,7 @@ class NativeCommandRunner(
                 "ALR_TRAMPOLINE_MODE" to mode,
                 "ALR_TRAMPOLINE_EXECUTE_ENTRY" to if (executeEntry) "1" else "0",
                 "ALR_TRAMPOLINE_HANDOFF_TIMEOUT_MS" to timeoutMs.toString(),
+                "ALR_TRAMPOLINE_REPEAT_COUNT" to repeatCount.coerceIn(1, 50).toString(),
                 "LD_LIBRARY_PATH" to nativeLibraryDir.absolutePath,
                 "PATH" to "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
             ) + extraArgEnv,

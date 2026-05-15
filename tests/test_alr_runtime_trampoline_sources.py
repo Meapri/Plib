@@ -43,8 +43,11 @@ def test_trampoline_report_contract_exists():
     assert "build_static_image_plan" in source
     assert "load_static_image_for_preflight" in main
     assert "ALR_TRAMPOLINE_EXECUTE_ENTRY" in main
+    assert "ALR_TRAMPOLINE_REPEAT_COUNT" in main
     assert "ALR_TRAMPOLINE_EXTRA_ARG_COUNT" in main
     assert "maybe_run_static_entry_handoff" in main
+    assert "ALR STATIC ENTRY HANDOFF BENCHMARK:" in main
+    assert "alr handoff repeat average elapsed ms=" in main
     handoff = (ROOT / "app/src/main/cpp/alr_runtime/alr_handoff.cpp").read_text()
     assert "ALR STATIC ENTRY HANDOFF:" in handoff
     assert "alr handoff stdout=" in handoff

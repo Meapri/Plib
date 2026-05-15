@@ -43,6 +43,8 @@ class MainActivity : Activity() {
         val alrTrampolineLoaderHelpProbeResult = nativeCommandRunner.runAlrRuntimeTrampolineLoaderHelpProbe(rootfsStatus.rootfsDir)
         val alrTrampolineGlibcHelloProbeResult = nativeCommandRunner.runAlrRuntimeTrampolineGlibcHelloProbe(rootfsStatus.rootfsDir)
         val alrTrampolineCatOsReleaseProbeResult = nativeCommandRunner.runAlrRuntimeTrampolineCatOsReleaseProbe(rootfsStatus.rootfsDir)
+        val alrTrampolineEntryBenchmarkResult = nativeCommandRunner.runAlrRuntimeTrampolineEntryBenchmark(rootfsStatus.rootfsDir)
+        val alrTrampolineGlibcHelloBenchmarkResult = nativeCommandRunner.runAlrRuntimeTrampolineGlibcHelloBenchmark(rootfsStatus.rootfsDir)
         val prootCandidateResult = nativeCommandRunner.runProotCandidateSmokeTest()
         val prootShortVersionResult = nativeCommandRunner.runProotShortVersionProbe()
         val prootHelpResult = nativeCommandRunner.runProotHelpProbe()
@@ -410,6 +412,18 @@ class MainActivity : Activity() {
             "\nalr cat os-release probe syscall emulated=${alrTrampolineCatOsReleaseProbeResult.stdout.lineStartingWith("alr handoff syscall emulated count=")}" +
             "\nalr cat os-release probe stdout=${alrTrampolineCatOsReleaseProbeResult.stdout.lineStartingWith("alr handoff stdout=")}" +
             "\nalr translated guest path cat=${if (alrTrampolineCatOsReleaseProbeResult.stdout.contains("ID=androlinux-tiny")) "PASS" else "SKIP"}" +
+            "\nalr static handoff benchmark=${alrTrampolineEntryBenchmarkResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF BENCHMARK:")}" +
+            "\nalr static handoff benchmark requested=${alrTrampolineEntryBenchmarkResult.stdout.lineStartingWith("alr handoff repeat requested count=")}" +
+            "\nalr static handoff benchmark pass=${alrTrampolineEntryBenchmarkResult.stdout.lineStartingWith("alr handoff repeat pass count=")}" +
+            "\nalr static handoff benchmark average ms=${alrTrampolineEntryBenchmarkResult.stdout.lineStartingWith("alr handoff repeat average elapsed ms=")}" +
+            "\nalr static handoff benchmark min ms=${alrTrampolineEntryBenchmarkResult.stdout.lineStartingWith("alr handoff repeat min elapsed ms=")}" +
+            "\nalr static handoff benchmark max ms=${alrTrampolineEntryBenchmarkResult.stdout.lineStartingWith("alr handoff repeat max elapsed ms=")}" +
+            "\nalr dynamic glibc handoff benchmark=${alrTrampolineGlibcHelloBenchmarkResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF BENCHMARK:")}" +
+            "\nalr dynamic glibc handoff benchmark requested=${alrTrampolineGlibcHelloBenchmarkResult.stdout.lineStartingWith("alr handoff repeat requested count=")}" +
+            "\nalr dynamic glibc handoff benchmark pass=${alrTrampolineGlibcHelloBenchmarkResult.stdout.lineStartingWith("alr handoff repeat pass count=")}" +
+            "\nalr dynamic glibc handoff benchmark average ms=${alrTrampolineGlibcHelloBenchmarkResult.stdout.lineStartingWith("alr handoff repeat average elapsed ms=")}" +
+            "\nalr dynamic glibc handoff benchmark min ms=${alrTrampolineGlibcHelloBenchmarkResult.stdout.lineStartingWith("alr handoff repeat min elapsed ms=")}" +
+            "\nalr dynamic glibc handoff benchmark max ms=${alrTrampolineGlibcHelloBenchmarkResult.stdout.lineStartingWith("alr handoff repeat max elapsed ms=")}" +
             "\nalr static hello elapsed ms=${alrTrampolineEntryProbeResult.elapsedMs}" +
             "\nproot static hello elapsed ms=${prootHelloResult.elapsedMs}" +
             "\nalr static hello faster than proot=${alrTrampolineEntryProbeResult.exitCode == 0 && prootHelloResult.exitCode == 0 && alrTrampolineEntryProbeResult.elapsedMs < prootHelloResult.elapsedMs}" +
@@ -502,6 +516,8 @@ class MainActivity : Activity() {
             resultBlock("alr trampoline loader help probe", alrTrampolineLoaderHelpProbeResult) +
             resultBlock("alr trampoline glibc hello probe", alrTrampolineGlibcHelloProbeResult) +
             resultBlock("alr trampoline cat os-release probe", alrTrampolineCatOsReleaseProbeResult) +
+            resultBlock("alr trampoline static benchmark", alrTrampolineEntryBenchmarkResult) +
+            resultBlock("alr trampoline glibc hello benchmark", alrTrampolineGlibcHelloBenchmarkResult) +
             "\n\nnative library probe:" +
             "\n$nativeProbe" +
             "\n\nAndroid host GPU probe:" +

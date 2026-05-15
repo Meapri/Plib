@@ -55,7 +55,10 @@ def test_main_activity_reports_alr_loader_help_probe():
     assert "runAlrRuntimeTrampolineLoaderHelpProbe" in runner
     assert "runAlrRuntimeTrampolineGlibcHelloProbe" in runner
     assert "runAlrRuntimeTrampolineCatOsReleaseProbe" in runner
+    assert "runAlrRuntimeTrampolineEntryBenchmark" in runner
+    assert "runAlrRuntimeTrampolineGlibcHelloBenchmark" in runner
     assert "translateGuestPath" in runner
+    assert "ALR_TRAMPOLINE_REPEAT_COUNT" in runner
     assert '"/lib/ld-linux-aarch64.so.1"' in runner
     assert '"--help"' in runner
     assert '"--library-path"' in runner
@@ -84,6 +87,14 @@ def test_main_activity_reports_alr_loader_help_probe():
     assert "proot dynamic glibc elapsed ms=" in text
     assert "alr dynamic glibc faster than proot=" in text
     assert "alr translated cat elapsed ms=" in text
+    assert "alr static handoff benchmark=" in text
+    assert "alr static handoff benchmark requested=" in text
+    assert "alr static handoff benchmark pass=" in text
+    assert "alr static handoff benchmark average ms=" in text
+    assert "alr dynamic glibc handoff benchmark=" in text
+    assert "alr dynamic glibc handoff benchmark requested=" in text
+    assert "alr dynamic glibc handoff benchmark pass=" in text
+    assert "alr dynamic glibc handoff benchmark average ms=" in text
 
 
 def test_native_command_runner_can_attempt_proot_dash_command():
