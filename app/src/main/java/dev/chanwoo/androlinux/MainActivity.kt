@@ -370,6 +370,12 @@ class MainActivity : Activity() {
             "\nalr trampoline handoff=${alrTrampolinePreflightResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
             "\nalr entry probe exit=${alrTrampolineEntryProbeResult.exitCode}" +
             "\nalr entry probe handoff=${alrTrampolineEntryProbeResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr entry probe jump ready=${alrTrampolineEntryProbeResult.stdout.lineStartingWith("ALR STATIC ENTRY JUMP READY:")}" +
+            "\nalr entry probe fixed image=${alrTrampolineEntryProbeResult.stdout.lineStartingWith("alr transfer fixed image mapped=")}" +
+            "\nalr entry probe attempted=${alrTrampolineEntryProbeResult.stdout.lineStartingWith("alr handoff attempted=")}" +
+            "\nalr entry probe child exited=${alrTrampolineEntryProbeResult.stdout.lineStartingWith("alr handoff child exited=")}" +
+            "\nalr entry probe child signaled=${alrTrampolineEntryProbeResult.stdout.lineStartingWith("alr handoff child signaled=")}" +
+            "\nalr entry probe child signal=${alrTrampolineEntryProbeResult.stdout.lineStartingWith("alr handoff signal=")}" +
             "\nalr entry probe timeout=${alrTrampolineEntryProbeResult.stdout.lineStartingWith("alr handoff timed out=")}" +
             "\nproot --version exit=${prootCandidateResult.exitCode}" +
             "\nlinker64 proot --version exit=${prootViaLinkerResult.exitCode}" +
