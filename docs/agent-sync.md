@@ -294,3 +294,47 @@ Blockers:
 Next recommended action:
 - Open a PR for Issue #11.
 - Next Codex implementation bundle should use `alr-config-v1` to drive guest executable resolution and the first controlled ALR hello launch attempt.
+
+## 2026-05-15 - Codex - Bundle G Implementation
+
+Branch/worktree:
+- `codex/alr-exec-resolution` at `/Users/naen/Documents/Plib/androlinux-runtime-lab`
+
+Touched files:
+- `app/src/main/cpp/CMakeLists.txt`
+- `app/src/main/cpp/alr_runtime/alr_exec.hpp`
+- `app/src/main/cpp/alr_runtime/alr_exec.cpp`
+- `app/src/main/cpp/alr_runtime_launcher.cpp`
+- `app/src/main/cpp/runtime_plan.cpp`
+- `scripts/test-native-core.sh`
+- `tests/native_alr_runtime_exec_test.cpp`
+- `tests/native_runtime_plan_test.cpp`
+- `tests/test_alr_runtime_exec_sources.py`
+- `tests/test_android_loader_plan_report.py`
+
+What changed:
+- Added clean ALR guest executable resolution before any real guest execution attempt.
+- Resolves absolute guest paths and bare command names through guest `PATH`.
+- Classifies resolved files as ELF, shebang script, missing, or unsupported.
+- Parses simple shebang interpreter plus optional argument.
+- Wires resolution/classification reports into runtime and launcher reports.
+- Keeps `can_execute=false` and `alr runtime guest execution=not-claimed`.
+
+Commands/tests:
+- `/Users/naen/.venvs/plib-py313/bin/python -m pytest tests -q` -> PASS, 159 passed.
+- `scripts/test-native-core.sh` -> PASS.
+- `JAVA_HOME=/Users/naen/.jdks/jdk-17.0.19+10/Contents/Home ./gradlew :app:assembleDebug --no-daemon` -> PASS.
+- `unzip -l app/build/outputs/apk/debug/app-debug.apk | rg 'libalr_runtime_(launcher|hook|interposer)'` -> PASS.
+
+Evidence:
+- Debug APK: `app/build/outputs/apk/debug/app-debug.apk`
+- APK sha256: `7c1659aca4291b5202f13663cd72798075858b9234027ea6b73eb3ed203361f5`
+- APK contains `libalr_runtime_launcher.so`, `libalr_runtime_hook.so`, and `libalr_runtime_interposer.so` for `arm64-v8a`, `armeabi-v7a`, `x86`, and `x86_64`.
+
+Blockers:
+- None for Bundle G source/build verification.
+- A future bundle still needs a real low-overhead guest launch path after resolution.
+
+Next recommended action:
+- Open a PR for Issue #13.
+- Next Codex implementation bundle should turn the resolved ELF/shebang plan into the first controlled ALR hello launch attempt.

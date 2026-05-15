@@ -29,6 +29,10 @@ int main() {
         text.find("ALR INTERPOSER CONFIG BUILD: PASS") != std::string::npos &&
         text.find("ALR CONFIG SERIALIZE: PASS") != std::string::npos &&
         text.find("ALR CONFIG PARSE: PASS") != std::string::npos &&
+        text.find("ALR EXEC RESOLVE: ") != std::string::npos &&
+        text.find("ALR EXEC CLASSIFY: ") != std::string::npos &&
+        text.find("ALR EXEC STRATEGY: plan-only") != std::string::npos &&
+        text.find("alr exec guest path=/bin/hello") != std::string::npos &&
         text.find("alr runtime launcher path=/data/app/pkg/lib/arm64/libalr_runtime_launcher.so") != std::string::npos &&
         text.find("alr runtime interposer path=/data/app/pkg/lib/arm64/libalr_runtime_interposer.so") != std::string::npos &&
         text.find("alr runtime config format=alr-config-v1") != std::string::npos &&
