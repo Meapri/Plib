@@ -238,6 +238,19 @@ class NativeCommandRunner(
             pathRewriteIdleSyscallLimit = 1024,
         )
 
+    fun runAlrRuntimeTrampolineSyscallBenchPreload(rootfsDir: File, mode: String, count: Int): NativeCommandResult =
+        runAlrRuntimeTrampolineGlibcRootfsProgram(
+            rootfsDir,
+            "/usr/bin/alr-syscall-bench",
+            listOf(mode, count.coerceIn(1, 10000).toString()),
+            timeoutMs = 8000,
+            pathRewrite = false,
+            extraGuestEnvironment = mapOf(
+                "ALR_ROOTFS" to rootfsDir.absolutePath,
+                "LD_PRELOAD" to translateGuestPath(rootfsDir, "/usr/lib/androlinux/libalr_path_preload.so"),
+            ),
+        )
+
     fun runAlrRuntimeTrampolineDpkgInstallLocalSmoke(rootfsDir: File): NativeCommandResult =
         runAlrRuntimeTrampolineGlibcRootfsProgram(
             rootfsDir,
@@ -269,8 +282,10 @@ class NativeCommandRunner(
         arguments: List<String>,
         timeoutMs: Int = 5000,
         virtualRootIdentity: Boolean = false,
+        pathRewrite: Boolean = true,
         pathRewriteLimit: Int = 128,
         pathRewriteIdleSyscallLimit: Int = 32,
+        extraGuestEnvironment: Map<String, String> = emptyMap(),
     ): NativeCommandResult {
         val libraryPath = glibcLibraryPath(rootfsDir)
         return runAlrRuntimeTrampoline(
@@ -285,7 +300,8 @@ class NativeCommandRunner(
                 translateGuestPath(rootfsDir, program),
             ) + arguments,
             timeoutMs = timeoutMs,
-            pathRewrite = true,
+            extraGuestEnvironment = extraGuestEnvironment,
+            pathRewrite = pathRewrite,
             pathRewriteLimit = pathRewriteLimit,
             pathRewriteIdleSyscallLimit = pathRewriteIdleSyscallLimit,
             virtualRootIdentity = virtualRootIdentity,

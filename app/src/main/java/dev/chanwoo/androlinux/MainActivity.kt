@@ -22,7 +22,7 @@ class MainActivity : Activity() {
 
         val rootfsManifest = RootfsManifest(
             name = "debian-arm64",
-            version = "bookworm-slim-2026-05-gui-gpu-v55",
+            version = "bookworm-slim-2026-05-gui-gpu-v56",
             assets = listOf(
                 RootfsAsset(
                     path = "rootfs.tar.zst",
@@ -117,6 +117,16 @@ class MainActivity : Activity() {
             syscallBenchStatCount,
         )
         val alrSyscallOpenReadBenchmarkResult = nativeCommandRunner.runAlrRuntimeTrampolineSyscallBench(
+            rootfsStatus.rootfsDir,
+            "openread",
+            syscallBenchOpenReadCount,
+        )
+        val alrSyscallStatPreloadBenchmarkResult = nativeCommandRunner.runAlrRuntimeTrampolineSyscallBenchPreload(
+            rootfsStatus.rootfsDir,
+            "stat",
+            syscallBenchStatCount,
+        )
+        val alrSyscallOpenReadPreloadBenchmarkResult = nativeCommandRunner.runAlrRuntimeTrampolineSyscallBenchPreload(
             rootfsStatus.rootfsDir,
             "openread",
             syscallBenchOpenReadCount,
@@ -268,6 +278,7 @@ class MainActivity : Activity() {
         val rootfsGuestGlesShimLibraryFile = File(rootfsStatus.rootfsDir, "usr/lib/androlinux/libalr_gles_shim.so")
         val rootfsGuestEglLibraryFile = File(rootfsStatus.rootfsDir, "usr/lib/androlinux/libEGL.so")
         val rootfsGuestGlesv2LibraryFile = File(rootfsStatus.rootfsDir, "usr/lib/androlinux/libGLESv2.so")
+        val rootfsPathPreloadLibraryFile = File(rootfsStatus.rootfsDir, "usr/lib/androlinux/libalr_path_preload.so")
         val rootfsWaylandGuiClientFile = File(rootfsStatus.rootfsDir, "usr/bin/alr-wayland-gpu-client")
         val rootfsX11GuiClientFile = File(rootfsStatus.rootfsDir, "usr/bin/alr-x11-gpu-client")
         val rootfsExecutionPassed = prootHelloResult.exitCode == 0 &&
@@ -346,6 +357,10 @@ class MainActivity : Activity() {
             alrSyscallStatBenchmarkResult.stdout.alrHandoffStdoutText().contains("ALR SYSCALL BENCH: PASS")
         val alrSyscallOpenReadBenchmarkPassed = alrSyscallOpenReadBenchmarkResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
             alrSyscallOpenReadBenchmarkResult.stdout.alrHandoffStdoutText().contains("ALR SYSCALL BENCH: PASS")
+        val alrSyscallStatPreloadBenchmarkPassed = alrSyscallStatPreloadBenchmarkResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+            alrSyscallStatPreloadBenchmarkResult.stdout.alrHandoffStdoutText().contains("ALR SYSCALL BENCH: PASS")
+        val alrSyscallOpenReadPreloadBenchmarkPassed = alrSyscallOpenReadPreloadBenchmarkResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+            alrSyscallOpenReadPreloadBenchmarkResult.stdout.alrHandoffStdoutText().contains("ALR SYSCALL BENCH: PASS")
         val alrSyscallSpawnBenchmarkPassed = alrSyscallSpawnBenchmarkResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
             alrSyscallSpawnBenchmarkResult.stdout.alrHandoffStdoutText().contains("ALR SYSCALL BENCH: PASS")
         val prootSyscallStatBenchmarkPassed = prootSyscallStatBenchmarkResult.exitCode == 0 &&
@@ -464,7 +479,7 @@ class MainActivity : Activity() {
             alrGuestX11GuiBridgeResult.error == null
         val hostGpuHardwareCandidate = hostGpuProbe.lineStartingWith("host gpu hardware candidate=") == "host gpu hardware candidate=true"
 
-        val executionSummary = "build: 0.4.55-syscall-bench" +
+        val executionSummary = "build: 0.4.56-preload-path-fastpath" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -490,6 +505,8 @@ class MainActivity : Activity() {
             "\nALR APT-CONFIG VERSION EXECUTION: ${if (alrAptConfigVersionExecutionPassed) "PASS" else "FAIL"}" +
             "\nALR SYSCALL STAT BENCH EXECUTION: ${if (alrSyscallStatBenchmarkPassed) "PASS" else "FAIL"}" +
             "\nALR SYSCALL OPENREAD BENCH EXECUTION: ${if (alrSyscallOpenReadBenchmarkPassed) "PASS" else "FAIL"}" +
+            "\nALR SYSCALL STAT PRELOAD BENCH EXECUTION: ${if (alrSyscallStatPreloadBenchmarkPassed) "PASS" else "FAIL"}" +
+            "\nALR SYSCALL OPENREAD PRELOAD BENCH EXECUTION: ${if (alrSyscallOpenReadPreloadBenchmarkPassed) "PASS" else "FAIL"}" +
             "\nALR SYSCALL SPAWN BENCH EXECUTION: ${if (alrSyscallSpawnBenchmarkPassed) "PASS" else "FAIL"}" +
             "\nPROOT SYSCALL STAT BENCH EXECUTION: ${if (prootSyscallStatBenchmarkPassed) "PASS" else "FAIL"}" +
             "\nPROOT SYSCALL OPENREAD BENCH EXECUTION: ${if (prootSyscallOpenReadBenchmarkPassed) "PASS" else "FAIL"}" +
@@ -589,6 +606,7 @@ class MainActivity : Activity() {
             "\nrootfs /usr/lib/androlinux/libalr_gles_shim.so exists=${rootfsGuestGlesShimLibraryFile.isFile} executable=${rootfsGuestGlesShimLibraryFile.canExecute()} bytes=${rootfsGuestGlesShimLibraryFile.length()}" +
             "\nrootfs /usr/lib/androlinux/libEGL.so exists=${rootfsGuestEglLibraryFile.isFile} executable=${rootfsGuestEglLibraryFile.canExecute()} bytes=${rootfsGuestEglLibraryFile.length()}" +
             "\nrootfs /usr/lib/androlinux/libGLESv2.so exists=${rootfsGuestGlesv2LibraryFile.isFile} executable=${rootfsGuestGlesv2LibraryFile.canExecute()} bytes=${rootfsGuestGlesv2LibraryFile.length()}" +
+            "\nrootfs /usr/lib/androlinux/libalr_path_preload.so exists=${rootfsPathPreloadLibraryFile.isFile} executable=${rootfsPathPreloadLibraryFile.canExecute()} bytes=${rootfsPathPreloadLibraryFile.length()}" +
             "\nrootfs /usr/bin/alr-wayland-gpu-client exists=${rootfsWaylandGuiClientFile.isFile} executable=${rootfsWaylandGuiClientFile.canExecute()} bytes=${rootfsWaylandGuiClientFile.length()}" +
             "\nrootfs /usr/bin/alr-x11-gpu-client exists=${rootfsX11GuiClientFile.isFile} executable=${rootfsX11GuiClientFile.canExecute()} bytes=${rootfsX11GuiClientFile.length()}" +
             "\nproot guest gpu client exit=${prootGuestGpuClientResult.exitCode}" +
@@ -778,19 +796,33 @@ class MainActivity : Activity() {
             "\nalr loop hot path measured faster count=${loopHotPathFasterCount(alrTrampolineEntryBenchmarkResult, prootHelloLoopBenchmarkResult, alrTrampolineGlibcHelloBenchmarkResult, prootGlibcLoopBenchmarkResult, handoffBenchmarkRepeatCount)}/2" +
             "\nalr loop hot path perf evidence=${loopHotPathPerfEvidence(alrTrampolineEntryBenchmarkResult, prootHelloLoopBenchmarkResult, alrTrampolineGlibcHelloBenchmarkResult, prootGlibcLoopBenchmarkResult, handoffBenchmarkRepeatCount)}" +
             "\nalr syscall stat benchmark average us=${syscallBenchAverageUs(alrSyscallStatBenchmarkResult, alr = true)}" +
+            "\nalr syscall stat path rewrite cache hits=${alrSyscallStatBenchmarkResult.stdout.lineStartingWith("alr handoff path rewrite cache hit count=")}" +
             "\nproot syscall stat benchmark average us=${syscallBenchAverageUs(prootSyscallStatBenchmarkResult, alr = false)}" +
             "\nalr syscall stat vs proot ratio pct=${syscallBenchRatioPct(alrSyscallStatBenchmarkResult, prootSyscallStatBenchmarkResult)}" +
             "\nalr syscall stat faster than proot=${syscallBenchFasterThanProot(alrSyscallStatBenchmarkResult, prootSyscallStatBenchmarkResult)}" +
+            "\nalr syscall stat preload benchmark average us=${syscallBenchAverageUs(alrSyscallStatPreloadBenchmarkResult, alr = true)}" +
+            "\nalr syscall stat preload handoff=${alrSyscallStatPreloadBenchmarkResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr syscall stat preload stderr=${alrSyscallStatPreloadBenchmarkResult.stdout.lineStartingWith("alr handoff stderr=")}" +
+            "\nalr syscall stat preload vs proot ratio pct=${syscallBenchRatioPct(alrSyscallStatPreloadBenchmarkResult, prootSyscallStatBenchmarkResult)}" +
+            "\nalr syscall stat preload faster than proot=${syscallBenchFasterThanProot(alrSyscallStatPreloadBenchmarkResult, prootSyscallStatBenchmarkResult)}" +
             "\nalr syscall openread benchmark average us=${syscallBenchAverageUs(alrSyscallOpenReadBenchmarkResult, alr = true)}" +
+            "\nalr syscall openread path rewrite cache hits=${alrSyscallOpenReadBenchmarkResult.stdout.lineStartingWith("alr handoff path rewrite cache hit count=")}" +
             "\nproot syscall openread benchmark average us=${syscallBenchAverageUs(prootSyscallOpenReadBenchmarkResult, alr = false)}" +
             "\nalr syscall openread vs proot ratio pct=${syscallBenchRatioPct(alrSyscallOpenReadBenchmarkResult, prootSyscallOpenReadBenchmarkResult)}" +
             "\nalr syscall openread faster than proot=${syscallBenchFasterThanProot(alrSyscallOpenReadBenchmarkResult, prootSyscallOpenReadBenchmarkResult)}" +
+            "\nalr syscall openread preload benchmark average us=${syscallBenchAverageUs(alrSyscallOpenReadPreloadBenchmarkResult, alr = true)}" +
+            "\nalr syscall openread preload handoff=${alrSyscallOpenReadPreloadBenchmarkResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr syscall openread preload stderr=${alrSyscallOpenReadPreloadBenchmarkResult.stdout.lineStartingWith("alr handoff stderr=")}" +
+            "\nalr syscall openread preload vs proot ratio pct=${syscallBenchRatioPct(alrSyscallOpenReadPreloadBenchmarkResult, prootSyscallOpenReadBenchmarkResult)}" +
+            "\nalr syscall openread preload faster than proot=${syscallBenchFasterThanProot(alrSyscallOpenReadPreloadBenchmarkResult, prootSyscallOpenReadBenchmarkResult)}" +
             "\nalr syscall spawn benchmark average us=${syscallBenchAverageUs(alrSyscallSpawnBenchmarkResult, alr = true)}" +
             "\nproot syscall spawn benchmark average us=${syscallBenchAverageUs(prootSyscallSpawnBenchmarkResult, alr = false)}" +
             "\nalr syscall spawn vs proot ratio pct=${syscallBenchRatioPct(alrSyscallSpawnBenchmarkResult, prootSyscallSpawnBenchmarkResult)}" +
             "\nalr syscall spawn faster than proot=${syscallBenchFasterThanProot(alrSyscallSpawnBenchmarkResult, prootSyscallSpawnBenchmarkResult)}" +
             "\nalr syscall hot path measured faster count=${syscallHotPathFasterCount(alrSyscallStatBenchmarkResult, prootSyscallStatBenchmarkResult, alrSyscallOpenReadBenchmarkResult, prootSyscallOpenReadBenchmarkResult, alrSyscallSpawnBenchmarkResult, prootSyscallSpawnBenchmarkResult)}/3" +
             "\nalr syscall hot path perf evidence=${syscallHotPathPerfEvidence(alrSyscallStatBenchmarkResult, prootSyscallStatBenchmarkResult, alrSyscallOpenReadBenchmarkResult, prootSyscallOpenReadBenchmarkResult, alrSyscallSpawnBenchmarkResult, prootSyscallSpawnBenchmarkResult)}" +
+            "\nalr syscall preload hot path measured faster count=${syscallHotPathFasterCount(alrSyscallStatPreloadBenchmarkResult, prootSyscallStatBenchmarkResult, alrSyscallOpenReadPreloadBenchmarkResult, prootSyscallOpenReadBenchmarkResult)}/2" +
+            "\nalr syscall preload hot path perf evidence=${syscallHotPathPerfEvidence(alrSyscallStatPreloadBenchmarkResult, prootSyscallStatBenchmarkResult, alrSyscallOpenReadPreloadBenchmarkResult, prootSyscallOpenReadBenchmarkResult)}" +
             "\nalr static hello elapsed ms=${alrTrampolineEntryProbeResult.elapsedMs}" +
             "\nproot static hello elapsed ms=${prootHelloResult.elapsedMs}" +
             "\nalr static hello elapsed ratio pct=${elapsedRatioPct(alrTrampolineEntryProbeResult, prootHelloResult)}" +
@@ -967,6 +999,8 @@ class MainActivity : Activity() {
             resultBlock("alr apt-config --version", alrAptConfigVersionResult) +
             resultBlock("alr syscall stat benchmark", alrSyscallStatBenchmarkResult) +
             resultBlock("alr syscall openread benchmark", alrSyscallOpenReadBenchmarkResult) +
+            resultBlock("alr syscall stat preload benchmark", alrSyscallStatPreloadBenchmarkResult) +
+            resultBlock("alr syscall openread preload benchmark", alrSyscallOpenReadPreloadBenchmarkResult) +
             resultBlock("alr syscall spawn benchmark", alrSyscallSpawnBenchmarkResult) +
             resultBlock("alr dpkg -i local deb", alrDpkgInstallLocalResult) +
             resultBlock("proot dpkg -i local deb", prootDpkgInstallLocalResult) +
@@ -1391,6 +1425,7 @@ class MainActivity : Activity() {
     }
 
     private fun syscallBenchAverageUs(result: NativeCommandResult, alr: Boolean): String {
+        if (!syscallBenchPassed(result, alr)) return "unavailable"
         val stdout = if (alr) result.stdout.alrHandoffStdoutText() else result.stdout
         return stdout.lineStartingWith("alr syscall bench average us=")
             .removePrefix("alr syscall bench average us=")
@@ -1400,11 +1435,20 @@ class MainActivity : Activity() {
     }
 
     private fun syscallBenchAverageUsValue(result: NativeCommandResult, alr: Boolean): Long? {
+        if (!syscallBenchPassed(result, alr)) return null
         val stdout = if (alr) result.stdout.alrHandoffStdoutText() else result.stdout
         return stdout.lineStartingWith("alr syscall bench average us=")
             .removePrefix("alr syscall bench average us=")
             .toLongOrNull()
     }
+
+    private fun syscallBenchPassed(result: NativeCommandResult, alr: Boolean): Boolean =
+        if (alr) {
+            result.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+                result.stdout.alrHandoffStdoutText().contains("ALR SYSCALL BENCH: PASS")
+        } else {
+            result.exitCode == 0 && result.stdout.contains("ALR SYSCALL BENCH: PASS")
+        }
 
     private fun syscallBenchRatioPct(
         alrBenchmark: NativeCommandResult,
@@ -1422,7 +1466,7 @@ class MainActivity : Activity() {
     ): Boolean {
         val alrAverageUs = syscallBenchAverageUsValue(alrBenchmark, alr = true) ?: return false
         val prootAverageUs = syscallBenchAverageUsValue(prootBenchmark, alr = false) ?: return false
-        return alrBenchmark.exitCode == 0 && prootBenchmark.exitCode == 0 && prootAverageUs > 0 && alrAverageUs < prootAverageUs
+        return prootAverageUs > 0 && alrAverageUs < prootAverageUs
     }
 
     private fun syscallHotPathFasterCount(
@@ -1448,16 +1492,48 @@ class MainActivity : Activity() {
         spawnProot: NativeCommandResult,
     ): String {
         if (
-            statAlr.exitCode != 0 ||
-            statProot.exitCode != 0 ||
-            openReadAlr.exitCode != 0 ||
-            openReadProot.exitCode != 0 ||
-            spawnAlr.exitCode != 0 ||
-            spawnProot.exitCode != 0
+            !syscallBenchPassed(statAlr, alr = true) ||
+            !syscallBenchPassed(statProot, alr = false) ||
+            !syscallBenchPassed(openReadAlr, alr = true) ||
+            !syscallBenchPassed(openReadProot, alr = false) ||
+            !syscallBenchPassed(spawnAlr, alr = true) ||
+            !syscallBenchPassed(spawnProot, alr = false)
         ) {
             return "INCOMPLETE"
         }
         return if (syscallHotPathFasterCount(statAlr, statProot, openReadAlr, openReadProot, spawnAlr, spawnProot) >= 2) {
+            "PASS"
+        } else {
+            "NEEDS_WORK"
+        }
+    }
+
+    private fun syscallHotPathFasterCount(
+        statAlr: NativeCommandResult,
+        statProot: NativeCommandResult,
+        openReadAlr: NativeCommandResult,
+        openReadProot: NativeCommandResult,
+    ): Int =
+        listOf(
+            syscallBenchFasterThanProot(statAlr, statProot),
+            syscallBenchFasterThanProot(openReadAlr, openReadProot),
+        ).count { it }
+
+    private fun syscallHotPathPerfEvidence(
+        statAlr: NativeCommandResult,
+        statProot: NativeCommandResult,
+        openReadAlr: NativeCommandResult,
+        openReadProot: NativeCommandResult,
+    ): String {
+        if (
+            !syscallBenchPassed(statAlr, alr = true) ||
+            !syscallBenchPassed(statProot, alr = false) ||
+            !syscallBenchPassed(openReadAlr, alr = true) ||
+            !syscallBenchPassed(openReadProot, alr = false)
+        ) {
+            return "INCOMPLETE"
+        }
+        return if (syscallHotPathFasterCount(statAlr, statProot, openReadAlr, openReadProot) == 2) {
             "PASS"
         } else {
             "NEEDS_WORK"

@@ -9,7 +9,7 @@ PAYLOAD = ROOT / "app" / "src" / "main" / "assets" / "rootfs" / "payloads" / "ti
 def test_android_assets_include_rootfs_manifest_and_payload():
     assert MANIFEST.is_file()
     assert PAYLOAD.is_file()
-    assert PAYLOAD.stat().st_size == 35199488
+    assert PAYLOAD.stat().st_size == 35238912
 
 
 def test_android_asset_manifest_matches_host_manifest():
@@ -109,6 +109,16 @@ def test_tiny_rootfs_contains_syscall_benchmark_fixture():
         tmp.flush()
         program_headers = subprocess.check_output(["readelf", "-l", tmp.name], text=True)
     assert "Requesting program interpreter: /lib/ld-linux-aarch64.so.1" in program_headers
+
+
+def test_tiny_rootfs_contains_path_preload_fast_path_shim():
+    import tarfile
+
+    with tarfile.open(PAYLOAD) as archive:
+        names = set(archive.getnames())
+        assert "./usr/lib/androlinux/libalr_path_preload.so" in names
+        assert "./usr/share/androlinux/path-preload.txt" in names
+        assert archive.extractfile("./usr/lib/androlinux/libalr_path_preload.so").read(4) == b"\x7fELF"
 
 
 def test_tiny_rootfs_contains_real_distro_dynamic_userland_binaries():

@@ -109,6 +109,7 @@ std::string build_report(const alr::runtime::StaticEntryHandoffResult& result) {
     out << "\nalr handoff path rewrite idle syscall limit=" << result.path_rewrite_idle_syscall_limit;
     out << "\nalr handoff path rewrite syscall count=" << result.path_rewrite_syscall_count;
     out << "\nalr handoff path rewrite count=" << result.path_rewrite_count;
+    out << "\nalr handoff path rewrite cache hit count=" << result.path_rewrite_cache_hit_count;
     out << "\nalr handoff last exec requested path=" << one_line_text(result.last_exec_requested_path);
     out << "\nalr handoff last status path syscall=" << result.last_status_path_syscall;
     out << "\nalr handoff last status path request=" << one_line_text(result.last_status_path_request);
@@ -898,6 +899,50 @@ bool syscall_sets_guest_root_identity(std::uint64_t syscall_number) {
     }
 }
 
+struct PathRewriteCacheEntry {
+    pid_t pid = -1;
+    std::uint64_t syscall_number = 0;
+    int path_arg_index = -1;
+    std::uintptr_t guest_path_address = 0;
+    std::uintptr_t scratch_address = 0;
+};
+
+using PathRewriteCache = std::array<PathRewriteCacheEntry, 32>;
+
+PathRewriteCacheEntry* find_path_rewrite_cache_entry(
+    PathRewriteCache& cache,
+    pid_t pid,
+    std::uint64_t syscall_number,
+    int path_arg_index,
+    std::uintptr_t guest_path_address) {
+    for (auto& entry : cache) {
+        if (entry.pid == pid &&
+            entry.syscall_number == syscall_number &&
+            entry.path_arg_index == path_arg_index &&
+            entry.guest_path_address == guest_path_address &&
+            entry.scratch_address != 0) {
+            return &entry;
+        }
+    }
+    return nullptr;
+}
+
+void remember_path_rewrite_cache_entry(
+    PathRewriteCache& cache,
+    std::uint32_t rewrite_count,
+    pid_t pid,
+    std::uint64_t syscall_number,
+    int path_arg_index,
+    std::uintptr_t guest_path_address,
+    std::uintptr_t scratch_address) {
+    auto& entry = cache[rewrite_count % cache.size()];
+    entry.pid = pid;
+    entry.syscall_number = syscall_number;
+    entry.path_arg_index = path_arg_index;
+    entry.guest_path_address = guest_path_address;
+    entry.scratch_address = scratch_address;
+}
+
 bool maybe_emulate_linkat_with_copy(
     pid_t child,
     const alr::runtime::StaticEntryHandoffOptions& options,
@@ -1015,7 +1060,8 @@ bool rewrite_syscall_path_arg(
     const alr::runtime::StaticEntryHandoffOptions& options,
     user_pt_regs& regs,
     alr::runtime::StaticEntryHandoffResult& result,
-    int path_arg_index) {
+    int path_arg_index,
+    PathRewriteCache& cache) {
     if (!result.path_rewrite_enabled || context.stack.mapped_base == 0 || context.stack.mapped_size < 32768) {
         return false;
     }
@@ -1025,6 +1071,12 @@ bool rewrite_syscall_path_arg(
     const std::uintptr_t guest_path_address = static_cast<std::uintptr_t>(regs.regs[path_arg_index]);
     if (guest_path_address == 0) {
         return false;
+    }
+    if (auto* cached = find_path_rewrite_cache_entry(cache, child, regs.regs[8], path_arg_index, guest_path_address)) {
+        regs.regs[path_arg_index] = cached->scratch_address;
+        ++result.path_rewrite_count;
+        ++result.path_rewrite_cache_hit_count;
+        return true;
     }
     const std::string guest_path = read_child_cstring(child, guest_path_address);
     std::string resolved_guest_path;
@@ -1070,6 +1122,14 @@ bool rewrite_syscall_path_arg(
     if (!write_child_bytes(child, scratch, host_path_with_nul)) {
         return false;
     }
+    remember_path_rewrite_cache_entry(
+        cache,
+        result.path_rewrite_count,
+        child,
+        regs.regs[8],
+        path_arg_index,
+        guest_path_address,
+        scratch);
     regs.regs[path_arg_index] = scratch;
     result.last_guest_path = resolved_guest_path;
     result.last_host_path = host_path;
@@ -1082,7 +1142,8 @@ bool maybe_rewrite_syscall_path(
     const alr::runtime::StaticEntryTransferContext& context,
     const alr::runtime::StaticEntryHandoffOptions& options,
     user_pt_regs& regs,
-    alr::runtime::StaticEntryHandoffResult& result) {
+    alr::runtime::StaticEntryHandoffResult& result,
+    PathRewriteCache& cache) {
     const int first_path_arg_index = path_arg_index_for_syscall(regs.regs[8]);
     const int second_path_arg_index = second_path_arg_index_for_syscall(regs.regs[8]);
     const bool first_rewritten = rewrite_syscall_path_arg(
@@ -1091,14 +1152,16 @@ bool maybe_rewrite_syscall_path(
         options,
         regs,
         result,
-        first_path_arg_index);
+        first_path_arg_index,
+        cache);
     const bool second_rewritten = rewrite_syscall_path_arg(
         child,
         context,
         options,
         regs,
         result,
-        second_path_arg_index);
+        second_path_arg_index,
+        cache);
     return first_rewritten || second_rewritten;
 }
 
@@ -1456,6 +1519,7 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
         bool force_success_on_syscall_exit = false;
         std::uint32_t syscalls_since_last_rewrite = 0;
         std::uint64_t pending_syscall_number = 0;
+        PathRewriteCache path_rewrite_cache {};
     };
     std::map<pid_t, TraceState> trace_states;
     std::set<pid_t> live_traced_processes;
@@ -1633,7 +1697,7 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
                             trace_state.force_success_on_syscall_exit = true;
                             (void)set_child_registers(waited, regs);
                         } else if (maybe_rewrite_execve_to_loader(waited, context, options, loader_exec_path, loader_exec_fd, regs, result) ||
-                            maybe_rewrite_syscall_path(waited, context, options, regs, result)) {
+                            maybe_rewrite_syscall_path(waited, context, options, regs, result, trace_state.path_rewrite_cache)) {
                             (void)set_child_registers(waited, regs);
                         }
                     }

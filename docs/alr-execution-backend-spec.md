@@ -179,6 +179,31 @@ the current ALR syscall path is already below PRoot. The next backend iteration
 must reduce path-rewrite trapping cost or move common filesystem operations out
 of the global ptrace stop/resume path.
 
+Current V56 preload path-fastpath snapshot:
+
+```text
+build: 0.4.56-preload-path-fastpath
+ALR SYSCALL STAT PRELOAD BENCH EXECUTION: FAIL
+ALR SYSCALL OPENREAD PRELOAD BENCH EXECUTION: PASS
+alr syscall stat benchmark average us=2632
+proot syscall stat benchmark average us=258
+alr syscall stat preload benchmark average us=unavailable
+alr syscall openread benchmark average us=8010
+proot syscall openread benchmark average us=201
+alr syscall openread preload benchmark average us=6
+alr syscall openread preload vs proot ratio pct=2
+alr syscall openread preload faster than proot=true
+alr syscall preload hot path measured faster count=1/2
+alr syscall preload hot path perf evidence=INCOMPLETE
+```
+
+The v56 open/read preload result establishes the preferred hot-path direction:
+when libc-facing filesystem calls can be handled inside the guest process and
+forwarded through direct syscalls, the runtime avoids global ptrace stop/resume
+overhead and can outperform the measured PRoot baseline by a wide margin. This
+does not yet complete the syscall backend. The stat preload path currently
+fails and must not be counted as a supported or faster fast path until fixed.
+
 ### ALR Exec v3: Identity and Procfs
 
 Required behavior:

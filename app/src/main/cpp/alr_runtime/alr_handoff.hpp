@@ -34,6 +34,7 @@ struct StaticEntryHandoffResult {
     std::uint32_t path_rewrite_idle_syscall_limit = 0;
     std::uint32_t path_rewrite_syscall_count = 0;
     std::uint32_t path_rewrite_count = 0;
+    std::uint32_t path_rewrite_cache_hit_count = 0;
     std::string last_exec_requested_path;
     std::uint64_t last_status_path_syscall = 0;
     std::string last_status_path_request;

@@ -206,6 +206,19 @@ def test_guest_syscall_bench_is_source_built_fixture():
     assert "alr-syscall-bench" in build_script
 
 
+def test_guest_path_preload_is_source_built_fast_path_shim():
+    source = (ROOT / "rootfs/guest-src/preload/alr_path_preload.c").read_text()
+    build_script = (ROOT / "scripts/build-guest-path-preload.sh").read_text()
+    assert "alr_rewrite_path" in source
+    assert "ALR_ROOTFS" in source
+    assert "SYS_openat" in source
+    assert "SYS_newfstatat" in source
+    assert "RTLD_NEXT" not in source
+    assert "openat" in source
+    assert "fstatat" in source
+    assert "libalr_path_preload.so" in build_script
+
+
 def test_guest_gles_shim_binaries_link_rootfs_libraries_without_libdl():
     import subprocess
     import tempfile

@@ -88,6 +88,9 @@ def test_trampoline_report_contract_exists():
     assert "alr handoff execve loader rewrite count=" in handoff
     assert "alr handoff traced process count=" in handoff
     assert "alr handoff path rewrite count=" in handoff
+    assert "alr handoff path rewrite cache hit count=" in handoff
+    assert "PathRewriteCache" in handoff
+    assert "find_path_rewrite_cache_entry" in handoff
     assert "alr handoff path rewrite limit=" in handoff
     assert "alr handoff path rewrite idle syscall limit=" in handoff
     assert "syscalls_since_last_rewrite" in handoff

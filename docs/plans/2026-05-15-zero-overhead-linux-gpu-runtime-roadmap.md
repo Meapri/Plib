@@ -92,6 +92,31 @@ This is the current highest-priority CPU backend issue: ALR repeated entry
 handoff beats PRoot loop baselines, but the path-rewrite ptrace syscall path is
 not yet competitive for filesystem-heavy or child-spawn-heavy guest workloads.
 
+Latest V56 preload path-fastpath evidence:
+
+```text
+build: 0.4.56-preload-path-fastpath
+ALR SYSCALL STAT PRELOAD BENCH EXECUTION: FAIL
+ALR SYSCALL OPENREAD PRELOAD BENCH EXECUTION: PASS
+alr syscall stat benchmark average us=2632
+proot syscall stat benchmark average us=258
+alr syscall stat preload benchmark average us=unavailable
+alr syscall openread benchmark average us=8010
+proot syscall openread benchmark average us=201
+alr syscall openread preload benchmark average us=6
+alr syscall openread preload vs proot ratio pct=2
+alr syscall openread preload faster than proot=true
+alr syscall preload hot path measured faster count=1/2
+alr syscall preload hot path perf evidence=INCOMPLETE
+```
+
+The V56 result is the first strong evidence that common guest filesystem calls
+must move out of global ptrace mediation. The raw path-rewrite ptrace backend is
+still slower than PRoot for repeated open/read, but the guest preload shim runs
+the same open/read workload at about 2% of the measured PRoot cost on the test
+device. This is not a complete syscall backend yet: the stat preload path still
+fails and must remain excluded from pass/faster counts until fixed.
+
 Known issue:
 
 - V35 summary says `GUEST WAYLAND GUI GPU BRIDGE EXECUTION: FAIL` and `GUEST X11 GUI GPU BRIDGE EXECUTION: FAIL` because ACK writing happens after socket input is closed. Frames were received and rendered losslessly; this is a report/ACK lifecycle bug, not a GPU-path failure.
@@ -471,6 +496,7 @@ current PRoot:
 
 ALR runtime v1:
   in-process wrapper + direct syscall for common filesystem/process calls
+  V56 measured open/read preload fast path: 6 us vs PRoot 201 us
 
 ALR runtime v2:
   selective raw-syscall patch/trampoline only for calls that bypass libc wrappers
