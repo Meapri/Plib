@@ -13,7 +13,7 @@ class NativeCommandRunner(private val nativeLibraryDir: File) {
     fun runSmokeTest(): NativeCommandResult = runPackagedCommand("libalr_test_command.so", "smoke")
 
     fun runProotCandidateSmokeTest(): NativeCommandResult =
-        runPackagedCommand("libalr_proot.so", "candidate-smoke")
+        runPackagedCommand("libalr_proot.so", "--version")
 
     private fun runPackagedCommand(fileName: String, argument: String): NativeCommandResult {
         val command = File(nativeLibraryDir, fileName)

@@ -67,17 +67,28 @@ tasks.register("packageNativeTestCommand") {
 
 tasks.register("packageProotCandidate") {
     val generatedDir = layout.buildDirectory.dir("generated/native-test-command/jniLibs")
+    val prebuiltNativeDir = layout.projectDirectory.dir("src/main/prebuiltNative")
     outputs.dir(generatedDir)
+    inputs.dir(prebuiltNativeDir).optional()
     doLast {
         val abis = listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
         abis.forEach { abi ->
-            val built = fileTree(layout.buildDirectory.dir("intermediates/cxx/Debug")) {
-                include("**/obj/$abi/alr-proot-candidate")
-            }.files.singleOrNull()
-                ?: throw GradleException("missing alr-proot-candidate for $abi; run buildCMakeDebug[$abi] first")
             val destDir = generatedDir.get().dir(abi).asFile
             destDir.mkdirs()
-            built.copyTo(destDir.resolve("libalr_proot.so"), overwrite = true)
+            val prebuiltProot = prebuiltNativeDir.dir(abi).file("libalr_proot.so").asFile
+            if (prebuiltProot.isFile) {
+                prebuiltProot.copyTo(destDir.resolve("libalr_proot.so"), overwrite = true)
+                val prebuiltTalloc = prebuiltNativeDir.dir(abi).file("libtalloc.so").asFile
+                if (prebuiltTalloc.isFile) {
+                    prebuiltTalloc.copyTo(destDir.resolve("libtalloc.so"), overwrite = true)
+                }
+            } else {
+                val built = fileTree(layout.buildDirectory.dir("intermediates/cxx/Debug")) {
+                    include("**/obj/$abi/alr-proot-candidate")
+                }.files.singleOrNull()
+                    ?: throw GradleException("missing alr-proot-candidate for $abi; run buildCMakeDebug[$abi] first")
+                built.copyTo(destDir.resolve("libalr_proot.so"), overwrite = true)
+            }
         }
     }
 }

@@ -1,0 +1,16 @@
+This directory contains Android/aarch64 prebuilt binaries extracted from Termux packages:
+
+- proot 5.1.107-71 (Package: proot, Architecture: aarch64)
+  Source/Homepage: https://proot-me.github.io/
+  Package source repository: https://github.com/termux/termux-packages
+  Package SHA256: a2cc02e5e5832135d46e1bc7b3da142b61132c990596aaa8c4de9a24342ad7f9
+
+- libtalloc 2.4.3 (Package: libtalloc, Architecture: aarch64)
+  Homepage: https://talloc.samba.org/talloc/doc/html/index.html
+  Package source repository: https://github.com/termux/termux-packages
+  Package SHA256: e7b8a3e8d5b8faff9fa7f0ecfb5eeaa12dc9ec2372ec593dc9dc9649f8d8e3b2
+
+Packaging notes:
+- proot is copied as libalr_proot.so so Android APK native library extraction keeps it executable.
+- libtalloc.so.2 dependency was patched to libtalloc.so for APK native library naming compatibility.
+- RPATH was patched to $ORIGIN so the executable can resolve libtalloc from nativeLibraryDir.

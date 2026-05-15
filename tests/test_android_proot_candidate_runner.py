@@ -9,7 +9,7 @@ def test_native_command_runner_can_run_proot_candidate_smoke():
     text = RUNNER.read_text()
     assert "runProotCandidateSmokeTest" in text
     assert "libalr_proot.so" in text
-    assert '"candidate-smoke"' in text
+    assert '"--version"' in text
 
 
 def test_main_activity_reports_proot_candidate_smoke_result():
