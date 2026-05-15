@@ -55,12 +55,18 @@ def test_rootfs_contains_guest_gpu_ipc_client_and_gles_shim():
         assert "unix-abstract-gui" in gui_payload
         assert "WAYLAND_DISPLAY" in gui_payload
         assert "ALR_WL_SURFACE_COMMIT" in gui_payload
+        assert "ALR_WL_BUFFER_ATTACH" in gui_payload
+        assert "shared-file" in gui_payload
         assert "unix-abstract-wayland" in gui_payload
         wayland_display = archive.extractfile("./usr/bin/alr-wayland-display-client").read()
         assert wayland_display.startswith(b"\x7fELF")
         assert b"ALR_WAYLAND_DISPLAY_SOCKET" in wayland_display
         assert b"WAYLAND_DISPLAY" in wayland_display
         assert b"ALR_WL_SURFACE_COMMIT" in wayland_display
+        assert b"ALR_WL_SHM_POOL_CREATE" in wayland_display
+        assert b"ALR_WL_BUFFER_ATTACH" in wayland_display
+        assert b"ALR_WAYLAND_PAYLOAD_DIR" in wayland_display
+        assert b"transport=shared-file" in wayland_display
 
 
 def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
@@ -176,6 +182,10 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "alr installed package wayland display ipc ack raw" in text
     assert "wayland-display:${if (alrInstalledPackageWaylandDisplayBridgePassed)" in text
     assert "wayland display surface commits=" in text
+    assert "wayland display shared payload frames=" in text
+    assert "wayland display shared payload bytes=" in text
+    assert "payload_verified=true" in text
+    assert "transport=unix-abstract-wayland-shared-file" in text
     assert "gui bridge transport wayland unix vs tcp ratio pct=" in text
     assert "gui bridge transport x11 unix vs tcp ratio pct=" in text
     assert "alr installed package vulkan discovery ack" in text
@@ -539,7 +549,12 @@ def test_guest_gui_client_sources_support_unix_socket_transport():
     assert "ALR_WL_CONNECT display=%s runtime=%s transport=unix-abstract-wayland" in display_source
     assert "ALR_WL_REGISTRY global=wl_compositor" in display_source
     assert "ALR_WL_SURFACE_CREATE id=10 compositor=1" in display_source
-    assert "ALR_WL_BUFFER_CREATE id=20 width=320 height=180 format=argb8888" in display_source
+    assert "ALR_WL_BUFFER_CREATE id=20 width=%d height=%d stride=%d format=argb8888 payload=shared-file" in display_source
+    assert "ALR_WL_SHM_POOL_CREATE id=30 path=%s bytes=%zu checksum=%08x" in display_source
+    assert "ALR_WL_BUFFER_ATTACH surface=10 buffer=20 seq=%d path=%s" in display_source
+    assert "ALR_WAYLAND_PAYLOAD_DIR" in display_source
+    assert "fnv1a32" in display_source
+    assert "write_rgba_payload" in display_source
     assert "ALR_WL_SURFACE_COMMIT surface=10 buffer=20 seq=%d" in display_source
     assert "ALR_WL_DISPLAY_CLIENT ok display=%s commits=3 ack=%s" in display_source
     assert "alr-wayland-gpu-client" in build_script

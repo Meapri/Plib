@@ -1313,6 +1313,35 @@ shape for the next clean-room phase: real guest programs should see a
 Surface/EGL/Vulkan ownership on the host side and avoids PRoot-style syscall
 mediation for every graphics operation.
 
+V90 adds the first verified Wayland buffer payload path. The guest creates an
+app-private RGBA staging payload, advertises it through `ALR_WL_SHM_POOL_CREATE`
+and `ALR_WL_BUFFER_ATTACH`, and reuses that `wl_buffer` across three commits.
+Android verifies payload size and FNV-1a checksum before treating the commits as
+Surface-renderable frames. This is still a file-backed staging bridge, not yet
+FD-passed ashmem or `AHardwareBuffer`, but it proves the control path no longer
+has to carry all image payload data inline.
+
+```text
+build: 0.4.90-wayland-shared-payload
+versionCode=90
+versionName=0.4.90-wayland-shared-payload
+rootfs_version=bookworm-slim-2026-05-wayland-shared-payload-v90
+rootfs sha256=53a6b74e5881d92cd98e1ecb88c9c00e5a8710c953ada44896bf29dce1ad5699
+rootfs size bytes=34088960
+rootfs /usr/bin/alr-wayland-display-client bytes=38032
+rootfs installed alr wayland display client bytes=38032
+WAYLAND DISPLAY SOCKET AVAILABLE: PASS
+WAYLAND DISPLAY COMMIT SURFACE EXECUTION: PASS
+alr installed package wayland display ipc received frames=3/3
+wayland display shared payload frames=3/3
+wayland display shared payload bytes=691200
+alr installed package wayland display ipc ack raw=ALR_WL_DISPLAY_ACK display=alr-wayland-0 commits=3 expected=3 lossless=true payloads=3 payload_bytes=691200 payload_verified=true transport=unix-abstract-wayland-shared-file
+surface wayland frames rendered=19
+surface x11 frames rendered=16
+surface vulkan present=ok
+surface vulkan hardware render=true
+```
+
 Report:
 
 ```text

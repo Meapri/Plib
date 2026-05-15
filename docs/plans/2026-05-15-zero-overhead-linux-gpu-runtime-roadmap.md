@@ -1441,10 +1441,41 @@ text protocol, but the app-facing shape is intentionally closer to what real
 Linux GUI launchers expect: `WAYLAND_DISPLAY`, `XDG_RUNTIME_DIR`, and a Unix
 socket endpoint instead of a generic frame-smoke client.
 
+Latest V90 Wayland shared-payload bridge evidence:
+
+```text
+build: 0.4.90-wayland-shared-payload
+versionCode=90
+versionName=0.4.90-wayland-shared-payload
+rootfs_version=bookworm-slim-2026-05-wayland-shared-payload-v90
+rootfs sha256=53a6b74e5881d92cd98e1ecb88c9c00e5a8710c953ada44896bf29dce1ad5699
+rootfs size bytes=34088960
+rootfs /usr/bin/alr-wayland-display-client bytes=38032
+rootfs installed alr wayland display client bytes=38032
+WAYLAND DISPLAY SOCKET AVAILABLE: PASS
+WAYLAND DISPLAY COMMIT SURFACE EXECUTION: PASS
+alr installed package wayland display ipc received frames=3/3
+wayland display shared payload frames=3/3
+wayland display shared payload bytes=691200
+alr installed package wayland display ipc ack raw=ALR_WL_DISPLAY_ACK display=alr-wayland-0 commits=3 expected=3 lossless=true payloads=3 payload_bytes=691200 payload_verified=true transport=unix-abstract-wayland-shared-file
+surface wayland frames rendered=19
+surface x11 frames rendered=16
+surface vulkan present=ok
+surface vulkan hardware render=true
+```
+
+V90 completes the first shared-payload step. The current bridge uses a
+file-backed app-private staging buffer because it is available to an ordinary
+APK UID and can be verified today. The next upgrade should keep the same
+`ALR_WL_SHM_POOL_CREATE`/`ALR_WL_BUFFER_ATTACH` contract while replacing the
+backing store with ashmem/memfd-style FD passing or Android-owned
+`AHardwareBuffer` handles.
+
 Next implementation batch:
 
-1. Add a shared-memory or ashmem/AHardwareBuffer-backed payload path so batch control frames do not have to carry large image or vertex payloads inline.
-2. Expand the minimal Wayland bridge from ALR_WL text records to a stricter subset of real Wayland wire opcodes for registry, compositor, shm, surface, and buffer lifetimes.
-3. Replace the loader-info smoke with the real Khronos Vulkan loader or a stricter ABI-compatible loader subset.
-4. Add a small real toolkit fixture target, likely a tiny GTK/Qt-independent Wayland protocol smoke before pulling in a larger GUI stack.
-5. Turn the current evidence logs into a reusable adb verification script so device regressions are cheaper to catch while implementation is moving quickly.
+1. Replace file-backed shared payloads with ashmem/memfd-style FD passing where Android permits it, preserving the current checksum/size validation.
+2. Add an Android-owned `AHardwareBuffer` experiment for host-managed Wayland buffers.
+3. Expand the minimal Wayland bridge from ALR_WL text records to a stricter subset of real Wayland wire opcodes for registry, compositor, shm, surface, and buffer lifetimes.
+4. Replace the loader-info smoke with the real Khronos Vulkan loader or a stricter ABI-compatible loader subset.
+5. Add a small real toolkit fixture target, likely a tiny GTK/Qt-independent Wayland protocol smoke before pulling in a larger GUI stack.
+6. Turn the current evidence logs into a reusable adb verification script so device regressions are cheaper to catch while implementation is moving quickly.

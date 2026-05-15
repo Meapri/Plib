@@ -265,9 +265,13 @@ class NativeCommandRunner(
             extraGuestEnvironment = mapOf(
                 "ALR_WAYLAND_DISPLAY_SOCKET" to "@$socketName",
                 "WAYLAND_DISPLAY" to displayName,
-                "XDG_RUNTIME_DIR" to "/tmp/alr-wayland-runtime",
+                "XDG_RUNTIME_DIR" to "/usr/share/alr-smoke/alr-wayland-runtime",
+                "ALR_WAYLAND_PAYLOAD_DIR" to "/usr/share/alr-smoke/alr-wayland-runtime",
                 "ALR_GPU_BRIDGE_TRANSPORT" to "unix-abstract-wayland-display",
             ),
+            pathRewrite = true,
+            pathRewriteLimit = 128,
+            pathRewriteIdleSyscallLimit = 256,
         )
 
     fun runAlrRuntimeTrampolineInstalledPackageVulkanDiscovery(rootfsDir: File, port: Int): NativeCommandResult =

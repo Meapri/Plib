@@ -26,12 +26,12 @@ class MainActivity : Activity() {
 
         val rootfsManifest = RootfsManifest(
             name = "debian-arm64",
-            version = "bookworm-slim-2026-05-wayland-display-v89",
+            version = "bookworm-slim-2026-05-wayland-shared-payload-v90",
             assets = listOf(
                 RootfsAsset(
                     path = "tiny-rootfs.tar",
-                    sha256 = "51d8795a26ef91f371b580db6b00fd088cc2eec12b00fe95d8cf9408afbdae3c",
-                    sizeBytes = 34078720,
+                    sha256 = "53a6b74e5881d92cd98e1ecb88c9c00e5a8710c953ada44896bf29dce1ad5699",
+                    sizeBytes = 34088960,
                 ),
             ),
         )
@@ -695,10 +695,15 @@ class MainActivity : Activity() {
                 rootfsInstalledWaylandDisplayClientFile.canExecute() &&
                 alrInstalledPackageWaylandDisplayBridgeResult.rawLines.any { it.startsWith("ALR_WL_CONNECT ") && it.contains("display=alr-wayland-0") } &&
                 alrInstalledPackageWaylandDisplayBridgeResult.rawLines.any { it.startsWith("ALR_WL_REGISTRY global=wl_compositor") } &&
+                alrInstalledPackageWaylandDisplayBridgeResult.rawLines.any { it.startsWith("ALR_WL_SHM_POOL_CREATE ") } &&
+                alrInstalledPackageWaylandDisplayBridgeResult.rawLines.any { it.startsWith("ALR_WL_BUFFER_ATTACH ") && it.contains("transport=shared-file") } &&
                 alrInstalledPackageWaylandDisplayBridgeResult.commands.size == alrInstalledPackageWaylandDisplayBridgeResult.expectedFrames &&
+                alrInstalledPackageWaylandDisplayBridgeResult.commands.all { it.payloadVerified } &&
+                alrInstalledPackageWaylandDisplayBridgeResult.commands.sumOf { it.payloadBytes } == 691200 &&
                 alrInstalledPackageWaylandDisplayBridgeResult.expectedFrames == 3 &&
                 alrInstalledPackageWaylandDisplayBridgeResult.ackLines.size == 1 &&
-                alrInstalledPackageWaylandDisplayBridgeResult.ackLines.first().contains("transport=unix-abstract-wayland") &&
+                alrInstalledPackageWaylandDisplayBridgeResult.ackLines.first().contains("payload_verified=true") &&
+                alrInstalledPackageWaylandDisplayBridgeResult.ackLines.first().contains("transport=unix-abstract-wayland-shared-file") &&
                 alrInstalledPackageWaylandDisplayBridgeResult.error == null
         val hostGpuHardwareCandidate = hostGpuProbe.lineStartingWith("host gpu hardware candidate=") == "host gpu hardware candidate=true"
         val hostVulkanHardwareCandidate = hostVulkanProbe.lineStartingWith("host vulkan hardware candidate=") == "host vulkan hardware candidate=true"
@@ -813,7 +818,7 @@ class MainActivity : Activity() {
                 "vulkan-loader:${if (alrInstalledPackageVulkanLoaderInfoPassed) "PASS" else "FAIL"}," +
                 "vulkan-loader-unix:${if (alrInstalledPackageVulkanUnixLoaderInfoPassed) "PASS" else "FAIL"}"
 
-        val executionSummary = "build: 0.4.89-wayland-display-bridge" +
+        val executionSummary = "build: 0.4.90-wayland-shared-payload" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -1179,6 +1184,9 @@ class MainActivity : Activity() {
             "\nwayland display socket name=alr-wayland-0" +
             "\nwayland display transport unix=true" +
             "\nwayland display surface commits=${alrInstalledPackageWaylandDisplayBridgeResult.commands.size}" +
+            "\nwayland display shared payload frames=${alrInstalledPackageWaylandDisplayBridgeResult.commands.count { it.payloadVerified }}/${alrInstalledPackageWaylandDisplayBridgeResult.expectedFrames}" +
+            "\nwayland display shared payload bytes=${alrInstalledPackageWaylandDisplayBridgeResult.commands.sumOf { it.payloadBytes }}" +
+            "\nwayland display shared payload checksums=${alrInstalledPackageWaylandDisplayBridgeResult.commands.joinToString("|") { "%08x".format(it.payloadChecksum) }}" +
             "\ngui bridge transport wayland tcp loader elapsed ms=${alrInstalledPackageWaylandGuiBridgeResult.clientResult.elapsedMs}" +
             "\ngui bridge transport wayland unix loader elapsed ms=${alrInstalledPackageWaylandGuiUnixBridgeResult.clientResult.elapsedMs}" +
             "\ngui bridge transport wayland unix vs tcp ratio pct=${elapsedRatioPct(alrInstalledPackageWaylandGuiUnixBridgeResult.clientResult, alrInstalledPackageWaylandGuiBridgeResult.clientResult)}" +
@@ -1658,14 +1666,19 @@ class MainActivity : Activity() {
         Log.i(
             "ALR_DEVICE_EVIDENCE",
             listOf(
-                "build: 0.4.89-wayland-display-bridge",
+                "build: 0.4.90-wayland-shared-payload",
                 "WAYLAND DISPLAY SOCKET AVAILABLE: ${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}",
                 "WAYLAND DISPLAY COMMIT SURFACE EXECUTION: ${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}",
                 "rootfs installed alr wayland display client exists=${rootfsInstalledWaylandDisplayClientFile.isFile} executable=${rootfsInstalledWaylandDisplayClientFile.canExecute()} bytes=${rootfsInstalledWaylandDisplayClientFile.length()}",
                 "rootfs /usr/bin/alr-wayland-display-client exists=${rootfsWaylandDisplayClientFile.isFile} executable=${rootfsWaylandDisplayClientFile.canExecute()} bytes=${rootfsWaylandDisplayClientFile.length()}",
                 "alr installed package wayland display ipc received frames=${alrInstalledPackageWaylandDisplayBridgeResult.commands.size}/${alrInstalledPackageWaylandDisplayBridgeResult.expectedFrames}",
+                "wayland display shared payload frames=${alrInstalledPackageWaylandDisplayBridgeResult.commands.count { it.payloadVerified }}/${alrInstalledPackageWaylandDisplayBridgeResult.expectedFrames}",
+                "wayland display shared payload bytes=${alrInstalledPackageWaylandDisplayBridgeResult.commands.sumOf { it.payloadBytes }}",
                 "alr installed package wayland display ipc ack raw=${alrInstalledPackageWaylandDisplayBridgeResult.ackLines.joinToString("|")}",
                 "alr installed package wayland display ipc error=${alrInstalledPackageWaylandDisplayBridgeResult.error ?: "none"}",
+                "alr installed package wayland display client exit=${alrInstalledPackageWaylandDisplayBridgeResult.clientResult.exitCode}",
+                "alr installed package wayland display client stdout=${alrInstalledPackageWaylandDisplayBridgeResult.clientResult.stdout.alrHandoffStdoutText()}",
+                "alr installed package wayland display client stderr=${alrInstalledPackageWaylandDisplayBridgeResult.clientResult.stdout.alrHandoffStderrText()}",
             ).joinToString("\n"),
         )
 
@@ -1731,10 +1744,12 @@ class MainActivity : Activity() {
                     Log.i(
                         "ALR_SURFACE_EVIDENCE",
                         listOf(
-                            "build: 0.4.89-wayland-display-bridge",
+                            "build: 0.4.90-wayland-shared-payload",
                             "WAYLAND DISPLAY SOCKET AVAILABLE: ${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}",
                             "WAYLAND DISPLAY COMMIT SURFACE EXECUTION: ${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}",
                             "wayland display surface commits=${alrInstalledPackageWaylandDisplayBridgeResult.commands.size}/${alrInstalledPackageWaylandDisplayBridgeResult.expectedFrames}",
+                            "wayland display shared payload frames=${alrInstalledPackageWaylandDisplayBridgeResult.commands.count { it.payloadVerified }}/${alrInstalledPackageWaylandDisplayBridgeResult.expectedFrames}",
+                            "wayland display shared payload bytes=${alrInstalledPackageWaylandDisplayBridgeResult.commands.sumOf { it.payloadBytes }}",
                             surfaceReport.lineStartingWith("surface wayland frames rendered="),
                             surfaceReport.lineStartingWith("surface x11 frames rendered="),
                             vulkanSurfaceReport.lineStartingWith("surface vulkan present="),
@@ -1777,6 +1792,10 @@ class MainActivity : Activity() {
         val tag: String,
         val protocol: String = "GPU",
         val seq: Int = 0,
+        val payloadPath: String = "",
+        val payloadBytes: Int = 0,
+        val payloadChecksum: Long = 0,
+        val payloadVerified: Boolean = false,
     )
 
     private data class GuestGpuIpcBridgeResult(
@@ -2735,8 +2754,24 @@ class MainActivity : Activity() {
                             rawLines += line
                         }
                         val commits = rawLines.count { it.startsWith("ALR_WL_SURFACE_COMMIT ") }
+                        val payloads = rawLines.count { it.startsWith("ALR_WL_BUFFER_ATTACH ") && it.contains("transport=shared-file") }
+                        val payloadBytes = rawLines
+                            .asSequence()
+                            .filter { it.startsWith("ALR_WL_BUFFER_ATTACH ") }
+                            .mapNotNull { tokenValue(it, "bytes")?.toIntOrNull() }
+                            .sum()
+                        val payloadVerified = rawLines
+                            .filter { it.startsWith("ALR_WL_BUFFER_ATTACH ") }
+                            .all { line ->
+                                verifyGuestSharedPayload(
+                                    rootfsDir,
+                                    tokenValue(line, "path").orEmpty(),
+                                    tokenValue(line, "bytes")?.toIntOrNull() ?: 0,
+                                    tokenValue(line, "checksum")?.toLongOrNull(16) ?: 0,
+                                )
+                            } && payloads == 3 && payloadBytes == 691200
                         val lossless = commits == 3
-                        val ack = "ALR_WL_DISPLAY_ACK display=$displayName commits=$commits expected=3 lossless=$lossless transport=unix-abstract-wayland"
+                        val ack = "ALR_WL_DISPLAY_ACK display=$displayName commits=$commits expected=3 lossless=$lossless payloads=$payloads payload_bytes=$payloadBytes payload_verified=$payloadVerified transport=unix-abstract-wayland-shared-file"
                         ackLines += ack
                         socket.getOutputStream().write((ack + "\n").toByteArray())
                         socket.getOutputStream().flush()
@@ -2758,7 +2793,7 @@ class MainActivity : Activity() {
             errors += "wayland display accept thread still alive after join"
             server.close()
         }
-        val commands = parseWaylandDisplayCommands(rawLines.joinToString("\n"))
+        val commands = parseWaylandDisplayCommands(rawLines.joinToString("\n"), rootfsDir)
         return GuestGpuIpcBridgeResult(
             host = "unix-abstract-wayland-display",
             port = 0,
@@ -2783,13 +2818,13 @@ class MainActivity : Activity() {
             .mapNotNull { parseGuestGuiFrameLine(it, expectedProtocol) }
             .toList()
 
-    private fun parseWaylandDisplayCommands(text: String): List<GuestGpuCommand> =
+    private fun parseWaylandDisplayCommands(text: String, rootfsDir: File): List<GuestGpuCommand> =
         text.lineSequence()
             .filter { it.startsWith("ALR_WL_SURFACE_COMMIT ") }
-            .mapNotNull { parseWaylandDisplayCommitLine(it) }
+            .mapNotNull { parseWaylandDisplayCommitLine(it, rootfsDir) }
             .toList()
 
-    private fun parseWaylandDisplayCommitLine(line: String): GuestGpuCommand? {
+    private fun parseWaylandDisplayCommitLine(line: String, rootfsDir: File): GuestGpuCommand? {
         val parts = line.trim().split(Regex("\\s+"))
         if (parts.size < 8 || parts[0] != "ALR_WL_SURFACE_COMMIT") return null
         val seq = parts.firstOrNull { it.startsWith("seq=") }
@@ -2799,7 +2834,47 @@ class MainActivity : Activity() {
         val red = parts[4].toFloatOrNull()?.coerceIn(0f, 1f) ?: return null
         val green = parts[5].toFloatOrNull()?.coerceIn(0f, 1f) ?: return null
         val blue = parts[6].toFloatOrNull()?.coerceIn(0f, 1f) ?: return null
-        return GuestGpuCommand(red, green, blue, "WAYLAND-display-$seq", "WAYLAND", seq)
+        val payloadPath = tokenValue(line, "payload").orEmpty()
+        val payloadBytes = tokenValue(line, "bytes")?.toIntOrNull() ?: 0
+        val payloadChecksum = tokenValue(line, "checksum")?.toLongOrNull(16) ?: 0
+        val payloadVerified = verifyGuestSharedPayload(rootfsDir, payloadPath, payloadBytes, payloadChecksum)
+        return GuestGpuCommand(
+            red,
+            green,
+            blue,
+            "WAYLAND-shared-payload-$seq",
+            "WAYLAND",
+            seq,
+            payloadPath,
+            payloadBytes,
+            payloadChecksum,
+            payloadVerified,
+        )
+    }
+
+    private fun tokenValue(line: String, key: String): String? =
+        line.split(Regex("\\s+"))
+            .firstOrNull { it.startsWith("$key=") }
+            ?.substringAfter("=")
+            ?.takeIf { it.isNotEmpty() }
+
+    private fun verifyGuestSharedPayload(rootfsDir: File, guestPath: String, expectedBytes: Int, expectedChecksum: Long): Boolean {
+        if (!guestPath.startsWith("/usr/share/alr-smoke/alr-wayland-runtime/") || expectedBytes <= 0 || expectedChecksum <= 0) return false
+        val hostFile = File(rootfsDir, guestPath.removePrefix("/"))
+        val rootCanonical = rootfsDir.canonicalFile
+        val hostCanonical = hostFile.canonicalFile
+        if (!hostCanonical.path.startsWith(rootCanonical.path + File.separator)) return false
+        if (!hostCanonical.isFile || hostCanonical.length() != expectedBytes.toLong()) return false
+        return fnv1a32(hostCanonical.readBytes()) == expectedChecksum
+    }
+
+    private fun fnv1a32(bytes: ByteArray): Long {
+        var hash = 0x811c9dc5L
+        for (byte in bytes) {
+            hash = hash xor (byte.toLong() and 0xffL)
+            hash = (hash * 0x01000193L) and 0xffffffffL
+        }
+        return hash
     }
 
     private fun parseGuestGuiFrameLine(line: String, expectedProtocol: String): GuestGpuCommand? {

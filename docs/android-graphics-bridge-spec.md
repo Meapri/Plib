@@ -773,10 +773,39 @@ This is still a clean-room bridge probe, not a drop-in Wayland compositor. The
 important design decision is that Android remains the native renderer owner,
 while the guest sees a progressively more Linux-like display endpoint.
 
+Build `0.4.90-wayland-shared-payload` adds verified buffer payload staging to
+that endpoint. The guest writes a bounded RGBA payload under an app-private
+rootfs staging directory, sends `ALR_WL_SHM_POOL_CREATE`, sends
+`ALR_WL_BUFFER_ATTACH` records with bytes and checksum, then commits the same
+buffer three times. Android resolves the staged file under the verified rootfs,
+rejects path escapes, checks length and FNV-1a checksum, and only then emits
+Surface frames.
+
+```text
+WAYLAND DISPLAY SOCKET AVAILABLE: PASS
+WAYLAND DISPLAY COMMIT SURFACE EXECUTION: PASS
+alr installed package wayland display ipc received frames=3/3
+wayland display shared payload frames=3/3
+wayland display shared payload bytes=691200
+alr installed package wayland display ipc ack raw=ALR_WL_DISPLAY_ACK display=alr-wayland-0 commits=3 expected=3 lossless=true payloads=3 payload_bytes=691200 payload_verified=true transport=unix-abstract-wayland-shared-file
+surface wayland frames rendered=19
+surface vulkan present=ok
+surface vulkan hardware render=true
+```
+
+Current V90 payload records:
+
+```text
+ALR_WL_SHM_POOL_CREATE id=30 path=/usr/share/alr-smoke/alr-wayland-runtime/alr-wl-buffer-20.rgba bytes=230400 checksum=...
+ALR_WL_BUFFER_CREATE id=20 width=320 height=180 stride=1280 format=argb8888 payload=shared-file
+ALR_WL_BUFFER_ATTACH surface=10 buffer=20 seq=1 path=... bytes=230400 checksum=... transport=shared-file
+ALR_WL_SURFACE_COMMIT surface=10 buffer=20 seq=1 ... payload=... bytes=230400 checksum=... transport=shared-file
+```
+
 ## Open Questions
 
-- Which bridge should move to shared memory first after the Unix socket control path: GLES frames, Vulkan command batches, or Wayland buffer commits?
-- Can `AHardwareBuffer` provide a practical cross-boundary buffer path for guest-generated frames?
+- Can the V90 file-backed payload bridge move to ashmem/memfd FD passing without relying on privileged APIs?
+- Can `AHardwareBuffer` provide a practical cross-boundary buffer path for guest-generated or host-managed Wayland buffers?
 - How much Wayland protocol is worth implementing before using an existing compositor/proxy component?
 - Should X11 support begin with image transport, GLX proxy research, or Xvfb/VNC comparison?
 - Which Vulkan subset is small enough to be credible but useful enough to guide the ICD design?
