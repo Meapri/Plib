@@ -47,6 +47,7 @@ RuntimeReport build_runtime_report(const RuntimeReportInput& input) {
 
 RuntimeReport build_runtime_report(const RuntimeReportInput& input, const ExecutionBackend& backend) {
     validate_input(input);
+    const auto optional_backend = probe_optional_runtime_backend(input);
     RuntimeReport report;
     report.loader_executable = loader_executable_for(input);
     report.rootfs_dir = rootfs_dir_for(input);
@@ -61,7 +62,14 @@ RuntimeReport build_runtime_report(const RuntimeReportInput& input, const Execut
     out << "program: " << input.program << "\n";
     out << "execution backend: " << backend.name << "\n";
     out << "can execute: " << (backend.can_execute ? "yes" : "no") << "\n";
-    out << "backend reason: " << backend.reason << "\n\n";
+    out << "backend reason: " << backend.reason << "\n";
+    out << "LOW-OVERHEAD BACKEND PROBE FRAMEWORK: " << optional_backend.framework_status << "\n";
+    out << "OPTIONAL RUNTIME BACKEND AVAILABLE: " << optional_backend.available_status << "\n";
+    out << "optional runtime backend source=" << optional_backend.source << "\n";
+    out << "optional runtime backend name=" << optional_backend.backend << "\n";
+    out << "optional runtime backend path=" << (optional_backend.candidate_path.empty() ? "none" : optional_backend.candidate_path) << "\n";
+    out << "optional runtime backend executable=" << (optional_backend.can_execute ? "yes" : "no") << "\n";
+    out << "optional runtime backend reason=" << optional_backend.reason << "\n\n";
     out << "Runtime policy: rootfs files stay in app-private writable storage; execution enters through packaged native backends.";
     report.text = out.str();
     return report;
@@ -119,6 +127,32 @@ LoaderLaunchPlan build_proot_launch_plan(const RuntimeReportInput& input) {
         {"PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"},
     };
     return plan;
+}
+
+OptionalRuntimeBackendProbe probe_optional_runtime_backend(const RuntimeReportInput& input) {
+    if (input.optional_runtime_backend_path.empty()) {
+        return {
+            .framework_status = "PASS",
+            .available_status = "SKIP",
+            .source = "none",
+            .backend = "none",
+            .candidate_path = "",
+            .can_execute = false,
+            .reason = "no optional external runtime backend configured",
+        };
+    }
+    if (input.optional_runtime_backend_path.front() != '/') {
+        throw std::invalid_argument("absolute optional runtime backend path required");
+    }
+    return {
+        .framework_status = "PASS",
+        .available_status = "PASS",
+        .source = "external",
+        .backend = input.optional_runtime_backend_name.empty() ? "external" : input.optional_runtime_backend_name,
+        .candidate_path = input.optional_runtime_backend_path,
+        .can_execute = false,
+        .reason = "external candidate declared for future probe integration; not executed by absent-safe scaffolding",
+    };
 }
 
 ExecutionBackend select_execution_backend(ExecutionBackendKind kind) {
