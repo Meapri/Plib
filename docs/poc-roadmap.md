@@ -32,10 +32,16 @@ Success criteria:
 
 ## PoC 2: Rootfs manager
 
+Status: host-side manifest model started.
+
 Success criteria:
 
 - APK copies or extracts a tiny test rootfs into app-private files.
-- SHA256 manifest verifies extraction.
+- SHA256 manifest verifies archive payload before extraction.
+- Asset paths reject traversal such as `../escape.tar`.
+- Install plan keeps archives under `files/rootfs/.downloads/<name>/<version>/`.
+- Extracted rootfs lives under `files/rootfs/<name>`.
+- Version marker path is deterministic: `.alr-installed-<version>`.
 - Runtime can list rootfs paths through native code.
 
 ## PoC 3: Shell backend
