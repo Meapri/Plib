@@ -57,6 +57,7 @@ def test_main_activity_reports_alr_loader_help_probe():
     assert "runAlrRuntimeTrampolineCatOsReleaseProbe" in runner
     assert "runAlrRuntimeTrampolineEntryBenchmark" in runner
     assert "runAlrRuntimeTrampolineGlibcHelloBenchmark" in runner
+    assert "runProotRootfsHelloLoopBenchmark" in runner
     assert "translateGuestPath" in runner
     assert "ALR_TRAMPOLINE_REPEAT_COUNT" in runner
     assert '"/lib/ld-linux-aarch64.so.1"' in runner
@@ -82,15 +83,23 @@ def test_main_activity_reports_alr_loader_help_probe():
     assert "ID=androlinux-tiny" in text
     assert "alr static hello elapsed ms=" in text
     assert "proot static hello elapsed ms=" in text
+    assert "alr static hello elapsed ratio pct=" in text
     assert "alr static hello faster than proot=" in text
     assert "alr dynamic glibc elapsed ms=" in text
     assert "proot dynamic glibc elapsed ms=" in text
+    assert "alr dynamic glibc elapsed ratio pct=" in text
     assert "alr dynamic glibc faster than proot=" in text
+    assert "alr hot path measured faster count=" in text
+    assert "alr hot path perf evidence=" in text
     assert "alr translated cat elapsed ms=" in text
     assert "alr static handoff benchmark=" in text
     assert "alr static handoff benchmark requested=" in text
     assert "alr static handoff benchmark pass=" in text
     assert "alr static handoff benchmark average ms=" in text
+    assert "proot static hello loop benchmark elapsed ms=" in text
+    assert "proot static hello loop benchmark average ms=" in text
+    assert "alr static handoff vs proot loop ratio pct=" in text
+    assert "alr static handoff faster than proot loop=" in text
     assert "alr dynamic glibc handoff benchmark=" in text
     assert "alr dynamic glibc handoff benchmark requested=" in text
     assert "alr dynamic glibc handoff benchmark pass=" in text

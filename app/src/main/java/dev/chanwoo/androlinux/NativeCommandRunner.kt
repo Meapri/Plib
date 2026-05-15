@@ -313,6 +313,15 @@ class NativeCommandRunner(
     fun runProotRootfsProgram(rootfsDir: File, program: String): NativeCommandResult =
         runProotRootfsCommand(rootfsDir, program)
 
+    fun runProotRootfsHelloLoopBenchmark(rootfsDir: File, repeatCount: Int = 10): NativeCommandResult {
+        val clampedRepeatCount = repeatCount.coerceIn(1, 50)
+        val loopItems = (1..clampedRepeatCount).joinToString(" ")
+        return runProotRootfsShell(
+            rootfsDir,
+            "for i in $loopItems; do /bin/hello >/dev/null || exit 1; done; echo proot-loop-ok count=$clampedRepeatCount",
+        )
+    }
+
     fun runProotRootfsProgramAsRoot(rootfsDir: File, program: String): NativeCommandResult =
         runProotRootfsCommand(rootfsDir, program, rootId = true)
 

@@ -43,14 +43,25 @@ class MainActivity : Activity() {
         val alrTrampolineLoaderHelpProbeResult = nativeCommandRunner.runAlrRuntimeTrampolineLoaderHelpProbe(rootfsStatus.rootfsDir)
         val alrTrampolineGlibcHelloProbeResult = nativeCommandRunner.runAlrRuntimeTrampolineGlibcHelloProbe(rootfsStatus.rootfsDir)
         val alrTrampolineCatOsReleaseProbeResult = nativeCommandRunner.runAlrRuntimeTrampolineCatOsReleaseProbe(rootfsStatus.rootfsDir)
-        val alrTrampolineEntryBenchmarkResult = nativeCommandRunner.runAlrRuntimeTrampolineEntryBenchmark(rootfsStatus.rootfsDir)
-        val alrTrampolineGlibcHelloBenchmarkResult = nativeCommandRunner.runAlrRuntimeTrampolineGlibcHelloBenchmark(rootfsStatus.rootfsDir)
+        val handoffBenchmarkRepeatCount = 10
+        val alrTrampolineEntryBenchmarkResult = nativeCommandRunner.runAlrRuntimeTrampolineEntryBenchmark(
+            rootfsStatus.rootfsDir,
+            repeatCount = handoffBenchmarkRepeatCount,
+        )
+        val alrTrampolineGlibcHelloBenchmarkResult = nativeCommandRunner.runAlrRuntimeTrampolineGlibcHelloBenchmark(
+            rootfsStatus.rootfsDir,
+            repeatCount = handoffBenchmarkRepeatCount,
+        )
         val prootCandidateResult = nativeCommandRunner.runProotCandidateSmokeTest()
         val prootShortVersionResult = nativeCommandRunner.runProotShortVersionProbe()
         val prootHelpResult = nativeCommandRunner.runProotHelpProbe()
         val prootNoEnvResult = nativeCommandRunner.runProotNoEnvVersionProbe()
         val prootViaLinkerResult = nativeCommandRunner.runProotViaLinkerVersionProbe()
         val prootHelloResult = nativeCommandRunner.runProotRootfsProgram(rootfsStatus.rootfsDir, "/bin/hello")
+        val prootHelloLoopBenchmarkResult = nativeCommandRunner.runProotRootfsHelloLoopBenchmark(
+            rootfsStatus.rootfsDir,
+            repeatCount = handoffBenchmarkRepeatCount,
+        )
         val prootScriptResult = nativeCommandRunner.runProotRootfsProgram(rootfsStatus.rootfsDir, "/bin/script-hello")
         val prootShellResult = nativeCommandRunner.runProotRootfsShell(
             rootfsStatus.rootfsDir,
@@ -531,6 +542,11 @@ class MainActivity : Activity() {
             "\nalr static handoff benchmark average ms=${alrTrampolineEntryBenchmarkResult.stdout.lineStartingWith("alr handoff repeat average elapsed ms=")}" +
             "\nalr static handoff benchmark min ms=${alrTrampolineEntryBenchmarkResult.stdout.lineStartingWith("alr handoff repeat min elapsed ms=")}" +
             "\nalr static handoff benchmark max ms=${alrTrampolineEntryBenchmarkResult.stdout.lineStartingWith("alr handoff repeat max elapsed ms=")}" +
+            "\nproot static hello loop benchmark elapsed ms=${prootHelloLoopBenchmarkResult.elapsedMs}" +
+            "\nproot static hello loop benchmark average ms=${averageElapsedMs(prootHelloLoopBenchmarkResult, handoffBenchmarkRepeatCount)}" +
+            "\nproot static hello loop benchmark stdout=${prootHelloLoopBenchmarkResult.stdout}" +
+            "\nalr static handoff vs proot loop ratio pct=${alrBenchmarkVsProotLoopRatioPct(alrTrampolineEntryBenchmarkResult, prootHelloLoopBenchmarkResult, handoffBenchmarkRepeatCount)}" +
+            "\nalr static handoff faster than proot loop=${alrBenchmarkFasterThanProotLoop(alrTrampolineEntryBenchmarkResult, prootHelloLoopBenchmarkResult, handoffBenchmarkRepeatCount)}" +
             "\nalr dynamic glibc handoff benchmark=${alrTrampolineGlibcHelloBenchmarkResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF BENCHMARK:")}" +
             "\nalr dynamic glibc handoff benchmark requested=${alrTrampolineGlibcHelloBenchmarkResult.stdout.lineStartingWith("alr handoff repeat requested count=")}" +
             "\nalr dynamic glibc handoff benchmark pass=${alrTrampolineGlibcHelloBenchmarkResult.stdout.lineStartingWith("alr handoff repeat pass count=")}" +
@@ -539,10 +555,14 @@ class MainActivity : Activity() {
             "\nalr dynamic glibc handoff benchmark max ms=${alrTrampolineGlibcHelloBenchmarkResult.stdout.lineStartingWith("alr handoff repeat max elapsed ms=")}" +
             "\nalr static hello elapsed ms=${alrTrampolineEntryProbeResult.elapsedMs}" +
             "\nproot static hello elapsed ms=${prootHelloResult.elapsedMs}" +
+            "\nalr static hello elapsed ratio pct=${elapsedRatioPct(alrTrampolineEntryProbeResult, prootHelloResult)}" +
             "\nalr static hello faster than proot=${alrTrampolineEntryProbeResult.exitCode == 0 && prootHelloResult.exitCode == 0 && alrTrampolineEntryProbeResult.elapsedMs < prootHelloResult.elapsedMs}" +
             "\nalr dynamic glibc elapsed ms=${alrTrampolineGlibcHelloProbeResult.elapsedMs}" +
             "\nproot dynamic glibc elapsed ms=${prootGlibcResult.elapsedMs}" +
+            "\nalr dynamic glibc elapsed ratio pct=${elapsedRatioPct(alrTrampolineGlibcHelloProbeResult, prootGlibcResult)}" +
             "\nalr dynamic glibc faster than proot=${alrTrampolineGlibcHelloProbeResult.exitCode == 0 && prootGlibcResult.exitCode == 0 && alrTrampolineGlibcHelloProbeResult.elapsedMs < prootGlibcResult.elapsedMs}" +
+            "\nalr hot path measured faster count=${hotPathFasterCount(alrTrampolineEntryProbeResult, prootHelloResult, alrTrampolineGlibcHelloProbeResult, prootGlibcResult)}/2" +
+            "\nalr hot path perf evidence=${hotPathPerfEvidence(alrTrampolineEntryProbeResult, prootHelloResult, alrTrampolineGlibcHelloProbeResult, prootGlibcResult)}" +
             "\nalr translated cat elapsed ms=${alrTrampolineCatOsReleaseProbeResult.elapsedMs}" +
             "\nproot --version exit=${prootCandidateResult.exitCode}" +
             "\nlinker64 proot --version exit=${prootViaLinkerResult.exitCode}" +
@@ -969,6 +989,78 @@ class MainActivity : Activity() {
             "\n$label elapsed ms=${result.elapsedMs}" +
             "\n$label stdout=${result.stdout}" +
             "\n$label stderr=${result.stderr}"
+
+    private fun elapsedRatioPct(candidate: NativeCommandResult, baseline: NativeCommandResult): String =
+        if (candidate.exitCode == 0 && baseline.exitCode == 0 && baseline.elapsedMs > 0) {
+            ((candidate.elapsedMs * 100) / baseline.elapsedMs).toString()
+        } else {
+            "unavailable"
+        }
+
+    private fun averageElapsedMs(result: NativeCommandResult, repeatCount: Int): String =
+        if (result.exitCode == 0 && repeatCount > 0) {
+            (result.elapsedMs / repeatCount).toString()
+        } else {
+            "unavailable"
+        }
+
+    private fun alrRepeatAverageElapsedMs(result: NativeCommandResult): Long? =
+        result.stdout.lineStartingWith("alr handoff repeat average elapsed ms=")
+            .removePrefix("alr handoff repeat average elapsed ms=")
+            .toLongOrNull()
+
+    private fun alrBenchmarkVsProotLoopRatioPct(
+        alrBenchmark: NativeCommandResult,
+        prootLoopBenchmark: NativeCommandResult,
+        repeatCount: Int,
+    ): String {
+        val alrAverageMs = alrRepeatAverageElapsedMs(alrBenchmark) ?: return "unavailable"
+        if (prootLoopBenchmark.exitCode != 0 || repeatCount <= 0) return "unavailable"
+        val prootAverageMs = prootLoopBenchmark.elapsedMs / repeatCount
+        if (prootAverageMs <= 0) return "unavailable"
+        return ((alrAverageMs * 100) / prootAverageMs).toString()
+    }
+
+    private fun alrBenchmarkFasterThanProotLoop(
+        alrBenchmark: NativeCommandResult,
+        prootLoopBenchmark: NativeCommandResult,
+        repeatCount: Int,
+    ): Boolean {
+        val alrAverageMs = alrRepeatAverageElapsedMs(alrBenchmark) ?: return false
+        if (prootLoopBenchmark.exitCode != 0 || repeatCount <= 0) return false
+        val prootAverageMs = prootLoopBenchmark.elapsedMs / repeatCount
+        return prootAverageMs > 0 && alrAverageMs < prootAverageMs
+    }
+
+    private fun isFaster(candidate: NativeCommandResult, baseline: NativeCommandResult): Boolean =
+        candidate.exitCode == 0 && baseline.exitCode == 0 && candidate.elapsedMs < baseline.elapsedMs
+
+    private fun hotPathFasterCount(
+        staticAlr: NativeCommandResult,
+        staticProot: NativeCommandResult,
+        dynamicAlr: NativeCommandResult,
+        dynamicProot: NativeCommandResult,
+    ): Int =
+        listOf(
+            isFaster(staticAlr, staticProot),
+            isFaster(dynamicAlr, dynamicProot),
+        ).count { it }
+
+    private fun hotPathPerfEvidence(
+        staticAlr: NativeCommandResult,
+        staticProot: NativeCommandResult,
+        dynamicAlr: NativeCommandResult,
+        dynamicProot: NativeCommandResult,
+    ): String {
+        if (staticAlr.exitCode != 0 || staticProot.exitCode != 0 || dynamicAlr.exitCode != 0 || dynamicProot.exitCode != 0) {
+            return "INCOMPLETE"
+        }
+        return if (hotPathFasterCount(staticAlr, staticProot, dynamicAlr, dynamicProot) == 2) {
+            "PASS"
+        } else {
+            "NEEDS_WORK"
+        }
+    }
 
     private fun optionalResultBlock(label: String, result: NativeCommandResult?): String =
         result?.let { resultBlock(label, it) } ?: "\n\n$label skipped=quiet rootfs execution passed"
