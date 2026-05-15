@@ -166,9 +166,10 @@ std::string build_host_gpu_probe_report() {
 }
 
 
-std::string render_to_android_surface(JNIEnv* env, jobject surface_obj) {
+std::string render_to_android_surface(JNIEnv* env, jobject surface_obj, float red, float green, float blue, const std::string& guest_tag) {
     std::ostringstream out;
     out << "host gpu surface renderer=android-surface-egl-gles";
+    out << "\nsurface guest command tag=" << (guest_tag.empty() ? "host-default" : guest_tag);
     if (surface_obj == nullptr) {
         out << "\nsurface render=fail reason=null-surface";
         return out.str();
@@ -248,7 +249,8 @@ std::string render_to_android_surface(JNIEnv* env, jobject surface_obj) {
     const int width = std::max(1, ANativeWindow_getWidth(window));
     const int height = std::max(1, ANativeWindow_getHeight(window));
     glViewport(0, 0, width, height);
-    glClearColor(0.05F, 0.18F, 0.45F, 1.0F);
+    glClearColor(red, green, blue, 1.0F);
+    out << "\nsurface clear color=" << red << "," << green << "," << blue;
     glClear(GL_COLOR_BUFFER_BIT);
     const GLenum gl_error = glGetError();
     const auto vendor = safe_gl_string(GL_VENDOR);
@@ -264,6 +266,7 @@ std::string render_to_android_surface(JNIEnv* env, jobject surface_obj) {
     }
     out << "\nsurface gpu software renderer=" << (software ? "true" : "false");
     out << "\nsurface gpu hardware render=" << (!software && gl_error == GL_NO_ERROR && swapped == EGL_TRUE ? "true" : "false");
+    out << "\nguest gpu bridge hardware render=" << (!guest_tag.empty() && !software && gl_error == GL_NO_ERROR && swapped == EGL_TRUE ? "true" : "false");
 
     eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     eglDestroyContext(display, context);
@@ -377,7 +380,17 @@ extern "C" JNIEXPORT jstring JNICALL
 Java_dev_chanwoo_androlinux_MainActivity_nativeRenderGpuSurface(
     JNIEnv* env,
     jobject /* thiz */,
-    jobject surface) {
-    const auto report = render_to_android_surface(env, surface);
+    jobject surface,
+    jfloat red,
+    jfloat green,
+    jfloat blue,
+    jstring guest_tag) {
+    const auto report = render_to_android_surface(
+        env,
+        surface,
+        static_cast<float>(red),
+        static_cast<float>(green),
+        static_cast<float>(blue),
+        jstring_to_string(env, guest_tag));
     return env->NewStringUTF(report.c_str());
 }

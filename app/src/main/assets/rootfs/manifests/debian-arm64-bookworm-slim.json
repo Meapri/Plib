@@ -1,12 +1,12 @@
 {
   "name": "debian-arm64",
-  "version": "bookworm-slim-2026-05-clean-v2",
-  "description": "Tiny PoC rootfs with clean extraction schema v2, no stale host needrestart dpkg status-logger, dpkg-split smoke, apt/dpkg bundle, minimal device binds/state files, and Android GPU surface probes.",
+  "version": "bookworm-slim-2026-05-guest-gpu-v1",
+  "description": "Tiny PoC rootfs with guest GPU clear-color client, clean extraction schema, dpkg-split smoke, apt/dpkg bundle, minimal device binds/state files, and Android host GPU surface bridge probes.",
   "assets": [
     {
       "path": "tiny-rootfs.tar",
-      "sha256": "3d175b6d185a7288e543a50bd6663d995da8a68b524366d75d5a537e8f7685b1",
-      "size_bytes": 32460800
+      "sha256": "b547706229e47399f38a094c99ea12dbedf0d46803badbcf5c3fe4414bf51826",
+      "size_bytes": 33003520
     }
   ],
   "unsupported_features": [

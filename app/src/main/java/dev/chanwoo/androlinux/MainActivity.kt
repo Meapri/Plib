@@ -18,7 +18,7 @@ class MainActivity : Activity() {
 
         val rootfsManifest = RootfsManifest(
             name = "debian-arm64",
-            version = "bookworm-slim-2026-05",
+            version = "bookworm-slim-2026-05-guest-gpu-v1",
             assets = listOf(
                 RootfsAsset(
                     path = "rootfs.tar.zst",
@@ -61,6 +61,8 @@ class MainActivity : Activity() {
         val prootAptConfigVersionResult = nativeCommandRunner.runProotRootfsAptConfigVersion(rootfsStatus.rootfsDir)
         val prootDpkgInstallLocalResult = nativeCommandRunner.runProotRootfsDpkgInstallLocalSmoke(rootfsStatus.rootfsDir)
         val prootInstalledPackageSmokeResult = nativeCommandRunner.runProotRootfsInstalledPackageSmoke(rootfsStatus.rootfsDir)
+        val prootGuestGpuClientResult = nativeCommandRunner.runProotRootfsGuestGpuClient(rootfsStatus.rootfsDir)
+        val guestGpuCommand = parseGuestGpuCommand(prootGuestGpuClientResult.stdout)
         val prootHelloVerboseResult = if (prootHelloResult.exitCode == 0) {
             null
         } else {
@@ -119,6 +121,7 @@ class MainActivity : Activity() {
         val rootfsLdconfigRealFile = File(rootfsStatus.rootfsDir, "sbin/ldconfig.real")
         val rootfsStartStopDaemonFile = File(rootfsStatus.rootfsDir, "usr/sbin/start-stop-daemon")
         val rootfsDpkgSplitFile = File(rootfsStatus.rootfsDir, "usr/bin/dpkg-split")
+        val rootfsGuestGpuClientFile = File(rootfsStatus.rootfsDir, "usr/bin/alr-gpu-client")
         val rootfsExecutionPassed = prootHelloResult.exitCode == 0 &&
             prootHelloResult.stdout.contains("hello from static arm64 rootfs")
         val shellScriptExecutionPassed = prootScriptResult.exitCode == 0 &&
@@ -183,9 +186,12 @@ class MainActivity : Activity() {
                 prootDpkgInstallLocalResult.stderr.contains("Selecting previously unselected package alr-smoke"))
         val installedPackageExecutionPassed = prootInstalledPackageSmokeResult.exitCode == 0 &&
             prootInstalledPackageSmokeResult.stdout.contains("alr local deb package smoke ok")
+        val guestGpuBridgeCommandPassed = prootGuestGpuClientResult.exitCode == 0 &&
+            prootGuestGpuClientResult.stdout.contains("alr guest gpu client ok") &&
+            guestGpuCommand != null
         val hostGpuHardwareCandidate = hostGpuProbe.lineStartingWith("host gpu hardware candidate=") == "host gpu hardware candidate=true"
 
-        val executionSummary = "build: 0.4.13-clean-rootfs-surface-gpu" +
+        val executionSummary = "build: 0.4.14-guest-gpu-bridge" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -206,6 +212,8 @@ class MainActivity : Activity() {
             "\nINSTALLED PACKAGE EXECUTION: ${if (installedPackageExecutionPassed) "PASS" else "FAIL"}" +
             "\nHOST GPU EGL/GLES EXECUTION: ${if (hostGpuHardwareCandidate) "PASS" else "FAIL"}" +
             "\nHOST GPU SURFACE EXECUTION: PENDING_SURFACE_CALLBACK" +
+            "\nGUEST GPU BRIDGE COMMAND EXECUTION: ${if (guestGpuBridgeCommandPassed) "PASS" else "FAIL"}" +
+            "\nGUEST GPU BRIDGE SURFACE EXECUTION: PENDING_SURFACE_CALLBACK" +
             "\nANDROID PERMISSION MODEL: ${if (internetPermissionDeclared && networkStatePermissionDeclared && !broadStoragePermissionDeclared) "PASS" else "FAIL"}" +
             "\nidentity numeric root=$identityNumericRoot" +
             "\nidentity named root=$identityNamedRoot" +
@@ -259,6 +267,13 @@ class MainActivity : Activity() {
             "\nrootfs helper ldconfig.real exists=${rootfsLdconfigRealFile.isFile} executable=${rootfsLdconfigRealFile.canExecute()} bytes=${rootfsLdconfigRealFile.length()}" +
             "\nrootfs helper start-stop-daemon exists=${rootfsStartStopDaemonFile.isFile} executable=${rootfsStartStopDaemonFile.canExecute()} bytes=${rootfsStartStopDaemonFile.length()}" +
             "\nrootfs /usr/bin/dpkg-split exists=${rootfsDpkgSplitFile.isFile} executable=${rootfsDpkgSplitFile.canExecute()} bytes=${rootfsDpkgSplitFile.length()}" +
+            "\nrootfs /usr/bin/alr-gpu-client exists=${rootfsGuestGpuClientFile.isFile} executable=${rootfsGuestGpuClientFile.canExecute()} bytes=${rootfsGuestGpuClientFile.length()}" +
+            "\nproot guest gpu client exit=${prootGuestGpuClientResult.exitCode}" +
+            "\nproot guest gpu client stdout=${prootGuestGpuClientResult.stdout}" +
+            "\nproot guest gpu client stderr=${prootGuestGpuClientResult.stderr}" +
+            "\nguest gpu command parsed=${guestGpuCommand != null}" +
+            "\nguest gpu command color=${guestGpuCommand?.red},${guestGpuCommand?.green},${guestGpuCommand?.blue}" +
+            "\nguest gpu command tag=${guestGpuCommand?.tag ?: "missing"}" +
             "\nproot dpkg-split --version exit=${prootDpkgSplitVersionResult.exitCode}" +
             "\nproot dpkg-split --version stdout=${prootDpkgSplitVersionResult.stdout}" +
             "\nproot dpkg-split --version stderr=${prootDpkgSplitVersionResult.stderr}" +
@@ -376,6 +391,7 @@ class MainActivity : Activity() {
             resultBlock("proot apt-config --version", prootAptConfigVersionResult) +
             resultBlock("proot dpkg -i local deb", prootDpkgInstallLocalResult) +
             resultBlock("proot installed package smoke", prootInstalledPackageSmokeResult) +
+            resultBlock("proot guest gpu client", prootGuestGpuClientResult) +
             optionalResultBlock("proot hello verbose on failure", prootHelloVerboseResult)
 
         val report = executionSummary + "\n\n--- verbose report ---\n" + verboseReport
@@ -389,8 +405,9 @@ class MainActivity : Activity() {
         val surfaceView = SurfaceView(this).apply {
             holder.addCallback(object : SurfaceHolder.Callback {
                 override fun surfaceCreated(holder: SurfaceHolder) {
-                    val surfaceReport = nativeRenderGpuSurface(holder.surface)
-                    view.append("\n\n--- Android host GPU surface renderer ---\n$surfaceReport")
+                    val command = guestGpuCommand ?: GuestGpuCommand(0.05f, 0.18f, 0.45f, "host-default")
+                    val surfaceReport = nativeRenderGpuSurface(holder.surface, command.red, command.green, command.blue, command.tag)
+                    view.append("\n\n--- Linux guest-controlled GPU surface renderer ---\n$surfaceReport")
                 }
 
                 override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) = Unit
@@ -409,6 +426,23 @@ class MainActivity : Activity() {
                 )
             },
         )
+    }
+
+    private data class GuestGpuCommand(
+        val red: Float,
+        val green: Float,
+        val blue: Float,
+        val tag: String,
+    )
+
+    private fun parseGuestGpuCommand(stdout: String): GuestGpuCommand? {
+        val line = stdout.lineSequence().firstOrNull { it.startsWith("ALR_GPU_CLEAR ") } ?: return null
+        val parts = line.trim().split(Regex("\\s+"))
+        if (parts.size < 5) return null
+        val red = parts[1].toFloatOrNull()?.coerceIn(0f, 1f) ?: return null
+        val green = parts[2].toFloatOrNull()?.coerceIn(0f, 1f) ?: return null
+        val blue = parts[3].toFloatOrNull()?.coerceIn(0f, 1f) ?: return null
+        return GuestGpuCommand(red, green, blue, parts[4])
     }
 
     private fun resultBlock(label: String, result: NativeCommandResult): String =
@@ -442,5 +476,11 @@ class MainActivity : Activity() {
 
     private external fun nativeHostGpuProbe(): String
 
-    private external fun nativeRenderGpuSurface(surface: android.view.Surface): String
+    private external fun nativeRenderGpuSurface(
+        surface: android.view.Surface,
+        red: Float,
+        green: Float,
+        blue: Float,
+        guestTag: String,
+    ): String
 }

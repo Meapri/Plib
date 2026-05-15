@@ -100,6 +100,9 @@ class NativeCommandRunner(
             binds = minimalPackageManagerBinds(),
         )
 
+    fun runProotRootfsGuestGpuClient(rootfsDir: File): NativeCommandResult =
+        runProotRootfsCommand(rootfsDir, "/usr/bin/alr-gpu-client", rootId = true, rawRootfs = true)
+
     fun runProotRootfsProgramVerbose(rootfsDir: File, program: String): NativeCommandResult =
         runProotRootfsCommand(rootfsDir, program, verbose = "9")
 

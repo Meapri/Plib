@@ -34,8 +34,8 @@ android {
         applicationId = "dev.chanwoo.androlinux"
         minSdk = 26
         targetSdk = 35
-        versionCode = 26
-        versionName = "0.4.13-clean-rootfs-surface-gpu"
+        versionCode = 27
+        versionName = "0.4.14-guest-gpu-bridge"
         ndkVersion = "27.2.12479018"
 
         externalNativeBuild {
