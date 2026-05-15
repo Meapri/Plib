@@ -1,12 +1,12 @@
 {
   "name": "debian-arm64",
   "version": "bookworm-slim-2026-05",
-  "description": "Tiny PoC rootfs archive with bulk dpkg/apt base bundle plus local alr-smoke .deb package for actual dpkg -i install and installed-command execution smoke. Not a full Debian rootfs yet.",
+  "description": "Tiny PoC rootfs archive with bulk dpkg/apt base bundle, local alr-smoke .deb package, dpkg trigger/lock state files, and /dev/null placeholder for raw PRoot device bind install smoke. Not a full Debian rootfs yet.",
   "assets": [
     {
       "path": "tiny-rootfs.tar",
-      "sha256": "c467bf88120a54d04ce478708f3f1823e227492e2e5dd93e85fd3c534a935089",
-      "size_bytes": 30638080
+      "sha256": "b881061947cda7c3e8cd5c08c25626f8204a268f0468220b30caf72e26a8e655",
+      "size_bytes": 30648320
     }
   ],
   "unsupported_features": [

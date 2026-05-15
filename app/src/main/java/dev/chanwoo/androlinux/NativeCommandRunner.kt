@@ -85,10 +85,17 @@ class NativeCommandRunner(
             listOf("-i", "/var/cache/apt/archives/alr-smoke_1.0_arm64.deb"),
             rootId = true,
             rawRootfs = true,
+            binds = minimalPackageManagerBinds(),
         )
 
     fun runProotRootfsInstalledPackageSmoke(rootfsDir: File): NativeCommandResult =
-        runProotRootfsCommand(rootfsDir, "/usr/local/bin/alr-package-smoke", rootId = true, rawRootfs = true)
+        runProotRootfsCommand(
+            rootfsDir,
+            "/usr/local/bin/alr-package-smoke",
+            rootId = true,
+            rawRootfs = true,
+            binds = minimalPackageManagerBinds(),
+        )
 
     fun runProotRootfsProgramVerbose(rootfsDir: File, program: String): NativeCommandResult =
         runProotRootfsCommand(rootfsDir, program, verbose = "9")
@@ -106,14 +113,22 @@ class NativeCommandRunner(
         verbose: String = "-1",
         rootId: Boolean = false,
         rawRootfs: Boolean = false,
+        binds: List<String> = emptyList(),
     ): NativeCommandResult =
         runPackagedCommand(
             "libalr_proot.so",
             listOf(if (rawRootfs) "-r" else "-R", rootfsDir.absolutePath) +
+                binds.flatMap { listOf("-b", it) } +
                 (if (rootId) listOf("-0") else emptyList()) +
                 listOf("-w", "/", program) + arguments,
             prootEnvironment(verbose = verbose, rootfsDir = rootfsDir, program = program),
         )
+
+    private fun minimalPackageManagerBinds(): List<String> = listOf(
+        "/dev/null:/dev/null",
+        "/dev/zero:/dev/zero",
+        "/dev/urandom:/dev/urandom",
+    )
 
     private fun prootEnvironment(
         verbose: String = "-1",

@@ -165,3 +165,19 @@ def test_main_activity_reports_local_deb_install_smoke_results():
     assert "rootfs installed alr smoke exists=" in text
     assert "proot dpkg -i local deb exit=" in text
     assert "proot installed package smoke exit=" in text
+
+
+def test_package_manager_install_uses_minimal_raw_rootfs_device_binds():
+    text = RUNNER.read_text()
+    assert "minimalPackageManagerBinds" in text
+    assert "-b" in text
+    assert "/dev/null:/dev/null" in text
+    assert "/dev/zero:/dev/zero" in text
+    assert "/dev/urandom:/dev/urandom" in text
+
+
+def test_main_activity_reports_dpkg_install_state_placeholders():
+    text = MAIN.read_text()
+    assert "rootfs /dev/null placeholder exists=" in text
+    assert "rootfs dpkg triggers File exists=" in text
+    assert "rootfs dpkg triggers Unincorp exists=" in text
