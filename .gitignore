@@ -2,6 +2,7 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .gradle/
+.kotlin/
 build/
 app/build/
 app/.cxx/
