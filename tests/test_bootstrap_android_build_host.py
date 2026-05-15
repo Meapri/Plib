@@ -5,12 +5,15 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "bootstrap-android-build-host.sh"
 
 
-def test_bootstrap_script_has_architecture_guard_for_android_build_tools():
+def test_bootstrap_script_has_x86_64_and_aarch64_paths():
     text = SCRIPT.read_text()
 
     assert "uname -m" in text
     assert "x86_64" in text
-    assert "Android SDK build-tools are distributed for Linux x86_64" in text
+    assert "aarch64" in text
+    assert "qemu-user-static" in text
+    assert "libc6-amd64-cross" in text
+    assert "ld-linux-x86-64.so.2" in text
 
 
 def test_bootstrap_script_installs_required_android_packages():
@@ -28,3 +31,4 @@ def test_bootstrap_script_writes_local_properties():
 
     assert "local.properties" in text
     assert "sdk.dir=" in text
+    assert "cmake.dir=/usr" in text
