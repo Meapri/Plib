@@ -69,6 +69,23 @@ static int bench_open_read_close(const char* path, int count, uint64_t* checksum
     return pass_count;
 }
 
+static int bench_fsmeta(const char* path, int count, uint64_t* checksum) {
+    int pass_count = 0;
+    char link_buffer[256];
+    for (int index = 0; index < count; ++index) {
+        if (access(path, R_OK) != 0) {
+            return pass_count;
+        }
+        const ssize_t link_count = readlink("/usr/share/androlinux/path-preload-link", link_buffer, sizeof(link_buffer));
+        if (link_count <= 0) {
+            return pass_count;
+        }
+        *checksum += (uint64_t)link_count;
+        ++pass_count;
+    }
+    return pass_count;
+}
+
 static int bench_spawn(int count, uint64_t* checksum) {
     int pass_count = 0;
     for (int index = 0; index < count; ++index) {
@@ -105,6 +122,8 @@ int main(int argc, char** argv) {
         pass_count = bench_stat(path, count, &checksum);
     } else if (strcmp(mode, "openread") == 0) {
         pass_count = bench_open_read_close(path, count, &checksum);
+    } else if (strcmp(mode, "fsmeta") == 0) {
+        pass_count = bench_fsmeta(path, count, &checksum);
     } else if (strcmp(mode, "spawn") == 0) {
         pass_count = bench_spawn(count, &checksum);
     } else {

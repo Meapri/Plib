@@ -230,6 +230,33 @@ the measured stat and open/read preload paths both faster than PRoot on the
 test device. The ptrace path remains a fallback/discovery path, not the desired
 interactive hot path.
 
+Current V58 preload fsmeta-fastpath snapshot:
+
+```text
+build: 0.4.58-preload-fsmeta-fastpath
+ALR SYSCALL FSMETA BENCH EXECUTION: PASS
+ALR SYSCALL STAT PRELOAD BENCH EXECUTION: PASS
+ALR SYSCALL OPENREAD PRELOAD BENCH EXECUTION: PASS
+ALR SYSCALL FSMETA PRELOAD BENCH EXECUTION: PASS
+PROOT SYSCALL FSMETA BENCH EXECUTION: PASS
+proot syscall stat benchmark average us=79
+alr syscall stat preload benchmark average us=2
+proot syscall openread benchmark average us=202
+alr syscall openread preload benchmark average us=7
+alr syscall fsmeta benchmark average us=5354
+proot syscall fsmeta benchmark average us=173
+alr syscall fsmeta preload benchmark average us=9
+alr syscall fsmeta preload vs proot ratio pct=5
+alr syscall fsmeta preload faster than proot=true
+alr syscall preload hot path measured faster count=3/3
+alr syscall preload hot path perf evidence=PASS
+```
+
+The v58 result adds `access` and `readlink` coverage to the measured preload
+hot path and proves it against an extracted rootfs symlink fixture. Safe
+relative symlink extraction is now part of the rootfs installer contract; hard
+links and escaping symlink targets remain rejected.
+
 ### ALR Exec v3: Identity and Procfs
 
 Required behavior:

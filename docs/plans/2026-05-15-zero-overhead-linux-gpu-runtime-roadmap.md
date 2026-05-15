@@ -145,6 +145,35 @@ The immediate backend priority moves from proving the approach to widening
 coverage: `access`, `readlink`, `getcwd`, `chdir`, metadata patching, and
 process/package-manager edge cases.
 
+Latest V58 preload fsmeta-fastpath evidence:
+
+```text
+build: 0.4.58-preload-fsmeta-fastpath
+ALR SYSCALL FSMETA BENCH EXECUTION: PASS
+ALR SYSCALL STAT PRELOAD BENCH EXECUTION: PASS
+ALR SYSCALL OPENREAD PRELOAD BENCH EXECUTION: PASS
+ALR SYSCALL FSMETA PRELOAD BENCH EXECUTION: PASS
+PROOT SYSCALL FSMETA BENCH EXECUTION: PASS
+proot syscall stat benchmark average us=79
+alr syscall stat preload benchmark average us=2
+proot syscall openread benchmark average us=202
+alr syscall openread preload benchmark average us=7
+alr syscall fsmeta benchmark average us=5354
+proot syscall fsmeta benchmark average us=173
+alr syscall fsmeta preload benchmark average us=9
+alr syscall fsmeta preload vs proot ratio pct=5
+alr syscall fsmeta preload faster than proot=true
+alr syscall preload hot path measured faster count=3/3
+alr syscall preload hot path perf evidence=PASS
+```
+
+The V58 result widens the measured preload fast path from `stat/open/read` to a
+metadata workload using guest `access` and `readlink` over a rootfs symlink
+fixture. It also adds safe relative-symlink extraction support to the Android
+rootfs installer, which is required for real Linux rootfs compatibility. The
+preload fsmeta path measured about 5% of PRoot cost on the device while the
+ptrace path remained far slower.
+
 Known issue:
 
 - V35 summary says `GUEST WAYLAND GUI GPU BRIDGE EXECUTION: FAIL` and `GUEST X11 GUI GPU BRIDGE EXECUTION: FAIL` because ACK writing happens after socket input is closed. Frames were received and rendered losslessly; this is a report/ACK lifecycle bug, not a GPU-path failure.

@@ -202,6 +202,8 @@ def test_guest_syscall_bench_is_source_built_fixture():
     assert "ALR SYSCALL BENCH:" in source
     assert "bench_stat" in source
     assert "bench_open_read_close" in source
+    assert "bench_fsmeta" in source
+    assert '"fsmeta"' in source
     assert "bench_spawn" in source
     assert "alr-syscall-bench" in build_script
 
@@ -218,6 +220,10 @@ def test_guest_path_preload_is_source_built_fast_path_shim():
     assert "fstatat" in source
     assert "__xstat" in source
     assert "__fxstatat" in source
+    assert "access" in source
+    assert "readlink" in source
+    assert "chdir" in source
+    assert "getcwd" in source
     assert "libalr_path_preload.so" in build_script
 
 

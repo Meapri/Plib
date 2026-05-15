@@ -121,11 +121,14 @@ def test_main_activity_reports_alr_loader_help_probe():
     assert "alr loop hot path perf evidence=" in text
     assert "ALR SYSCALL STAT BENCH EXECUTION:" in text
     assert "ALR SYSCALL OPENREAD BENCH EXECUTION:" in text
+    assert "ALR SYSCALL FSMETA BENCH EXECUTION:" in text
     assert "ALR SYSCALL STAT PRELOAD BENCH EXECUTION:" in text
     assert "ALR SYSCALL OPENREAD PRELOAD BENCH EXECUTION:" in text
+    assert "ALR SYSCALL FSMETA PRELOAD BENCH EXECUTION:" in text
     assert "ALR SYSCALL SPAWN BENCH EXECUTION:" in text
     assert "PROOT SYSCALL STAT BENCH EXECUTION:" in text
     assert "PROOT SYSCALL OPENREAD BENCH EXECUTION:" in text
+    assert "PROOT SYSCALL FSMETA BENCH EXECUTION:" in text
     assert "PROOT SYSCALL SPAWN BENCH EXECUTION:" in text
     assert "rootfs /usr/bin/alr-syscall-bench exists=" in text
     assert "alr syscall stat benchmark average us=" in text
@@ -142,6 +145,11 @@ def test_main_activity_reports_alr_loader_help_probe():
     assert "alr syscall openread preload benchmark average us=" in text
     assert "alr syscall openread preload vs proot ratio pct=" in text
     assert "alr syscall openread preload faster than proot=" in text
+    assert "alr syscall fsmeta benchmark average us=" in text
+    assert "proot syscall fsmeta benchmark average us=" in text
+    assert "alr syscall fsmeta preload benchmark average us=" in text
+    assert "alr syscall fsmeta preload vs proot ratio pct=" in text
+    assert "alr syscall fsmeta preload faster than proot=" in text
     assert "alr syscall spawn benchmark average us=" in text
     assert "proot syscall spawn benchmark average us=" in text
     assert "alr syscall spawn vs proot ratio pct=" in text

@@ -5,6 +5,8 @@ import org.apache.commons.compress.archivers.tar.TarArchiveEntry
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.json.JSONObject
 import java.io.File
+import java.nio.file.Files
+import java.nio.file.Paths
 import java.security.MessageDigest
 
 data class RootfsInstallStatus(
@@ -107,9 +109,14 @@ class RootfsInstaller(private val context: Context) {
                 }
                 when {
                     entry.isDirectory -> target.mkdirs()
-                    entry.isSymbolicLink || entry.isLink -> {
-                        // Early PoC policy: reject links instead of creating them. This avoids link-target escape bugs.
-                        throw IllegalArgumentException("tar links are not supported yet: ${entry.name}")
+                    entry.isSymbolicLink -> {
+                        validateTarSymlink(entry)
+                        target.parentFile?.mkdirs()
+                        Files.deleteIfExists(target.toPath())
+                        Files.createSymbolicLink(target.toPath(), Paths.get(entry.linkName))
+                    }
+                    entry.isLink -> {
+                        throw IllegalArgumentException("tar hard links are not supported yet: ${entry.name}")
                     }
                     entry.isFile -> {
                         target.parentFile?.mkdirs()
@@ -141,6 +148,15 @@ class RootfsInstaller(private val context: Context) {
         require(name.split('/').none { it == ".." }) { "parent traversal is not allowed: $name" }
         require(!entry.isCharacterDevice && !entry.isBlockDevice && !entry.isFIFO) {
             "device-like tar entry is not allowed: $name"
+        }
+    }
+
+    private fun validateTarSymlink(entry: TarArchiveEntry) {
+        val linkName = entry.linkName
+        require(!linkName.isNullOrBlank()) { "empty tar symlink target: ${entry.name}" }
+        require(!linkName.startsWith("/")) { "absolute tar symlink target is not allowed: ${entry.name} -> $linkName" }
+        require(linkName.split('/').none { it == ".." }) {
+            "parent traversal in tar symlink target is not allowed: ${entry.name} -> $linkName"
         }
     }
 }

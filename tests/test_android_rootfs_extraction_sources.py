@@ -12,6 +12,8 @@ def test_rootfs_installer_has_safe_tar_extraction_guards():
     assert "canonicalPath" in text
     assert "startsWith(rootfsDir.canonicalPath" in text
     assert "TarArchiveInputStream" in text
+    assert "Files.createSymbolicLink" in text
+    assert "validateTarSymlink" in text
     assert "writeInstallMarker" in text
     assert "extracted" in text
 
