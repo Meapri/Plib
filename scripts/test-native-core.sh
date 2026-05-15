@@ -20,3 +20,12 @@ cxx="${CXX:-g++}"
   -o /tmp/alr-native-backend-policy-test
 
 /tmp/alr-native-backend-policy-test
+
+"$cxx" -std=c++20 -Wall -Wextra -Werror \
+  -Iapp/src/main/cpp \
+  tests/native_alr_runtime_path_test.cpp \
+  app/src/main/cpp/alr_runtime/alr_path.cpp \
+  app/src/main/cpp/alr_runtime/alr_env.cpp \
+  -o /tmp/alr-native-runtime-path-test
+
+/tmp/alr-native-runtime-path-test
