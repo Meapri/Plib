@@ -44,7 +44,16 @@ def test_trampoline_report_contract_exists():
     assert "load_static_image_for_preflight" in main
     assert "ALR_TRAMPOLINE_EXECUTE_ENTRY" in main
     assert "maybe_run_static_entry_handoff" in main
-    assert "ALR STATIC ENTRY HANDOFF:" in (ROOT / "app/src/main/cpp/alr_runtime/alr_handoff.cpp").read_text()
+    handoff = (ROOT / "app/src/main/cpp/alr_runtime/alr_handoff.cpp").read_text()
+    assert "ALR STATIC ENTRY HANDOFF:" in handoff
+    assert "alr handoff stdout=" in handoff
+    assert "pipe static entry handoff stdout" in handoff
+    assert '"mov x16, x0\\n"' in handoff
+    assert '"mov x0, xzr\\n"' in handoff
+    assert "PTRACE_TRACEME" in handoff
+    assert "alr handoff fault pc=" in handoff
+    assert "emulate_android_seccomp_syscall" in handoff
+    assert "alr handoff syscall emulated count=" in handoff
 
 
 def test_launch_report_and_runtime_plan_include_trampoline():

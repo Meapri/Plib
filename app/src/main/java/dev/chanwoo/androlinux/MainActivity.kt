@@ -376,7 +376,14 @@ class MainActivity : Activity() {
             "\nalr entry probe child exited=${alrTrampolineEntryProbeResult.stdout.lineStartingWith("alr handoff child exited=")}" +
             "\nalr entry probe child signaled=${alrTrampolineEntryProbeResult.stdout.lineStartingWith("alr handoff child signaled=")}" +
             "\nalr entry probe child signal=${alrTrampolineEntryProbeResult.stdout.lineStartingWith("alr handoff signal=")}" +
+            "\nalr entry probe fault captured=${alrTrampolineEntryProbeResult.stdout.lineStartingWith("alr handoff fault captured=")}" +
+            "\nalr entry probe fault addr=${alrTrampolineEntryProbeResult.stdout.lineStartingWith("alr handoff fault addr=")}" +
+            "\nalr entry probe fault pc=${alrTrampolineEntryProbeResult.stdout.lineStartingWith("alr handoff fault pc=")}" +
+            "\nalr entry probe fault syscall=${alrTrampolineEntryProbeResult.stdout.lineStartingWith("alr handoff fault syscall=")}" +
+            "\nalr entry probe syscall emulated=${alrTrampolineEntryProbeResult.stdout.lineStartingWith("alr handoff syscall emulated count=")}" +
             "\nalr entry probe timeout=${alrTrampolineEntryProbeResult.stdout.lineStartingWith("alr handoff timed out=")}" +
+            "\nalr entry probe stdout=${alrTrampolineEntryProbeResult.stdout.lineStartingWith("alr handoff stdout=")}" +
+            "\nalr direct static hello=${if (alrTrampolineEntryProbeResult.stdout.contains("hello from static arm64 rootfs")) "PASS" else "SKIP"}" +
             "\nproot --version exit=${prootCandidateResult.exitCode}" +
             "\nlinker64 proot --version exit=${prootViaLinkerResult.exitCode}" +
             "\nproot hello quiet exit=${prootHelloResult.exitCode}" +

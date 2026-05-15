@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <string>
 
 #include "alr_runtime/alr_transfer.hpp"
@@ -17,7 +18,15 @@ struct StaticEntryHandoffResult {
     int timeout_ms = 0;
     int exit_code = -1;
     int signal_number = 0;
+    bool fault_captured = false;
+    int fault_signal = 0;
+    std::uint64_t fault_address = 0;
+    std::uint64_t fault_pc = 0;
+    std::uint64_t fault_syscall = 0;
+    std::uint32_t syscall_emulated_count = 0;
     std::string error;
+    std::string stdout_text;
+    std::string stderr_text;
     std::string report;
 };
 

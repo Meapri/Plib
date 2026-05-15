@@ -59,6 +59,7 @@ android {
 tasks.register("packageNativeTestCommand") {
     val generatedDir = layout.buildDirectory.dir("generated/native-test-command/jniLibs")
     outputs.dir(generatedDir)
+    outputs.upToDateWhen { false }
     doLast {
         val abis = listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
         abis.forEach { abi ->
@@ -82,6 +83,7 @@ tasks.register("packageProotCandidate") {
     val generatedDir = layout.buildDirectory.dir("generated/native-test-command/jniLibs")
     val prebuiltNativeDir = layout.projectDirectory.dir("src/main/prebuiltNative")
     outputs.dir(generatedDir)
+    outputs.upToDateWhen { false }
     inputs.dir(prebuiltNativeDir).optional()
     doLast {
         val abis = listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
