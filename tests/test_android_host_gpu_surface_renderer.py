@@ -23,4 +23,11 @@ def test_main_activity_owns_surface_view_and_appends_native_surface_report():
     assert "SurfaceHolder.Callback" in text
     assert "nativeRenderGpuSurface" in text
     assert "HOST GPU SURFACE EXECUTION: PENDING_SURFACE_CALLBACK" in text
+    assert "HOST GPU SURFACE EXECUTION UPDATE:" in text
+    assert "GUEST GPU MULTI-FRAME SURFACE EXECUTION UPDATE:" in text
+    assert "GUEST GUI GPU SURFACE EXECUTION UPDATE:" in text
+    assert "Linux guest GPU Surface renderer callback complete" in text
+    assert 'surfaceReport.lineStartingWith("surface frames rendered=")' in text
+    assert 'surfaceReport.lineStartingWith("surface gpu hardware render=")' in text
+    assert 'surfaceReport.lineStartingWith("guest wayland/x11 gui gpu surface hardware render=")' in text
     assert "Linux guest Wayland/X11 GUI GPU surface renderer" in text

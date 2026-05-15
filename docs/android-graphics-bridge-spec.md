@@ -466,6 +466,23 @@ GUEST X11 GUI GPU BRIDGE EXECUTION: PASS
 GUEST GUI GPU SURFACE EXECUTION: PASS
 ```
 
+Current device evidence from build `0.4.46-gpu-surface-callback-evidence` records the
+Surface callback result separately from the pre-callback execution summary:
+
+```text
+HOST GPU SURFACE EXECUTION UPDATE: PASS
+GUEST GPU MULTI-FRAME SURFACE EXECUTION UPDATE: PASS
+GUEST GUI GPU SURFACE EXECUTION UPDATE: PASS
+surface gl renderer=Mali-G615 MC2
+surface frames rendered=16
+surface frames dropped=0
+surface frame lossless=true
+surface gpu hardware render=true
+guest wayland/x11 gui gpu surface hardware render=true
+surface wayland frames rendered=8
+surface x11 frames rendered=8
+```
+
 ### GLES MVP
 
 ```text

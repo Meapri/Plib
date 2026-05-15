@@ -243,6 +243,25 @@ surface gpu hardware render=true
 surface frames dropped=0
 ```
 
+Latest device check for build `0.4.46-gpu-surface-callback-evidence` satisfies this
+gate through the callback update section:
+
+```text
+HOST GPU SURFACE EXECUTION UPDATE: PASS
+GUEST GPU MULTI-FRAME SURFACE EXECUTION UPDATE: PASS
+GUEST GUI GPU SURFACE EXECUTION UPDATE: PASS
+surface callback frames rendered=16
+surface callback hardware render=true
+surface gl renderer=Mali-G615 MC2
+surface frames rendered=16
+surface frames dropped=0
+surface frame lossless=true
+surface gpu hardware render=true
+guest wayland/x11 gui gpu surface hardware render=true
+surface wayland frames rendered=8
+surface x11 frames rendered=8
+```
+
 ---
 
 ## V41–V45: Add Optional Proroot Backend Probe

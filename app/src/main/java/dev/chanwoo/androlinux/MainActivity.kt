@@ -319,7 +319,7 @@ class MainActivity : Activity() {
             alrGuestX11GuiBridgeResult.error == null
         val hostGpuHardwareCandidate = hostGpuProbe.lineStartingWith("host gpu hardware candidate=") == "host gpu hardware candidate=true"
 
-        val executionSummary = "build: 0.4.45-runtime-probe-scaffold-v45" +
+        val executionSummary = "build: 0.4.46-gpu-surface-callback-evidence" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -749,12 +749,20 @@ class MainActivity : Activity() {
             setPadding(32, 32, 32, 32)
             setTextIsSelectable(true)
         }
+        val surfaceStatusView = TextView(this).apply {
+            text = "Linux guest GPU Surface renderer: waiting for Android Surface callback"
+            textSize = 14f
+            setPadding(32, 24, 32, 24)
+            setTextIsSelectable(true)
+        }
         val surfaceView = SurfaceView(this).apply {
             holder.addCallback(object : SurfaceHolder.Callback {
                 override fun surfaceCreated(holder: SurfaceHolder) {
                     val encodedFrames = encodeSurfaceFrames(surfaceGpuCommands)
                     val surfaceReport = nativeRenderGpuSurfaceFrames(holder.surface, encodedFrames)
-                    view.append("\n\n--- Linux guest Wayland/X11 GUI GPU surface renderer ---\n$surfaceReport")
+                    val executionUpdate = surfaceExecutionUpdate(surfaceReport)
+                    surfaceStatusView.text = "Linux guest GPU Surface renderer callback complete\n$executionUpdate"
+                    view.append("\n\n--- Linux guest Wayland/X11 GUI GPU surface renderer ---\n$executionUpdate\n$surfaceReport")
                 }
 
                 override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) = Unit
@@ -766,6 +774,7 @@ class MainActivity : Activity() {
         setContentView(
             LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
+                addView(surfaceStatusView, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
                 addView(surfaceView, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, surfaceHeight))
                 addView(
                     ScrollView(this@MainActivity).apply { addView(view) },
@@ -1064,6 +1073,36 @@ class MainActivity : Activity() {
 
     private fun optionalResultBlock(label: String, result: NativeCommandResult?): String =
         result?.let { resultBlock(label, it) } ?: "\n\n$label skipped=quiet rootfs execution passed"
+
+    private fun surfaceExecutionUpdate(surfaceReport: String): String {
+        val framesRendered = surfaceReport.lineStartingWith("surface frames rendered=")
+            .removePrefix("surface frames rendered=")
+            .toIntOrNull()
+            ?: 0
+        val hostSurfacePassed =
+            surfaceReport.lineStartingWith("surface gpu hardware render=") == "surface gpu hardware render=true" &&
+                framesRendered > 0
+        val multiFrameSurfacePassed =
+            surfaceReport.lineStartingWith("guest gpu bridge hardware render=") == "guest gpu bridge hardware render=true" &&
+                surfaceReport.lineStartingWith("surface frame lossless=") == "surface frame lossless=true"
+        val guiSurfacePassed =
+            surfaceReport.lineStartingWith("guest wayland/x11 gui gpu surface hardware render=") ==
+                "guest wayland/x11 gui gpu surface hardware render=true"
+
+        return "HOST GPU SURFACE EXECUTION UPDATE: ${if (hostSurfacePassed) "PASS" else "FAIL"}" +
+            "\nGUEST GPU MULTI-FRAME SURFACE EXECUTION UPDATE: ${if (multiFrameSurfacePassed) "PASS" else "FAIL"}" +
+            "\nGUEST GUI GPU SURFACE EXECUTION UPDATE: ${if (guiSurfacePassed) "PASS" else "FAIL"}" +
+            "\nsurface callback frames rendered=$framesRendered" +
+            "\nsurface callback hardware render=${hostSurfacePassed && multiFrameSurfacePassed && guiSurfacePassed}" +
+            "\n${surfaceReport.lineStartingWith("surface gl renderer=")}" +
+            "\n${surfaceReport.lineStartingWith("surface frames rendered=")}" +
+            "\n${surfaceReport.lineStartingWith("surface frames dropped=")}" +
+            "\n${surfaceReport.lineStartingWith("surface frame lossless=")}" +
+            "\n${surfaceReport.lineStartingWith("surface gpu hardware render=")}" +
+            "\n${surfaceReport.lineStartingWith("guest wayland/x11 gui gpu surface hardware render=")}" +
+            "\n${surfaceReport.lineStartingWith("surface wayland frames rendered=")}" +
+            "\n${surfaceReport.lineStartingWith("surface x11 frames rendered=")}"
+    }
 
     private fun String.lineStartingWith(prefix: String): String =
         lineSequence().firstOrNull { it.startsWith(prefix) } ?: "missing"

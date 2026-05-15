@@ -49,4 +49,17 @@ Current verified APK:
 app/build/outputs/apk/debug/app-debug.apk
 ```
 
+Local macOS note: if `/usr/bin/java` cannot find a runtime, use the local
+Temurin 17 JDK installed at:
+
+```text
+/Users/naen/.local/jdks/jdk-17.0.19+10/Contents/Home
+```
+
+Build command used on the macOS workstation:
+
+```bash
+JAVA_HOME=/Users/naen/.local/jdks/jdk-17.0.19+10/Contents/Home ./gradlew :app:assembleDebug --console=plain
+```
+
 Do not claim device runtime success until the debug APK is installed and `MainActivity` displays the native runtime report on an Android device or emulator.
