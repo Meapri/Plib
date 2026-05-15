@@ -274,13 +274,19 @@ def test_main_activity_reports_apt_base_bundle_smoke_results():
     assert "APT-CACHE VERSION EXECUTION:" in text
     assert "APT-CONFIG VERSION EXECUTION:" in text
     assert "ALR APT VERSION EXECUTION:" in text
+    assert "ALR APT PRELOAD EXECUTION:" in text
     assert "ALR APT-GET VERSION EXECUTION:" in text
+    assert "ALR APT-GET PRELOAD EXECUTION:" in text
     assert "ALR APT-CACHE VERSION EXECUTION:" in text
+    assert "ALR APT-CACHE PRELOAD EXECUTION:" in text
     assert "ALR APT-CONFIG VERSION EXECUTION:" in text
     assert "ALR APT-CONFIG PRELOAD EXECUTION:" in text
     assert "runAlrRuntimeTrampolineAptVersion" in runner
+    assert "runAlrRuntimeTrampolineAptVersionPreload" in runner
     assert "runAlrRuntimeTrampolineAptGetVersion" in runner
+    assert "runAlrRuntimeTrampolineAptGetVersionPreload" in runner
     assert "runAlrRuntimeTrampolineAptCacheVersion" in runner
+    assert "runAlrRuntimeTrampolineAptCacheVersionPreload" in runner
     assert "runAlrRuntimeTrampolineAptConfigVersion" in runner
     assert "runAlrRuntimeTrampolineAptConfigVersionPreload" in runner
     assert "pathRewriteIdleSyscallLimit: Int = 32" in runner
@@ -293,8 +299,14 @@ def test_main_activity_reports_apt_base_bundle_smoke_results():
     assert "proot apt-cache --version exit=" in text
     assert "proot apt-config --version exit=" in text
     assert "alr apt --version handoff=" in text
+    assert "alr apt --version preload path rewrite=" in text
+    assert "alr apt --version preload stdout=" in text
     assert "alr apt-get --version stdout=" in text
+    assert "alr apt-get --version preload path rewrite=" in text
+    assert "alr apt-get --version preload stdout=" in text
     assert "alr apt-cache --version path rewrite=" in text
+    assert "alr apt-cache --version preload path rewrite=" in text
+    assert "alr apt-cache --version preload stdout=" in text
     assert "alr apt-config --version stdout=" in text
     assert "alr apt-config --version preload handoff=" in text
     assert "alr apt-config --version preload path rewrite=" in text

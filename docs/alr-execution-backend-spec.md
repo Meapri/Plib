@@ -292,6 +292,33 @@ with ptrace path rewriting disabled. The rootfs now includes a
 `libdl.so.2 -> libc.so.6` compatibility symlink required by the preload shim's
 source-built `dlsym` path on the packaged Debian userland.
 
+Current V61 preload apt-family snapshot:
+
+```text
+build: 0.4.61-preload-apt-family
+ALR APT PRELOAD EXECUTION: PASS
+ALR APT-GET PRELOAD EXECUTION: PASS
+ALR APT-CACHE PRELOAD EXECUTION: PASS
+ALR APT-CONFIG PRELOAD EXECUTION: PASS
+alr apt --version preload path rewrite=alr handoff path rewrite count=0
+alr apt --version preload stdout=apt 2.8.3 (arm64)
+alr apt-get --version preload path rewrite=alr handoff path rewrite count=0
+alr apt-get --version preload stdout=apt 2.8.3 (arm64)
+alr apt-cache --version preload path rewrite=alr handoff path rewrite count=0
+alr apt-cache --version preload stdout=apt 2.8.3 (arm64)
+alr apt-config --version preload path rewrite=alr handoff path rewrite count=0
+alr apt-config --version preload stdout=apt 2.8.3 (arm64)
+alr syscall preload hot path measured faster count=3/3
+alr syscall preload hot path perf evidence=PASS
+```
+
+The v61 snapshot promotes the apt-family preload path from direct probing into
+the app's standard execution report. It verifies that four package-manager
+frontends can run without ALR's global ptrace path rewrite loop, narrowing the
+remaining work toward deeper package-manager operations such as list reads,
+cache policy, downloads, unpack/configure flows, and maintainer-script process
+trees.
+
 ### ALR Exec v3: Identity and Procfs
 
 Required behavior:

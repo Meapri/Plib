@@ -212,6 +212,35 @@ without the global ptrace path rewrite loop. The rootfs payload also carries a
 glibc-compatible `libdl.so.2 -> libc.so.6` symlink so the source-built preload
 shim can resolve `dlsym` on modern Debian/glibc rootfs layouts.
 
+Latest V61 preload apt-family evidence:
+
+```text
+build: 0.4.61-preload-apt-family
+ALR APT PRELOAD EXECUTION: PASS
+ALR APT-GET PRELOAD EXECUTION: PASS
+ALR APT-CACHE PRELOAD EXECUTION: PASS
+ALR APT-CONFIG PRELOAD EXECUTION: PASS
+alr apt --version preload path rewrite=alr handoff path rewrite count=0
+alr apt --version preload stdout=apt 2.8.3 (arm64)
+alr apt-get --version preload path rewrite=alr handoff path rewrite count=0
+alr apt-get --version preload stdout=apt 2.8.3 (arm64)
+alr apt-cache --version preload path rewrite=alr handoff path rewrite count=0
+alr apt-cache --version preload stdout=apt 2.8.3 (arm64)
+alr apt-config --version preload path rewrite=alr handoff path rewrite count=0
+alr apt-config --version preload stdout=apt 2.8.3 (arm64)
+alr syscall preload hot path measured faster count=3/3
+alr syscall preload hot path perf evidence=PASS
+surface gl renderer=Mali-G615 MC2
+surface gpu hardware render=true
+```
+
+The V61 result records the broader apt-family proof in the Android app itself:
+`apt`, `apt-get`, `apt-cache`, and `apt-config` all execute under the ALR
+trampoline with `LD_PRELOAD` path virtualization and with global ptrace path
+rewrite disabled. This keeps the package-manager smoke path moving toward
+proroot-class behavior while preserving the Android-native Surface/GLES GPU
+proof in the same device run.
+
 Known issue:
 
 - V35 summary says `GUEST WAYLAND GUI GPU BRIDGE EXECUTION: FAIL` and `GUEST X11 GUI GPU BRIDGE EXECUTION: FAIL` because ACK writing happens after socket input is closed. Frames were received and rendered losslessly; this is a report/ACK lifecycle bug, not a GPU-path failure.

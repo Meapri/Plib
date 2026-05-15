@@ -228,11 +228,41 @@ class NativeCommandRunner(
     fun runAlrRuntimeTrampolineAptVersion(rootfsDir: File): NativeCommandResult =
         runAlrRuntimeTrampolineGlibcRootfsProgram(rootfsDir, "/usr/bin/apt", listOf("--version"), timeoutMs = 5000)
 
+    fun runAlrRuntimeTrampolineAptVersionPreload(rootfsDir: File): NativeCommandResult =
+        runAlrRuntimeTrampolineGlibcRootfsProgram(
+            rootfsDir,
+            "/usr/bin/apt",
+            listOf("--version"),
+            timeoutMs = 5000,
+            pathRewrite = false,
+            extraGuestEnvironment = preloadPathFastPathEnvironment(rootfsDir),
+        )
+
     fun runAlrRuntimeTrampolineAptGetVersion(rootfsDir: File): NativeCommandResult =
         runAlrRuntimeTrampolineGlibcRootfsProgram(rootfsDir, "/usr/bin/apt-get", listOf("--version"), timeoutMs = 5000)
 
+    fun runAlrRuntimeTrampolineAptGetVersionPreload(rootfsDir: File): NativeCommandResult =
+        runAlrRuntimeTrampolineGlibcRootfsProgram(
+            rootfsDir,
+            "/usr/bin/apt-get",
+            listOf("--version"),
+            timeoutMs = 5000,
+            pathRewrite = false,
+            extraGuestEnvironment = preloadPathFastPathEnvironment(rootfsDir),
+        )
+
     fun runAlrRuntimeTrampolineAptCacheVersion(rootfsDir: File): NativeCommandResult =
         runAlrRuntimeTrampolineGlibcRootfsProgram(rootfsDir, "/usr/bin/apt-cache", listOf("--version"), timeoutMs = 5000)
+
+    fun runAlrRuntimeTrampolineAptCacheVersionPreload(rootfsDir: File): NativeCommandResult =
+        runAlrRuntimeTrampolineGlibcRootfsProgram(
+            rootfsDir,
+            "/usr/bin/apt-cache",
+            listOf("--version"),
+            timeoutMs = 5000,
+            pathRewrite = false,
+            extraGuestEnvironment = preloadPathFastPathEnvironment(rootfsDir),
+        )
 
     fun runAlrRuntimeTrampolineAptConfigVersion(rootfsDir: File): NativeCommandResult =
         runAlrRuntimeTrampolineGlibcRootfsProgram(rootfsDir, "/usr/bin/apt-config", listOf("--version"), timeoutMs = 5000)

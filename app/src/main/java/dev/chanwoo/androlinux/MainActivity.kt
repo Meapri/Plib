@@ -115,8 +115,11 @@ class MainActivity : Activity() {
         val alrDpkgArchPreloadResult = nativeCommandRunner.runAlrRuntimeTrampolineDpkgPrintArchitecturePreload(rootfsStatus.rootfsDir)
         val alrDpkgQueryVersionResult = nativeCommandRunner.runAlrRuntimeTrampolineDpkgQueryVersion(rootfsStatus.rootfsDir)
         val alrAptVersionResult = nativeCommandRunner.runAlrRuntimeTrampolineAptVersion(rootfsStatus.rootfsDir)
+        val alrAptPreloadVersionResult = nativeCommandRunner.runAlrRuntimeTrampolineAptVersionPreload(rootfsStatus.rootfsDir)
         val alrAptGetVersionResult = nativeCommandRunner.runAlrRuntimeTrampolineAptGetVersion(rootfsStatus.rootfsDir)
+        val alrAptGetPreloadVersionResult = nativeCommandRunner.runAlrRuntimeTrampolineAptGetVersionPreload(rootfsStatus.rootfsDir)
         val alrAptCacheVersionResult = nativeCommandRunner.runAlrRuntimeTrampolineAptCacheVersion(rootfsStatus.rootfsDir)
+        val alrAptCachePreloadVersionResult = nativeCommandRunner.runAlrRuntimeTrampolineAptCacheVersionPreload(rootfsStatus.rootfsDir)
         val alrAptConfigVersionResult = nativeCommandRunner.runAlrRuntimeTrampolineAptConfigVersion(rootfsStatus.rootfsDir)
         val alrAptConfigPreloadVersionResult = nativeCommandRunner.runAlrRuntimeTrampolineAptConfigVersionPreload(rootfsStatus.rootfsDir)
         val alrSyscallStatBenchmarkResult = nativeCommandRunner.runAlrRuntimeTrampolineSyscallBench(
@@ -364,12 +367,21 @@ class MainActivity : Activity() {
         val alrAptVersionExecutionPassed = alrAptVersionResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
             alrAptVersionResult.stdout.alrHandoffStdoutText().contains("apt ") &&
             alrAptVersionResult.stdout.alrHandoffStdoutText().contains("arm64")
+        val alrAptPreloadVersionExecutionPassed = alrAptPreloadVersionResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+            alrAptPreloadVersionResult.stdout.alrHandoffStdoutText().contains("apt ") &&
+            alrAptPreloadVersionResult.stdout.alrHandoffStdoutText().contains("arm64")
         val alrAptGetVersionExecutionPassed = alrAptGetVersionResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
             alrAptGetVersionResult.stdout.alrHandoffStdoutText().contains("apt ") &&
             alrAptGetVersionResult.stdout.alrHandoffStdoutText().contains("arm64")
+        val alrAptGetPreloadVersionExecutionPassed = alrAptGetPreloadVersionResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+            alrAptGetPreloadVersionResult.stdout.alrHandoffStdoutText().contains("apt ") &&
+            alrAptGetPreloadVersionResult.stdout.alrHandoffStdoutText().contains("arm64")
         val alrAptCacheVersionExecutionPassed = alrAptCacheVersionResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
             alrAptCacheVersionResult.stdout.alrHandoffStdoutText().contains("apt ") &&
             alrAptCacheVersionResult.stdout.alrHandoffStdoutText().contains("arm64")
+        val alrAptCachePreloadVersionExecutionPassed = alrAptCachePreloadVersionResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+            alrAptCachePreloadVersionResult.stdout.alrHandoffStdoutText().contains("apt ") &&
+            alrAptCachePreloadVersionResult.stdout.alrHandoffStdoutText().contains("arm64")
         val alrAptConfigVersionExecutionPassed = alrAptConfigVersionResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
             alrAptConfigVersionResult.stdout.alrHandoffStdoutText().contains("apt ") &&
             alrAptConfigVersionResult.stdout.alrHandoffStdoutText().contains("arm64")
@@ -508,7 +520,7 @@ class MainActivity : Activity() {
             alrGuestX11GuiBridgeResult.error == null
         val hostGpuHardwareCandidate = hostGpuProbe.lineStartingWith("host gpu hardware candidate=") == "host gpu hardware candidate=true"
 
-        val executionSummary = "build: 0.4.60-preload-aptconfig" +
+        val executionSummary = "build: 0.4.61-preload-apt-family" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -530,8 +542,11 @@ class MainActivity : Activity() {
             "\nALR DPKG ARCH PRELOAD EXECUTION: ${if (alrDpkgArchPreloadExecutionPassed) "PASS" else "FAIL"}" +
             "\nALR DPKG QUERY EXECUTION: ${if (alrDpkgQueryExecutionPassed) "PASS" else "FAIL"}" +
             "\nALR APT VERSION EXECUTION: ${if (alrAptVersionExecutionPassed) "PASS" else "FAIL"}" +
+            "\nALR APT PRELOAD EXECUTION: ${if (alrAptPreloadVersionExecutionPassed) "PASS" else "FAIL"}" +
             "\nALR APT-GET VERSION EXECUTION: ${if (alrAptGetVersionExecutionPassed) "PASS" else "FAIL"}" +
+            "\nALR APT-GET PRELOAD EXECUTION: ${if (alrAptGetPreloadVersionExecutionPassed) "PASS" else "FAIL"}" +
             "\nALR APT-CACHE VERSION EXECUTION: ${if (alrAptCacheVersionExecutionPassed) "PASS" else "FAIL"}" +
+            "\nALR APT-CACHE PRELOAD EXECUTION: ${if (alrAptCachePreloadVersionExecutionPassed) "PASS" else "FAIL"}" +
             "\nALR APT-CONFIG VERSION EXECUTION: ${if (alrAptConfigVersionExecutionPassed) "PASS" else "FAIL"}" +
             "\nALR APT-CONFIG PRELOAD EXECUTION: ${if (alrAptConfigPreloadVersionExecutionPassed) "PASS" else "FAIL"}" +
             "\nALR SYSCALL STAT BENCH EXECUTION: ${if (alrSyscallStatBenchmarkPassed) "PASS" else "FAIL"}" +
@@ -935,12 +950,24 @@ class MainActivity : Activity() {
             "\nalr apt --version handoff=${alrAptVersionResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
             "\nalr apt --version path rewrite=${alrAptVersionResult.stdout.lineStartingWith("alr handoff path rewrite count=")}" +
             "\nalr apt --version stdout=${alrAptVersionResult.stdout.alrHandoffStdoutText()}" +
+            "\nalr apt --version preload handoff=${alrAptPreloadVersionResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr apt --version preload path rewrite=${alrAptPreloadVersionResult.stdout.lineStartingWith("alr handoff path rewrite count=")}" +
+            "\nalr apt --version preload stdout=${alrAptPreloadVersionResult.stdout.alrHandoffStdoutText()}" +
+            "\nalr apt --version preload stderr=${alrAptPreloadVersionResult.stdout.alrHandoffStderrText()}" +
             "\nalr apt-get --version handoff=${alrAptGetVersionResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
             "\nalr apt-get --version path rewrite=${alrAptGetVersionResult.stdout.lineStartingWith("alr handoff path rewrite count=")}" +
             "\nalr apt-get --version stdout=${alrAptGetVersionResult.stdout.alrHandoffStdoutText()}" +
+            "\nalr apt-get --version preload handoff=${alrAptGetPreloadVersionResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr apt-get --version preload path rewrite=${alrAptGetPreloadVersionResult.stdout.lineStartingWith("alr handoff path rewrite count=")}" +
+            "\nalr apt-get --version preload stdout=${alrAptGetPreloadVersionResult.stdout.alrHandoffStdoutText()}" +
+            "\nalr apt-get --version preload stderr=${alrAptGetPreloadVersionResult.stdout.alrHandoffStderrText()}" +
             "\nalr apt-cache --version handoff=${alrAptCacheVersionResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
             "\nalr apt-cache --version path rewrite=${alrAptCacheVersionResult.stdout.lineStartingWith("alr handoff path rewrite count=")}" +
             "\nalr apt-cache --version stdout=${alrAptCacheVersionResult.stdout.alrHandoffStdoutText()}" +
+            "\nalr apt-cache --version preload handoff=${alrAptCachePreloadVersionResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr apt-cache --version preload path rewrite=${alrAptCachePreloadVersionResult.stdout.lineStartingWith("alr handoff path rewrite count=")}" +
+            "\nalr apt-cache --version preload stdout=${alrAptCachePreloadVersionResult.stdout.alrHandoffStdoutText()}" +
+            "\nalr apt-cache --version preload stderr=${alrAptCachePreloadVersionResult.stdout.alrHandoffStderrText()}" +
             "\nalr apt-config --version handoff=${alrAptConfigVersionResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
             "\nalr apt-config --version path rewrite=${alrAptConfigVersionResult.stdout.lineStartingWith("alr handoff path rewrite count=")}" +
             "\nalr apt-config --version stdout=${alrAptConfigVersionResult.stdout.alrHandoffStdoutText()}" +
@@ -1048,8 +1075,11 @@ class MainActivity : Activity() {
             resultBlock("alr dpkg --print-architecture preload", alrDpkgArchPreloadResult) +
             resultBlock("alr dpkg-query --version", alrDpkgQueryVersionResult) +
             resultBlock("alr apt --version", alrAptVersionResult) +
+            resultBlock("alr apt --version preload", alrAptPreloadVersionResult) +
             resultBlock("alr apt-get --version", alrAptGetVersionResult) +
+            resultBlock("alr apt-get --version preload", alrAptGetPreloadVersionResult) +
             resultBlock("alr apt-cache --version", alrAptCacheVersionResult) +
+            resultBlock("alr apt-cache --version preload", alrAptCachePreloadVersionResult) +
             resultBlock("alr apt-config --version", alrAptConfigVersionResult) +
             resultBlock("alr apt-config --version preload", alrAptConfigPreloadVersionResult) +
             resultBlock("alr syscall stat benchmark", alrSyscallStatBenchmarkResult) +
