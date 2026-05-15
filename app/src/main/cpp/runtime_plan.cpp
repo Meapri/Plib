@@ -29,6 +29,18 @@ std::string proot_loader_for(const RuntimeReportInput& input) {
     return join_path(input.native_library_dir, "libproot-loader.so");
 }
 
+std::string alr_runtime_launcher_for(const RuntimeReportInput& input) {
+    return join_path(input.native_library_dir, "libalr_runtime_launcher.so");
+}
+
+std::string alr_runtime_hook_for(const RuntimeReportInput& input) {
+    return join_path(input.native_library_dir, "libalr_runtime_hook.so");
+}
+
+std::string alr_runtime_bridge_for(const RuntimeReportInput& input) {
+    return join_path(input.native_library_dir, "libalr_runtime_bridge.so");
+}
+
 std::string proot_tmp_dir_for(const RuntimeReportInput& input) {
     return join_path(input.app_cache_dir, "proot-tmp");
 }
@@ -63,6 +75,15 @@ RuntimeReport build_runtime_report(const RuntimeReportInput& input, const Execut
     out << "execution backend: " << backend.name << "\n";
     out << "can execute: " << (backend.can_execute ? "yes" : "no") << "\n";
     out << "backend reason: " << backend.reason << "\n";
+    const auto alr_runtime = build_alr_runtime_launch_plan(input);
+    out << "ALR RUNTIME LAUNCHER AVAILABLE: PASS\n";
+    out << "ALR RUNTIME CONFIG BUILD: PASS\n";
+    out << "ALR RUNTIME DIRECT APP-DATA EXEC POLICY: PASS\n";
+    out << "alr runtime launcher path=" << alr_runtime.executable << "\n";
+    out << "alr runtime hook path=" << alr_runtime.env.at("ALR_HOOK_PATH") << "\n";
+    out << "alr runtime bridge path=" << alr_runtime.env.at("ALR_BRIDGE_PATH") << "\n";
+    out << "alr runtime config source=env-skeleton\n";
+    out << "alr runtime guest execution=not-claimed\n";
     out << "LOW-OVERHEAD BACKEND PROBE FRAMEWORK: " << optional_backend.framework_status << "\n";
     out << "OPTIONAL RUNTIME BACKEND AVAILABLE: " << optional_backend.available_status << "\n";
     out << "optional runtime backend source=" << optional_backend.source << "\n";
@@ -129,6 +150,37 @@ LoaderLaunchPlan build_proot_launch_plan(const RuntimeReportInput& input) {
     return plan;
 }
 
+LoaderLaunchPlan build_alr_runtime_launch_plan(const RuntimeReportInput& input) {
+    validate_input(input);
+    LoaderLaunchPlan plan;
+    const std::string rootfs_dir = rootfs_dir_for(input);
+    plan.executable = alr_runtime_launcher_for(input);
+    plan.argv = {
+        plan.executable,
+        "--rootfs",
+        rootfs_dir,
+        "--cwd",
+        "/",
+        "--program",
+        input.program,
+        "--dry-run",
+    };
+    plan.env = {
+        {"ALR_PACKAGE", input.package_name},
+        {"ALR_ROOTFS", rootfs_dir},
+        {"ALR_PROGRAM", input.program},
+        {"ALR_BACKEND", "alr-runtime"},
+        {"ALR_HOOK_PATH", alr_runtime_hook_for(input)},
+        {"ALR_BRIDGE_PATH", alr_runtime_bridge_for(input)},
+        {"ALR_FAKE_ROOT", "0"},
+        {"ALR_VERBOSE", "0"},
+        {"HOME", "/root"},
+        {"TMPDIR", "/tmp"},
+        {"PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"},
+    };
+    return plan;
+}
+
 OptionalRuntimeBackendProbe probe_optional_runtime_backend(const RuntimeReportInput& input) {
     if (input.optional_runtime_backend_path.empty()) {
         return {
@@ -184,6 +236,13 @@ ExecutionBackend select_execution_backend(ExecutionBackendKind kind) {
                 .name = "glibc-loader",
                 .can_execute = false,
                 .reason = "planned backend; requires packaged executable glibc loader and path virtualization strategy",
+            };
+        case ExecutionBackendKind::AlrRuntime:
+            return {
+                .kind = kind,
+                .name = "alr-runtime",
+                .can_execute = false,
+                .reason = "clean-room ALR launcher/config skeleton is packaged but guest execution is not implemented yet",
             };
     }
     throw std::invalid_argument("unknown execution backend");

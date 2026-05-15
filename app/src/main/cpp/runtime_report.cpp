@@ -397,6 +397,7 @@ Java_dev_chanwoo_androlinux_MainActivity_nativeRuntimeReport(
     const auto report = alr::build_runtime_report(input, alr::select_execution_backend(alr::ExecutionBackendKind::Proot));
     const auto launch = alr::build_loader_launch_plan(input);
     const auto proot = alr::build_proot_launch_plan(input);
+    const auto alr_runtime = alr::build_alr_runtime_launch_plan(input);
 
     std::ostringstream out;
     out << report.text << "\n\nloader argv:";
@@ -420,6 +421,18 @@ Java_dev_chanwoo_androlinux_MainActivity_nativeRuntimeReport(
     out << "\n  PROOT_VERBOSE=" << proot.env.at("PROOT_VERBOSE");
     out << "\n  LD_LIBRARY_PATH=" << proot.env.at("LD_LIBRARY_PATH");
     out << "\n  PATH=" << proot.env.at("PATH");
+    out << "\n\nalr runtime argv:";
+    for (const auto& arg : alr_runtime.argv) {
+        out << "\n  " << arg;
+    }
+    out << "\n\nalr runtime env:";
+    out << "\n  ALR_ROOTFS=" << alr_runtime.env.at("ALR_ROOTFS");
+    out << "\n  ALR_PROGRAM=" << alr_runtime.env.at("ALR_PROGRAM");
+    out << "\n  ALR_BACKEND=" << alr_runtime.env.at("ALR_BACKEND");
+    out << "\n  ALR_HOOK_PATH=" << alr_runtime.env.at("ALR_HOOK_PATH");
+    out << "\n  ALR_BRIDGE_PATH=" << alr_runtime.env.at("ALR_BRIDGE_PATH");
+    out << "\n  ALR_FAKE_ROOT=" << alr_runtime.env.at("ALR_FAKE_ROOT");
+    out << "\n  PATH=" << alr_runtime.env.at("PATH");
     return env->NewStringUTF(out.str().c_str());
 }
 
@@ -433,6 +446,7 @@ Java_dev_chanwoo_androlinux_MainActivity_nativeLibraryProbe(
     append_dlopen_probe(out, join_path(dir, "libtalloc.so"), "libtalloc.so");
     append_dlopen_probe(out, join_path(dir, "libalr_proot.so"), "libalr_proot.so");
     append_dlopen_probe(out, join_path(dir, "libproot-loader.so"), "libproot-loader.so");
+    append_dlopen_probe(out, join_path(dir, "libalr_runtime_launcher.so"), "libalr_runtime_launcher.so");
     return env->NewStringUTF(out.str().c_str());
 }
 

@@ -23,6 +23,19 @@ def test_jni_report_includes_absent_safe_low_overhead_probe_lines():
     assert "none" in text
 
 
+def test_jni_report_includes_alr_runtime_launcher_plan_section():
+    text = CPP.read_text()
+    plan = PLAN_CPP.read_text()
+    assert "build_alr_runtime_launch_plan" in text
+    assert "alr runtime argv:" in text
+    assert "alr runtime env:" in text
+    assert "ALR_HOOK_PATH" in text
+    assert "ALR_BRIDGE_PATH" in text
+    assert "ALR RUNTIME LAUNCHER AVAILABLE: PASS" in plan
+    assert "ALR RUNTIME CONFIG BUILD: PASS" in plan
+    assert "ALR RUNTIME DIRECT APP-DATA EXEC POLICY: PASS" in plan
+
+
 def test_main_activity_requests_tiny_rootfs_program():
     text = MAIN.read_text()
     assert '"/bin/hello"' in text

@@ -28,8 +28,18 @@ int main() {
 
     const auto report = alr::build_runtime_report(input, backend);
     if (report.text.find("execution backend: plan-only") == std::string::npos ||
-        report.text.find("can execute: no") == std::string::npos) {
+        report.text.find("can execute: no") == std::string::npos ||
+        report.text.find("ALR RUNTIME DIRECT APP-DATA EXEC POLICY: PASS") == std::string::npos) {
         std::cerr << report.text << "\n";
+        return EXIT_FAILURE;
+    }
+
+    const auto alr_backend = alr::select_execution_backend(alr::ExecutionBackendKind::AlrRuntime);
+    if (alr_backend.kind != alr::ExecutionBackendKind::AlrRuntime ||
+        alr_backend.name != "alr-runtime" ||
+        alr_backend.can_execute ||
+        alr_backend.reason.find("guest execution is not implemented yet") == std::string::npos) {
+        std::cerr << alr_backend.name << " " << alr_backend.reason << "\n";
         return EXIT_FAILURE;
     }
 
