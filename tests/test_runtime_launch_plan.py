@@ -73,6 +73,10 @@ def test_alr_runtime_launch_plan_is_packaged_dry_run_skeleton():
     ]
     assert plan.env["ALR_BACKEND"] == "alr-runtime"
     assert plan.env["ALR_HOOK_PATH"].endswith("/libalr_runtime_hook.so")
+    assert plan.env["ALR_INTERPOSER_PATH"].endswith("/libalr_runtime_interposer.so")
     assert plan.env["ALR_BRIDGE_PATH"].endswith("/libalr_runtime_bridge.so")
+    assert plan.env["ALR_CONFIG_FORMAT"] == "alr-config-v1"
     assert plan.env["ALR_FAKE_ROOT"] == "0"
     assert plan.env["ALR_VERBOSE"] == "0"
+    assert plan.env["ALR_TRACE_PATH"] == "0"
+    assert plan.env["ALR_TRACE_EXEC"] == "0"

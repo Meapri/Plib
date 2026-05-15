@@ -248,3 +248,49 @@ Next recommended action:
 - Open a PR for Issue #9.
 - Next Codex implementation bundle should connect the interposer scaffold to a controlled guest process launch path or config serialization layer.
 - Hermes should keep working in one large evidence bundle and rebase PR #5 before integration.
+
+## 2026-05-15 - Codex - Bundle F Implementation
+
+Branch/worktree:
+- `codex/alr-config-serialization` at `/Users/naen/Documents/Plib/androlinux-runtime-lab`
+
+Touched files:
+- `app/src/main/cpp/CMakeLists.txt`
+- `app/src/main/cpp/alr_runtime/alr_config.hpp`
+- `app/src/main/cpp/alr_runtime/alr_config.cpp`
+- `app/src/main/cpp/runtime_plan.cpp`
+- `app/src/main/cpp/runtime_report.cpp`
+- `scripts/test-native-core.sh`
+- `tests/native_alr_runtime_config_test.cpp`
+- `tests/native_runtime_plan_test.cpp`
+- `tests/test_alr_runtime_config_sources.py`
+- `tests/test_android_loader_plan_report.py`
+- `tests/test_runtime_launch_plan.py`
+- `tools/runtime_launch_plan.py`
+
+What changed:
+- Added a deterministic `alr-config-v1` runtime config contract for rootfs, cwd, program, environment, binds, hook/interposer/bridge paths, fake-root, verbosity, and trace flags.
+- Added C++ serialization, parsing, validation, and FNV-1a checksum helpers.
+- Added matching Python-side launch-plan config serialization helper for tooling parity.
+- Wired runtime reports to emit `ALR CONFIG SERIALIZE`, `ALR CONFIG PARSE`, config byte count, and config checksum.
+- Added `ALR_CONFIG_FORMAT`, `ALR_INTERPOSER_PATH`, `ALR_TRACE_PATH`, and `ALR_TRACE_EXEC` to ALR runtime launch/env reporting.
+- Still does not claim guest execution, child process continuity, or performance wins.
+
+Commands/tests:
+- `/Users/naen/.venvs/plib-py313/bin/python -m pytest tests -q` -> PASS, 156 passed.
+- `scripts/test-native-core.sh` -> PASS.
+- `JAVA_HOME=/Users/naen/.jdks/jdk-17.0.19+10/Contents/Home ./gradlew :app:assembleDebug --no-daemon` -> PASS.
+- `unzip -l app/build/outputs/apk/debug/app-debug.apk | rg 'libalr_runtime_(launcher|hook|interposer)'` -> PASS.
+
+Evidence:
+- Debug APK: `app/build/outputs/apk/debug/app-debug.apk`
+- APK sha256: `eb91fb3bcd8f0837115550742b13c8849b62f83075473919ff24dd1b2fe88885`
+- APK contains `libalr_runtime_launcher.so`, `libalr_runtime_hook.so`, and `libalr_runtime_interposer.so` for `arm64-v8a`, `armeabi-v7a`, `x86`, and `x86_64`.
+
+Blockers:
+- None for Bundle F source/build verification.
+- A future bundle still needs to move this config into a real fd/env handoff for an actual guest process launch path.
+
+Next recommended action:
+- Open a PR for Issue #11.
+- Next Codex implementation bundle should use `alr-config-v1` to drive guest executable resolution and the first controlled ALR hello launch attempt.

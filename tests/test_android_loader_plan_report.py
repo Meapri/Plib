@@ -30,9 +30,12 @@ def test_jni_report_includes_alr_runtime_launcher_plan_section():
     assert "alr runtime argv:" in text
     assert "alr runtime env:" in text
     assert "ALR_HOOK_PATH" in text
+    assert "ALR_INTERPOSER_PATH" in text
     assert "ALR_BRIDGE_PATH" in text
+    assert "ALR_CONFIG_FORMAT" in text
     assert "ALR RUNTIME LAUNCHER AVAILABLE: PASS" in plan
     assert "ALR RUNTIME CONFIG BUILD: PASS" in plan
+    assert "ALR CONFIG SERIALIZE: PASS" in plan
     assert "ALR RUNTIME DIRECT APP-DATA EXEC POLICY: PASS" in plan
 
 

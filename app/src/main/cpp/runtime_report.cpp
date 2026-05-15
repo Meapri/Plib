@@ -430,8 +430,12 @@ Java_dev_chanwoo_androlinux_MainActivity_nativeRuntimeReport(
     out << "\n  ALR_PROGRAM=" << alr_runtime.env.at("ALR_PROGRAM");
     out << "\n  ALR_BACKEND=" << alr_runtime.env.at("ALR_BACKEND");
     out << "\n  ALR_HOOK_PATH=" << alr_runtime.env.at("ALR_HOOK_PATH");
+    out << "\n  ALR_INTERPOSER_PATH=" << alr_runtime.env.at("ALR_INTERPOSER_PATH");
     out << "\n  ALR_BRIDGE_PATH=" << alr_runtime.env.at("ALR_BRIDGE_PATH");
+    out << "\n  ALR_CONFIG_FORMAT=" << alr_runtime.env.at("ALR_CONFIG_FORMAT");
     out << "\n  ALR_FAKE_ROOT=" << alr_runtime.env.at("ALR_FAKE_ROOT");
+    out << "\n  ALR_TRACE_PATH=" << alr_runtime.env.at("ALR_TRACE_PATH");
+    out << "\n  ALR_TRACE_EXEC=" << alr_runtime.env.at("ALR_TRACE_EXEC");
     out << "\n  PATH=" << alr_runtime.env.at("PATH");
     return env->NewStringUTF(out.str().c_str());
 }

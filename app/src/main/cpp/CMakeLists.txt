@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.22.1)
 project(androlinux_runtime_lab LANGUAGES CXX)
 
 add_library(alr_runtime STATIC
+    alr_runtime/alr_config.cpp
     alr_runtime/alr_path.cpp
     alr_runtime/alr_env.cpp
     alr_runtime/alr_hook.cpp

@@ -4,6 +4,8 @@
 #include <stdexcept>
 #include <string>
 
+#include "alr_runtime/alr_config.hpp"
+
 namespace alr {
 namespace {
 
@@ -49,6 +51,26 @@ std::string proot_tmp_dir_for(const RuntimeReportInput& input) {
     return join_path(input.app_cache_dir, "proot-tmp");
 }
 
+runtime::RuntimeConfig build_alr_runtime_config(
+    const RuntimeReportInput& input,
+    const LoaderLaunchPlan& launch) {
+    return runtime::RuntimeConfig{
+        .package_name = input.package_name,
+        .rootfs_dir = launch.env.at("ALR_ROOTFS"),
+        .cwd = "/",
+        .program = input.program,
+        .env = launch.env,
+        .binds = {},
+        .hook_path = launch.env.at("ALR_HOOK_PATH"),
+        .interposer_path = launch.env.at("ALR_INTERPOSER_PATH"),
+        .bridge_path = launch.env.at("ALR_BRIDGE_PATH"),
+        .fake_root = launch.env.at("ALR_FAKE_ROOT") == "1",
+        .verbose = launch.env.at("ALR_VERBOSE") == "0" ? 0 : 1,
+        .trace_path = false,
+        .trace_exec = false,
+    };
+}
+
 void validate_input(const RuntimeReportInput& input) {
     if (input.program.empty() || input.program.front() != '/') {
         throw std::invalid_argument("program must be an absolute path inside the rootfs");
@@ -87,11 +109,19 @@ RuntimeReport build_runtime_report(const RuntimeReportInput& input, const Execut
     out << "ALR HOOK CONFIG BUILD: PASS\n";
     out << "ALR INTERPOSER LOAD: PASS\n";
     out << "ALR INTERPOSER CONFIG BUILD: PASS\n";
+    const auto serialized_config = runtime::serialize_runtime_config(build_alr_runtime_config(input, alr_runtime));
+    const auto parsed_config = runtime::parse_runtime_config(serialized_config.text);
+    out << "ALR CONFIG SERIALIZE: PASS\n";
+    out << "ALR CONFIG PARSE: "
+        << (parsed_config.program == input.program ? "PASS" : "FAIL") << "\n";
     out << "alr runtime launcher path=" << alr_runtime.executable << "\n";
     out << "alr runtime hook path=" << alr_runtime.env.at("ALR_HOOK_PATH") << "\n";
     out << "alr runtime interposer path=" << alr_runtime.env.at("ALR_INTERPOSER_PATH") << "\n";
     out << "alr runtime bridge path=" << alr_runtime.env.at("ALR_BRIDGE_PATH") << "\n";
     out << "alr runtime config source=env-skeleton\n";
+    out << "alr runtime config format=alr-config-v1\n";
+    out << "alr runtime config bytes=" << serialized_config.text.size() << "\n";
+    out << "alr runtime config checksum=" << serialized_config.checksum_hex << "\n";
     out << "alr runtime guest execution=not-claimed\n";
     out << "LOW-OVERHEAD BACKEND PROBE FRAMEWORK: " << optional_backend.framework_status << "\n";
     out << "OPTIONAL RUNTIME BACKEND AVAILABLE: " << optional_backend.available_status << "\n";
@@ -182,8 +212,11 @@ LoaderLaunchPlan build_alr_runtime_launch_plan(const RuntimeReportInput& input) 
         {"ALR_HOOK_PATH", alr_runtime_hook_for(input)},
         {"ALR_INTERPOSER_PATH", alr_runtime_interposer_for(input)},
         {"ALR_BRIDGE_PATH", alr_runtime_bridge_for(input)},
+        {"ALR_CONFIG_FORMAT", "alr-config-v1"},
         {"ALR_FAKE_ROOT", "0"},
         {"ALR_VERBOSE", "0"},
+        {"ALR_TRACE_PATH", "0"},
+        {"ALR_TRACE_EXEC", "0"},
         {"HOME", "/root"},
         {"TMPDIR", "/tmp"},
         {"PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"},
