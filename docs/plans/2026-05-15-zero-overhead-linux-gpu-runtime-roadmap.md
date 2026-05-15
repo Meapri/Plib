@@ -1081,3 +1081,27 @@ Next implementation batch:
 2. Package an installed `eglGetProcAddress` demo as a second `.deb` app entrypoint.
 3. Add installed-package compatibility rows for shell script, GPU clear, GLES demo stdout, GLES demo TCP, and GUI protocol clients.
 4. Split known-fail legacy dpkg/proot diagnostics away from the current ALR summary so PASS/FAIL status reflects the active backend path.
+
+Latest V74 installed-package GLES ACK evidence:
+
+```text
+build: 0.4.74-installed-gles-ack
+ALR INSTALLED PACKAGE GLES IPC EXECUTION: PASS
+alr installed package gles ipc received frames=60
+alr installed package gles ipc draw frames=60
+alr installed package gles ipc ack frames=60
+alr installed package gles ipc lossless=true
+alr installed package gles ipc error=none
+alr installed package gles ipc handoff=ALR STATIC ENTRY HANDOFF: PASS
+ALR_GLES_IPC_ACK_SUMMARY requested=60 received=60 avg_us=102882 min_us=32774 max_us=130170
+surface gl renderer=Mali-G615 MC2
+surface gpu hardware render=true
+surface gles shim vs native average ratio pct=99
+```
+
+Next implementation batch:
+
+1. Package an installed `eglGetProcAddress` demo as a second `.deb` app entrypoint.
+2. Add per-frame ACK timing extraction on the Android side, not only guest-side RTT.
+3. Add an installed-package compatibility table for script, GPU clear, GLES stdout, GLES TCP+ACK, procaddr, Wayland, and X11 clients.
+4. Split known-fail legacy dpkg/proot diagnostics away from the active ALR summary.

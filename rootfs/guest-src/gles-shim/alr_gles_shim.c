@@ -4,6 +4,8 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <sys/select.h>
+#include <time.h>
 
 #define ALR_GL_COLOR_BUFFER_BIT 0x00004000u
 #define ALR_GL_FLOAT 0x1406u
@@ -30,6 +32,11 @@ static int g_clear_count = 0;
 static int g_swap_count = 0;
 static int g_bridge_fd = -2;
 static int g_bridge_hello_sent = 0;
+static int g_bridge_ack_enabled = -1;
+static int g_bridge_ack_received = 0;
+static long long g_bridge_ack_total_us = 0;
+static long long g_bridge_ack_min_us = 0;
+static long long g_bridge_ack_max_us = 0;
 
 void* eglGetDisplay(void* native_display);
 int eglInitialize(void* display, int* major, int* minor);
@@ -159,6 +166,19 @@ static int alr_bridge_expected_frames(void) {
     return count;
 }
 
+static int alr_bridge_ack_requested(void) {
+    if (g_bridge_ack_enabled >= 0) return g_bridge_ack_enabled;
+    const char* value = getenv("ALR_GPU_BRIDGE_ACK");
+    g_bridge_ack_enabled = (value != 0 && strcmp(value, "1") == 0) ? 1 : 0;
+    return g_bridge_ack_enabled;
+}
+
+static long long alr_monotonic_us(void) {
+    struct timespec now;
+    if (clock_gettime(CLOCK_MONOTONIC, &now) != 0) return 0;
+    return ((long long)now.tv_sec * 1000000LL) + ((long long)now.tv_nsec / 1000LL);
+}
+
 static int alr_bridge_connect(void) {
     if (g_bridge_fd != -2) return g_bridge_fd;
     g_bridge_fd = -1;
@@ -185,16 +205,47 @@ static int alr_bridge_connect(void) {
     return g_bridge_fd;
 }
 
-static void alr_bridge_write(const char* line) {
+static int alr_bridge_write(const char* line) {
     int fd = alr_bridge_connect();
-    if (fd < 0 || line == 0) return;
+    if (fd < 0 || line == 0) return 0;
     size_t length = strlen(line);
     while (length > 0) {
         ssize_t written = write(fd, line, length);
-        if (written <= 0) return;
+        if (written <= 0) return 0;
         line += written;
         length -= (size_t)written;
     }
+    return 1;
+}
+
+static int alr_bridge_read_ack_line(char* buffer, size_t capacity) {
+    int fd = alr_bridge_connect();
+    if (fd < 0 || buffer == 0 || capacity < 2) return 0;
+    size_t used = 0;
+    while (used + 1 < capacity) {
+        fd_set read_set;
+        FD_ZERO(&read_set);
+        FD_SET(fd, &read_set);
+        struct timeval timeout;
+        timeout.tv_sec = 0;
+        timeout.tv_usec = 500000;
+        int ready = select(fd + 1, &read_set, 0, 0, &timeout);
+        if (ready <= 0) break;
+        char ch = 0;
+        ssize_t read_count = read(fd, &ch, 1);
+        if (read_count <= 0) break;
+        buffer[used++] = ch;
+        if (ch == '\n') break;
+    }
+    buffer[used] = 0;
+    return used > 0;
+}
+
+static void alr_bridge_update_ack_timing(long long elapsed_us) {
+    ++g_bridge_ack_received;
+    g_bridge_ack_total_us += elapsed_us;
+    if (g_bridge_ack_received == 1 || elapsed_us < g_bridge_ack_min_us) g_bridge_ack_min_us = elapsed_us;
+    if (elapsed_us > g_bridge_ack_max_us) g_bridge_ack_max_us = elapsed_us;
 }
 
 static void alr_bridge_send_hello(void) {
@@ -209,7 +260,20 @@ static void alr_bridge_send_hello(void) {
 static void alr_bridge_send_command(const char* command) {
     if (alr_bridge_connect() < 0) return;
     alr_bridge_send_hello();
-    alr_bridge_write(command);
+    long long start_us = alr_monotonic_us();
+    if (!alr_bridge_write(command) || !alr_bridge_ack_requested()) return;
+    char ack_line[128];
+    if (!alr_bridge_read_ack_line(ack_line, sizeof(ack_line))) {
+        printf("ALR_GLES_IPC_ACK timeout frame=%d\n", g_swap_count);
+        fflush(stdout);
+        return;
+    }
+    long long elapsed_us = alr_monotonic_us() - start_us;
+    if (elapsed_us < 0) elapsed_us = 0;
+    alr_bridge_update_ack_timing(elapsed_us);
+    ack_line[strcspn(ack_line, "\r\n")] = 0;
+    printf("ALR_GLES_IPC_ACK frame=%d rtt_us=%lld %s\n", g_swap_count, elapsed_us, ack_line);
+    fflush(stdout);
 }
 
 static void alr_bridge_close(void) {
@@ -217,8 +281,25 @@ static void alr_bridge_close(void) {
         if (g_bridge_hello_sent) alr_bridge_write("ALR_GPU_IPC_END\n");
         close(g_bridge_fd);
     }
+    if (alr_bridge_ack_requested() && g_bridge_ack_received > 0) {
+        long long avg_us = g_bridge_ack_total_us / g_bridge_ack_received;
+        printf(
+            "ALR_GLES_IPC_ACK_SUMMARY requested=%d received=%d avg_us=%lld min_us=%lld max_us=%lld\n",
+            alr_bridge_expected_frames(),
+            g_bridge_ack_received,
+            avg_us,
+            g_bridge_ack_min_us,
+            g_bridge_ack_max_us
+        );
+        fflush(stdout);
+    }
     g_bridge_fd = -2;
     g_bridge_hello_sent = 0;
+    g_bridge_ack_enabled = -1;
+    g_bridge_ack_received = 0;
+    g_bridge_ack_total_us = 0;
+    g_bridge_ack_min_us = 0;
+    g_bridge_ack_max_us = 0;
 }
 
 int alr_gl_draw_arrays(unsigned int mode, int first, int count) {

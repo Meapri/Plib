@@ -801,6 +801,29 @@ V73 changes the GLES shim itself: when `ALR_GPU_BRIDGE_HOST` and
 turns the installed `.deb` GLES demo into an actual bridge producer instead of
 only a text-command fixture.
 
+Current V74 installed-package GLES ACK snapshot:
+
+```text
+build: 0.4.74-installed-gles-ack
+ALR INSTALLED PACKAGE GLES IPC EXECUTION: PASS
+alr installed package gles ipc received frames=60
+alr installed package gles ipc draw frames=60
+alr installed package gles ipc ack frames=60
+alr installed package gles ipc lossless=true
+alr installed package gles ipc error=none
+alr installed package gles ipc handoff=ALR STATIC ENTRY HANDOFF: PASS
+ALR_GLES_IPC_ACK_SUMMARY requested=60 received=60 avg_us=102882 min_us=32774 max_us=130170
+surface gl renderer=Mali-G615 MC2
+surface gpu hardware render=true
+surface gles shim vs native average ratio pct=99
+```
+
+V74 adds an optional host-to-guest ACK mode with `ALR_GPU_BRIDGE_ACK=1`.
+The Android bridge acknowledges each submitted GLES frame, and the guest shim
+prints RTT statistics before shutdown. The first device run exposed the previous
+5s child timeout by cutting off at 51 ACKed frames; the gate now uses a 12s
+timeout and requires all 60 frame ACKs plus the guest-side ACK summary.
+
 Report:
 
 ```text

@@ -91,6 +91,8 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "alr installed package gles demo command parsed count" in text
     assert "alr installed package gles demo draw command count" in text
     assert "alr installed package gles ipc draw frames" in text
+    assert "alr installed package gles ipc ack frames" in text
+    assert "alr installed package gles ipc ack raw" in text
     assert "alr installed package gles ipc lossless" in text
     assert "alr installed package gpu ipc lossless" in text
     assert "alr installed package gpu ipc execve loader rewrites" in text
@@ -175,6 +177,8 @@ def test_guest_gles_shim_is_source_built_api_subset():
     assert "ALR_GLES_SHIM_COMMAND ALR_GPU_DRAW_TRIANGLE" in shim_source
     assert "ALR_GPU_IPC_HELLO gles-shim-v1" in shim_source
     assert "ALR_GPU_BRIDGE_PORT" in shim_source
+    assert "ALR_GPU_BRIDGE_ACK" in shim_source
+    assert "ALR_GLES_IPC_ACK_SUMMARY requested=%d received=%d" in shim_source
     assert "alr_bridge_send_command" in shim_source
     for public_symbol in [
         "eglGetDisplay",

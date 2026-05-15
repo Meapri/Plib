@@ -406,8 +406,9 @@ class NativeCommandRunner(
                 "ALR_GPU_BRIDGE_HOST" to "127.0.0.1",
                 "ALR_GPU_BRIDGE_PORT" to port.toString(),
                 "ALR_GPU_BRIDGE_TRANSPORT" to "tcp-loopback-gles-shim",
+                "ALR_GPU_BRIDGE_ACK" to "1",
             ),
-            timeoutMs = 5000,
+            timeoutMs = 12000,
             binaryPath = "/usr/local/bin/alr-package-gles-demo",
         )
 

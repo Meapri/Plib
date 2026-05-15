@@ -22,7 +22,7 @@ class MainActivity : Activity() {
 
         val rootfsManifest = RootfsManifest(
             name = "debian-arm64",
-            version = "bookworm-slim-2026-05-gui-gpu-v73",
+            version = "bookworm-slim-2026-05-gui-gpu-v74",
             assets = listOf(
                 RootfsAsset(
                     path = "rootfs.tar.zst",
@@ -525,8 +525,11 @@ class MainActivity : Activity() {
             alrInstalledPackageGlesIpcBridgeResult.clientResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
                 alrInstalledPackageGlesIpcBridgeResult.clientResult.stdout.alrHandoffStdoutText()
                     .contains("ALR_GLES_DEMO_WORKLOAD requested=$glesDemoFrameCount submitted=$glesDemoFrameCount") &&
+                alrInstalledPackageGlesIpcBridgeResult.clientResult.stdout.alrHandoffStdoutText()
+                    .contains("ALR_GLES_IPC_ACK_SUMMARY requested=$glesDemoFrameCount received=$glesDemoFrameCount") &&
                 alrInstalledPackageGlesIpcBridgeResult.commands.count { it.protocol == "GLES_DRAW" } == glesDemoFrameCount &&
                 alrInstalledPackageGlesIpcBridgeResult.commands.size == alrInstalledPackageGlesIpcBridgeResult.expectedFrames &&
+                alrInstalledPackageGlesIpcBridgeResult.ackLines.size == glesDemoFrameCount &&
                 alrInstalledPackageGlesIpcBridgeResult.error == null
         val guestGlesProcaddrDemoPassed = prootGuestGlesProcaddrDemoResult.exitCode == 0 &&
             prootGuestGlesProcaddrDemoStdout.contains("ALR_GLES_PROC_DEMO_KIND eglGetProcAddress-es2-subset") &&
@@ -582,7 +585,7 @@ class MainActivity : Activity() {
             alrGuestX11GuiBridgeResult.error == null
         val hostGpuHardwareCandidate = hostGpuProbe.lineStartingWith("host gpu hardware candidate=") == "host gpu hardware candidate=true"
 
-        val executionSummary = "build: 0.4.73-installed-gles-ipc" +
+        val executionSummary = "build: 0.4.74-installed-gles-ack" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -806,8 +809,10 @@ class MainActivity : Activity() {
             "\nalr installed package gles demo draw command count=${alrInstalledPackageGlesDemoCommands.count { it.protocol == "GLES_DRAW" }}" +
             "\nalr installed package gles ipc received frames=${alrInstalledPackageGlesIpcBridgeResult.commands.size}" +
             "\nalr installed package gles ipc draw frames=${alrInstalledPackageGlesIpcBridgeResult.commands.count { it.protocol == "GLES_DRAW" }}" +
+            "\nalr installed package gles ipc ack frames=${alrInstalledPackageGlesIpcBridgeResult.ackLines.size}" +
             "\nalr installed package gles ipc lossless=${alrInstalledPackageGlesIpcBridgeResult.expectedFrames > 0 && alrInstalledPackageGlesIpcBridgeResult.expectedFrames == alrInstalledPackageGlesIpcBridgeResult.commands.size}" +
             "\nalr installed package gles ipc raw=${alrInstalledPackageGlesIpcBridgeResult.rawLines.joinToString("|")}" +
+            "\nalr installed package gles ipc ack raw=${alrInstalledPackageGlesIpcBridgeResult.ackLines.joinToString("|")}" +
             "\nalr installed package gles ipc error=${alrInstalledPackageGlesIpcBridgeResult.error ?: "none"}" +
             "\nalr installed package gles ipc handoff=${alrInstalledPackageGlesIpcBridgeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
             "\nalr installed package gles ipc stdout=${alrInstalledPackageGlesIpcBridgeResult.clientResult.stdout.alrHandoffStdoutText()}" +
@@ -1329,6 +1334,7 @@ class MainActivity : Activity() {
         val rawLines: List<String>,
         val error: String?,
         val clientResult: NativeCommandResult,
+        val ackLines: List<String> = emptyList(),
     )
 
     private fun runGuestGpuIpcBridge(
@@ -1440,18 +1446,29 @@ class MainActivity : Activity() {
         frameCount: Int,
     ): GuestGpuIpcBridgeResult {
         val host = "127.0.0.1"
-        val server = ServerSocket(0, 1, InetAddress.getByName(host)).apply { soTimeout = 5000 }
+        val server = ServerSocket(0, 1, InetAddress.getByName(host)).apply { soTimeout = 12000 }
         val port = server.localPort
         val rawLines = mutableListOf<String>()
+        val ackLines = mutableListOf<String>()
         val errors = mutableListOf<String>()
         val acceptThread = thread(name = "alr-installed-package-gles-ipc-bridge", start = true) {
             try {
                 server.use { srv ->
                     val socket = srv.accept()
                     socket.use { accepted ->
-                        accepted.soTimeout = 5000
+                        accepted.soTimeout = 12000
+                        val writer = accepted.getOutputStream().bufferedWriter()
                         accepted.getInputStream().bufferedReader().useLines { lines ->
-                            lines.forEach { rawLines += it }
+                            lines.forEach { line ->
+                                rawLines += line
+                                if (line.startsWith("ALR_GPU_CLEAR ") || line.startsWith("ALR_GPU_DRAW_TRIANGLE ")) {
+                                    val ack = "ALR_GPU_IPC_ACK seq=${ackLines.size + 1}"
+                                    ackLines += ack
+                                    writer.write(ack)
+                                    writer.newLine()
+                                    writer.flush()
+                                }
+                            }
                         }
                     }
                 }
@@ -1462,7 +1479,7 @@ class MainActivity : Activity() {
             }
         }
         val clientResult = nativeCommandRunner.runAlrRuntimeTrampolineInstalledPackageGlesDemoIpc(rootfsDir, frameCount, port)
-        acceptThread.join(5500)
+        acceptThread.join(12500)
         if (acceptThread.isAlive) {
             errors += "accept thread still alive after join"
             server.close()
@@ -1483,6 +1500,7 @@ class MainActivity : Activity() {
             rawLines = rawLines.toList(),
             error = errors.firstOrNull(),
             clientResult = clientResult,
+            ackLines = ackLines.toList(),
         )
     }
 
