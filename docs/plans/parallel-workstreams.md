@@ -37,20 +37,23 @@ Do not touch by default:
 - Device evidence logs.
 - Hermes-owned smoke reports.
 
-First tasks:
+Current large-batch assignment:
 
-1. Add ALR launcher skeleton and launch-plan report section.
-2. Add tests for ALR backend report lines.
-3. Add config serialization model for rootfs/cwd/env/binds.
-4. Add hook-library design stubs without claiming execution.
-5. Only then implement path hook MVP.
+1. Own the next ALR implementation bundle end to end on a Codex branch.
+2. Add source, host/native tests, Android packaging coverage, and report strings in the same PR.
+3. Keep guest execution claims conservative until a real guest process path is verified.
+4. Hand off to Hermes only at PR-ready or merged-bundle boundaries.
 
-Acceptance for first bundle:
+Recent completed acceptance:
 
 ```text
 ALR RUNTIME LAUNCHER AVAILABLE: PASS
 ALR RUNTIME CONFIG BUILD: PASS
 ALR RUNTIME DIRECT APP-DATA EXEC POLICY: PASS
+ALR HOOK LOAD: PASS
+ALR HOOK CONFIG BUILD: PASS
+ALR STAT ROOTFS FILE: PASS
+ALR OPEN ROOTFS FILE: PASS
 ```
 
 ## Workstream B: Device Evidence and Optional Backend Probe
@@ -86,13 +89,13 @@ Do not touch by default:
 - ALR clean-room implementation files.
 - Clean-room specs except by proposing changes in `docs/agent-sync.md`.
 
-First tasks:
+Current large-batch assignment:
 
-1. Confirm current APK build/install/smoke path.
-2. Capture current PRoot baseline on device.
-3. Package optional proroot-class backend only if license/source/sha are recorded.
-4. Run hello, shell, dpkg/apt preflight A/B.
-5. Capture GPU/GUI bridge evidence and known false-fail report lines.
+1. Rebase or recreate the evidence PR on current `main` so implementation files are never deleted by an old baseline.
+2. Own one complete device/evidence bundle at a time.
+3. Capture PRoot baseline, optional backend status, and GUI/GPU bridge evidence in one dated evidence PR.
+4. Include all current Codex report strings in the same evidence pass.
+5. Avoid recurring status comments unless blocked or ready for review.
 
 Acceptance for first bundle:
 
@@ -118,14 +121,13 @@ Both workstreams must preserve:
 
 ## Merge Order
 
-Prefer this order:
+Prefer large complete bundles, not small alternating sync commits:
 
-1. Documentation and tests.
-2. Hermes evidence-only additions.
-3. Codex ALR launcher skeleton.
-4. Hermes optional backend A/B additions.
-5. Codex ALR path hook MVP.
-6. Joint benchmark/report schema updates.
+1. Codex implementation bundle with tests and APK build proof.
+2. Hermes evidence bundle rebased on current `main`.
+3. Integration review for clean-room boundaries and accidental deletions.
+4. Merge the complete bundle.
+5. Open the next large bundle.
 
 ## Cross-Agent Questions
 
@@ -144,3 +146,4 @@ Why it matters:
 
 The other agent answers in a new entry. This is slower than live chat, but far less fragile.
 
+Use this only for blockers. Normal progress should stay inside the agent's branch and PR until the bundle is ready.

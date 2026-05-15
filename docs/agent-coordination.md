@@ -24,9 +24,17 @@ Shared files:
 - `docs/plans/parallel-workstreams.md`: workstream ownership and active tasks.
 - `docs/prompts/`: reusable prompts for external agents.
 
+Default cadence:
+
+- Use large-batch handoffs, not frequent ping-pong.
+- Give each agent a complete bundle with clear ownership, acceptance checks, and non-goals.
+- Let each agent work independently on its branch until the bundle is reviewable.
+- Merge only at bundle boundaries, after tests/evidence are attached.
+- Avoid recurring coordination comments unless a blocker changes ownership or would invalidate the other agent's work.
+
 Rules:
 
-- Each agent updates `docs/agent-sync.md` at the start and end of a work session.
+- Each agent updates `docs/agent-sync.md` at the start and end of a bundle, not every small work session.
 - Each update must include branch/worktree, touched files, commands run, tests run, and blockers.
 - Do not overwrite another agent's status entry.
 - Do not rewrite another agent's docs or code unless explicitly assigned.
@@ -94,7 +102,7 @@ Hermes should avoid editing:
 
 ## Handoff Entry Format
 
-Append entries to `docs/agent-sync.md`:
+Append entries to `docs/agent-sync.md` only when a bundle starts, a bundle is ready for review, or a true blocker appears:
 
 ```markdown
 ## 2026-05-15 HH:MM KST - <agent> - <workstream>
@@ -125,7 +133,7 @@ Next recommended action:
 
 - If both agents need the same file, pause and split the change by section.
 - If Hermes finds a device failure that contradicts Codex specs, Hermes records evidence first; Codex updates specs/tests after reviewing it.
-- If Codex changes expected report strings, Codex must update tests and note the change in `docs/agent-sync.md` so Hermes can adjust device smoke checks.
+- If Codex changes expected report strings, Codex updates tests and records the full report-string batch in the PR body or bundle-complete `docs/agent-sync.md` entry so Hermes can adjust device smoke checks in one pass.
 - If a closed/proprietary runtime behavior is involved, Hermes records black-box inputs/outputs only; Codex converts that into clean tests/spec language.
 
 ## Stop Conditions
@@ -144,10 +152,10 @@ Run two agents like this:
 
 ```text
 Agent 1 / Codex:
-  Build the clean ALR runtime path from docs to tests to source.
+  Build the clean ALR runtime path from docs to tests to source in large implementation bundles.
 
 Agent 2 / Hermes:
-  Build the evidence pipeline: device smoke, optional proroot A/B, GPU reports.
+  Build the evidence pipeline in large evidence bundles: device smoke, optional proroot A/B, GPU reports.
 ```
 
 This keeps the critical clean-room boundary intact:
@@ -157,3 +165,22 @@ Hermes observes and reports behavior.
 Codex implements from specs and tests.
 ```
 
+## Batch Assignment Pattern
+
+Prefer assigning work like this:
+
+```text
+Codex bundle:
+  Owns one implementation milestone end to end.
+  Delivers source, tests, APK build proof, and a PR.
+
+Hermes bundle:
+  Owns one evidence milestone end to end.
+  Delivers dated evidence markdown, logs/screenshots if available, and a PR.
+
+Integration:
+  Rebase once onto current main.
+  Review for clean-room boundaries.
+  Merge the complete bundle.
+  Open the next large bundle only after integration.
+```
