@@ -64,6 +64,34 @@ alr loop hot path measured faster count=2/2
 alr loop hot path perf evidence=PASS
 ```
 
+Latest V55 syscall-heavy evidence:
+
+```text
+build: 0.4.55-syscall-bench
+ALR SYSCALL STAT BENCH EXECUTION: PASS
+ALR SYSCALL OPENREAD BENCH EXECUTION: PASS
+ALR SYSCALL SPAWN BENCH EXECUTION: PASS
+PROOT SYSCALL STAT BENCH EXECUTION: PASS
+PROOT SYSCALL OPENREAD BENCH EXECUTION: PASS
+PROOT SYSCALL SPAWN BENCH EXECUTION: PASS
+rootfs /usr/bin/alr-syscall-bench exists=true executable=true bytes=6672
+alr syscall stat benchmark average us=2760
+proot syscall stat benchmark average us=283
+alr syscall stat vs proot ratio pct=975
+alr syscall openread benchmark average us=8073
+proot syscall openread benchmark average us=214
+alr syscall openread vs proot ratio pct=3772
+alr syscall spawn benchmark average us=12928
+proot syscall spawn benchmark average us=1593
+alr syscall spawn vs proot ratio pct=811
+alr syscall hot path measured faster count=0/3
+alr syscall hot path perf evidence=NEEDS_WORK
+```
+
+This is the current highest-priority CPU backend issue: ALR repeated entry
+handoff beats PRoot loop baselines, but the path-rewrite ptrace syscall path is
+not yet competitive for filesystem-heavy or child-spawn-heavy guest workloads.
+
 Known issue:
 
 - V35 summary says `GUEST WAYLAND GUI GPU BRIDGE EXECUTION: FAIL` and `GUEST X11 GUI GPU BRIDGE EXECUTION: FAIL` because ACK writing happens after socket input is closed. Frames were received and rendered losslessly; this is a report/ACK lifecycle bug, not a GPU-path failure.

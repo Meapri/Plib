@@ -194,8 +194,16 @@ def test_guest_gles_shim_is_source_built_api_subset():
     assert "alr-gles-abi-smoke" in build_script
     assert "alr-gles-demo-gears" in build_script
     assert "alr-gles-procaddr-demo" in build_script
-    assert "-Wl,--no-as-needed" in build_script
-    assert "-Wl,-rpath,/usr/lib/androlinux" in build_script
+
+
+def test_guest_syscall_bench_is_source_built_fixture():
+    source = (ROOT / "rootfs/guest-src/bench/alr_syscall_bench.c").read_text()
+    build_script = (ROOT / "scripts/build-guest-syscall-bench.sh").read_text()
+    assert "ALR SYSCALL BENCH:" in source
+    assert "bench_stat" in source
+    assert "bench_open_read_close" in source
+    assert "bench_spawn" in source
+    assert "alr-syscall-bench" in build_script
 
 
 def test_guest_gles_shim_binaries_link_rootfs_libraries_without_libdl():

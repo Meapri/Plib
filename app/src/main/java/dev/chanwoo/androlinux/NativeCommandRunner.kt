@@ -228,6 +228,16 @@ class NativeCommandRunner(
     fun runAlrRuntimeTrampolineAptConfigVersion(rootfsDir: File): NativeCommandResult =
         runAlrRuntimeTrampolineGlibcRootfsProgram(rootfsDir, "/usr/bin/apt-config", listOf("--version"), timeoutMs = 5000)
 
+    fun runAlrRuntimeTrampolineSyscallBench(rootfsDir: File, mode: String, count: Int): NativeCommandResult =
+        runAlrRuntimeTrampolineGlibcRootfsProgram(
+            rootfsDir,
+            "/usr/bin/alr-syscall-bench",
+            listOf(mode, count.coerceIn(1, 10000).toString()),
+            timeoutMs = 8000,
+            pathRewriteLimit = 12000,
+            pathRewriteIdleSyscallLimit = 1024,
+        )
+
     fun runAlrRuntimeTrampolineDpkgInstallLocalSmoke(rootfsDir: File): NativeCommandResult =
         runAlrRuntimeTrampolineGlibcRootfsProgram(
             rootfsDir,
@@ -415,6 +425,15 @@ class NativeCommandRunner(
 
     fun runProotRootfsAptConfigVersion(rootfsDir: File): NativeCommandResult =
         runProotRootfsCommand(rootfsDir, "/usr/bin/apt-config", listOf("--version"), rootId = true, rawRootfs = true)
+
+    fun runProotRootfsSyscallBench(rootfsDir: File, mode: String, count: Int): NativeCommandResult =
+        runProotRootfsCommand(
+            rootfsDir,
+            "/usr/bin/alr-syscall-bench",
+            listOf(mode, count.coerceIn(1, 10000).toString()),
+            rootId = true,
+            rawRootfs = true,
+        )
 
     fun runProotRootfsDpkgInstallLocalSmoke(rootfsDir: File): NativeCommandResult =
         runProotRootfsCommand(

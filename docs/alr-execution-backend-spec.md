@@ -153,6 +153,32 @@ alr dynamic glibc handoff vs proot loop ratio pct=20
 alr loop hot path perf evidence=PASS
 ```
 
+Current V55 syscall-heavy snapshot:
+
+```text
+ALR SYSCALL STAT BENCH EXECUTION: PASS
+ALR SYSCALL OPENREAD BENCH EXECUTION: PASS
+ALR SYSCALL SPAWN BENCH EXECUTION: PASS
+PROOT SYSCALL STAT BENCH EXECUTION: PASS
+PROOT SYSCALL OPENREAD BENCH EXECUTION: PASS
+PROOT SYSCALL SPAWN BENCH EXECUTION: PASS
+alr syscall stat benchmark average us=2760
+proot syscall stat benchmark average us=283
+alr syscall stat vs proot ratio pct=975
+alr syscall openread benchmark average us=8073
+proot syscall openread benchmark average us=214
+alr syscall openread vs proot ratio pct=3772
+alr syscall spawn benchmark average us=12928
+proot syscall spawn benchmark average us=1593
+alr syscall spawn vs proot ratio pct=811
+alr syscall hot path perf evidence=NEEDS_WORK
+```
+
+The v55 result proves execution coverage but contradicts any broad claim that
+the current ALR syscall path is already below PRoot. The next backend iteration
+must reduce path-rewrite trapping cost or move common filesystem operations out
+of the global ptrace stop/resume path.
+
 ### ALR Exec v3: Identity and Procfs
 
 Required behavior:

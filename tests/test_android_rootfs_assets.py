@@ -9,7 +9,7 @@ PAYLOAD = ROOT / "app" / "src" / "main" / "assets" / "rootfs" / "payloads" / "ti
 def test_android_assets_include_rootfs_manifest_and_payload():
     assert MANIFEST.is_file()
     assert PAYLOAD.is_file()
-    assert PAYLOAD.stat().st_size == 35184640
+    assert PAYLOAD.stat().st_size == 35199488
 
 
 def test_android_asset_manifest_matches_host_manifest():
@@ -89,6 +89,23 @@ def test_tiny_rootfs_glibc_hello_requests_rootfs_loader():
 
     with tarfile.open(PAYLOAD) as archive, tempfile.NamedTemporaryFile() as tmp:
         tmp.write(archive.extractfile("./bin/glibc-hello").read())
+        tmp.flush()
+        program_headers = subprocess.check_output(["readelf", "-l", tmp.name], text=True)
+    assert "Requesting program interpreter: /lib/ld-linux-aarch64.so.1" in program_headers
+
+
+def test_tiny_rootfs_contains_syscall_benchmark_fixture():
+    import subprocess
+    import tarfile
+    import tempfile
+
+    with tarfile.open(PAYLOAD) as archive, tempfile.NamedTemporaryFile() as tmp:
+        names = set(archive.getnames())
+        assert "./usr/bin/alr-syscall-bench" in names
+        assert "./usr/share/androlinux/syscall-bench.txt" in names
+        bench = archive.extractfile("./usr/bin/alr-syscall-bench").read()
+        assert bench[:4] == b"\x7fELF"
+        tmp.write(bench)
         tmp.flush()
         program_headers = subprocess.check_output(["readelf", "-l", tmp.name], text=True)
     assert "Requesting program interpreter: /lib/ld-linux-aarch64.so.1" in program_headers

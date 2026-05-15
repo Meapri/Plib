@@ -22,7 +22,7 @@ class MainActivity : Activity() {
 
         val rootfsManifest = RootfsManifest(
             name = "debian-arm64",
-            version = "bookworm-slim-2026-05-gui-gpu-v53",
+            version = "bookworm-slim-2026-05-gui-gpu-v55",
             assets = listOf(
                 RootfsAsset(
                     path = "rootfs.tar.zst",
@@ -39,6 +39,9 @@ class MainActivity : Activity() {
         )
         val nativeCommandResult = nativeCommandRunner.runSmokeTest()
         val handoffBenchmarkRepeatCount = 10
+        val syscallBenchStatCount = 1000
+        val syscallBenchOpenReadCount = 1000
+        val syscallBenchSpawnCount = 20
         val nativeBionicForkBenchmarkResult = nativeCommandRunner.runNativeBionicForkBenchmark(handoffBenchmarkRepeatCount)
         val alrTrampolinePreflightResult = nativeCommandRunner.runAlrRuntimeTrampolinePreflight(rootfsStatus.rootfsDir, "/bin/hello")
         val alrTrampolineEntryProbeResult = nativeCommandRunner.runAlrRuntimeTrampolineEntryProbe(rootfsStatus.rootfsDir, "/bin/hello")
@@ -73,6 +76,21 @@ class MainActivity : Activity() {
             rootfsStatus.rootfsDir,
             repeatCount = handoffBenchmarkRepeatCount,
         )
+        val prootSyscallStatBenchmarkResult = nativeCommandRunner.runProotRootfsSyscallBench(
+            rootfsStatus.rootfsDir,
+            "stat",
+            syscallBenchStatCount,
+        )
+        val prootSyscallOpenReadBenchmarkResult = nativeCommandRunner.runProotRootfsSyscallBench(
+            rootfsStatus.rootfsDir,
+            "openread",
+            syscallBenchOpenReadCount,
+        )
+        val prootSyscallSpawnBenchmarkResult = nativeCommandRunner.runProotRootfsSyscallBench(
+            rootfsStatus.rootfsDir,
+            "spawn",
+            syscallBenchSpawnCount,
+        )
         val prootDashResult = nativeCommandRunner.runProotRootfsDash(
             rootfsStatus.rootfsDir,
             "echo dash-c ok; /usr/bin/env | /bin/cat",
@@ -93,6 +111,21 @@ class MainActivity : Activity() {
         val alrAptGetVersionResult = nativeCommandRunner.runAlrRuntimeTrampolineAptGetVersion(rootfsStatus.rootfsDir)
         val alrAptCacheVersionResult = nativeCommandRunner.runAlrRuntimeTrampolineAptCacheVersion(rootfsStatus.rootfsDir)
         val alrAptConfigVersionResult = nativeCommandRunner.runAlrRuntimeTrampolineAptConfigVersion(rootfsStatus.rootfsDir)
+        val alrSyscallStatBenchmarkResult = nativeCommandRunner.runAlrRuntimeTrampolineSyscallBench(
+            rootfsStatus.rootfsDir,
+            "stat",
+            syscallBenchStatCount,
+        )
+        val alrSyscallOpenReadBenchmarkResult = nativeCommandRunner.runAlrRuntimeTrampolineSyscallBench(
+            rootfsStatus.rootfsDir,
+            "openread",
+            syscallBenchOpenReadCount,
+        )
+        val alrSyscallSpawnBenchmarkResult = nativeCommandRunner.runAlrRuntimeTrampolineSyscallBench(
+            rootfsStatus.rootfsDir,
+            "spawn",
+            syscallBenchSpawnCount,
+        )
         val alrDpkgInstallLocalResult = nativeCommandRunner.runAlrRuntimeTrampolineDpkgInstallLocalSmoke(rootfsStatus.rootfsDir)
         val prootDpkgInstallLocalResult = nativeCommandRunner.runProotRootfsDpkgInstallLocalSmoke(rootfsStatus.rootfsDir)
         val prootInstalledPackageSmokeResult = nativeCommandRunner.runProotRootfsInstalledPackageSmoke(rootfsStatus.rootfsDir)
@@ -211,6 +244,7 @@ class MainActivity : Activity() {
         val rootfsLibAptPkgFile = File(rootfsStatus.rootfsDir, "lib/aarch64-linux-gnu/libapt-pkg.so.6.0")
         val rootfsLibAptPrivateFile = File(rootfsStatus.rootfsDir, "lib/aarch64-linux-gnu/libapt-private.so.0.0")
         val rootfsAptHttpMethodFile = File(rootfsStatus.rootfsDir, "usr/lib/apt/methods/http")
+        val rootfsSyscallBenchFile = File(rootfsStatus.rootfsDir, "usr/bin/alr-syscall-bench")
         val rootfsAptListsPartialDir = File(rootfsStatus.rootfsDir, "var/lib/apt/lists/partial")
         val rootfsLocalDebFile = File(rootfsStatus.rootfsDir, "var/cache/apt/archives/alr-smoke_1.0_arm64.deb")
         val rootfsDpkgDebFile = File(rootfsStatus.rootfsDir, "usr/bin/dpkg-deb")
@@ -308,6 +342,18 @@ class MainActivity : Activity() {
         val alrAptConfigVersionExecutionPassed = alrAptConfigVersionResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
             alrAptConfigVersionResult.stdout.alrHandoffStdoutText().contains("apt ") &&
             alrAptConfigVersionResult.stdout.alrHandoffStdoutText().contains("arm64")
+        val alrSyscallStatBenchmarkPassed = alrSyscallStatBenchmarkResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+            alrSyscallStatBenchmarkResult.stdout.alrHandoffStdoutText().contains("ALR SYSCALL BENCH: PASS")
+        val alrSyscallOpenReadBenchmarkPassed = alrSyscallOpenReadBenchmarkResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+            alrSyscallOpenReadBenchmarkResult.stdout.alrHandoffStdoutText().contains("ALR SYSCALL BENCH: PASS")
+        val alrSyscallSpawnBenchmarkPassed = alrSyscallSpawnBenchmarkResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+            alrSyscallSpawnBenchmarkResult.stdout.alrHandoffStdoutText().contains("ALR SYSCALL BENCH: PASS")
+        val prootSyscallStatBenchmarkPassed = prootSyscallStatBenchmarkResult.exitCode == 0 &&
+            prootSyscallStatBenchmarkResult.stdout.contains("ALR SYSCALL BENCH: PASS")
+        val prootSyscallOpenReadBenchmarkPassed = prootSyscallOpenReadBenchmarkResult.exitCode == 0 &&
+            prootSyscallOpenReadBenchmarkResult.stdout.contains("ALR SYSCALL BENCH: PASS")
+        val prootSyscallSpawnBenchmarkPassed = prootSyscallSpawnBenchmarkResult.exitCode == 0 &&
+            prootSyscallSpawnBenchmarkResult.stdout.contains("ALR SYSCALL BENCH: PASS")
         val alrDpkgInstallLocalGuestOutput =
             alrDpkgInstallLocalResult.stdout.alrHandoffStdoutText() + "\n" +
                 alrDpkgInstallLocalResult.stdout.alrHandoffStderrText()
@@ -418,7 +464,7 @@ class MainActivity : Activity() {
             alrGuestX11GuiBridgeResult.error == null
         val hostGpuHardwareCandidate = hostGpuProbe.lineStartingWith("host gpu hardware candidate=") == "host gpu hardware candidate=true"
 
-        val executionSummary = "build: 0.4.54-cpu-baseline-bench" +
+        val executionSummary = "build: 0.4.55-syscall-bench" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -442,6 +488,12 @@ class MainActivity : Activity() {
             "\nALR APT-GET VERSION EXECUTION: ${if (alrAptGetVersionExecutionPassed) "PASS" else "FAIL"}" +
             "\nALR APT-CACHE VERSION EXECUTION: ${if (alrAptCacheVersionExecutionPassed) "PASS" else "FAIL"}" +
             "\nALR APT-CONFIG VERSION EXECUTION: ${if (alrAptConfigVersionExecutionPassed) "PASS" else "FAIL"}" +
+            "\nALR SYSCALL STAT BENCH EXECUTION: ${if (alrSyscallStatBenchmarkPassed) "PASS" else "FAIL"}" +
+            "\nALR SYSCALL OPENREAD BENCH EXECUTION: ${if (alrSyscallOpenReadBenchmarkPassed) "PASS" else "FAIL"}" +
+            "\nALR SYSCALL SPAWN BENCH EXECUTION: ${if (alrSyscallSpawnBenchmarkPassed) "PASS" else "FAIL"}" +
+            "\nPROOT SYSCALL STAT BENCH EXECUTION: ${if (prootSyscallStatBenchmarkPassed) "PASS" else "FAIL"}" +
+            "\nPROOT SYSCALL OPENREAD BENCH EXECUTION: ${if (prootSyscallOpenReadBenchmarkPassed) "PASS" else "FAIL"}" +
+            "\nPROOT SYSCALL SPAWN BENCH EXECUTION: ${if (prootSyscallSpawnBenchmarkPassed) "PASS" else "FAIL"}" +
             "\nALR DPKG LOCAL INSTALL EXECUTION: ${if (alrDpkgLocalInstallExecutionPassed) "PASS" else "FAIL"}" +
             "\nDPKG LOCAL INSTALL EXECUTION: ${if (dpkgLocalInstallExecutionPassed) "PASS" else "FAIL"}" +
             "\nINSTALLED PACKAGE EXECUTION: ${if (installedPackageExecutionPassed) "PASS" else "FAIL"}" +
@@ -513,6 +565,7 @@ class MainActivity : Activity() {
             "\nrootfs libapt-pkg exists=${rootfsLibAptPkgFile.isFile} executable=${rootfsLibAptPkgFile.canExecute()} bytes=${rootfsLibAptPkgFile.length()}" +
             "\nrootfs libapt-private exists=${rootfsLibAptPrivateFile.isFile} executable=${rootfsLibAptPrivateFile.canExecute()} bytes=${rootfsLibAptPrivateFile.length()}" +
             "\nrootfs apt http method exists=${rootfsAptHttpMethodFile.isFile} executable=${rootfsAptHttpMethodFile.canExecute()} bytes=${rootfsAptHttpMethodFile.length()}" +
+            "\nrootfs /usr/bin/alr-syscall-bench exists=${rootfsSyscallBenchFile.isFile} executable=${rootfsSyscallBenchFile.canExecute()} bytes=${rootfsSyscallBenchFile.length()}" +
             "\nrootfs apt lists partial exists=${rootfsAptListsPartialDir.isDirectory}" +
             "\nrootfs local deb exists=${rootfsLocalDebFile.isFile} bytes=${rootfsLocalDebFile.length()}" +
             "\nrootfs /usr/bin/dpkg-deb exists=${rootfsDpkgDebFile.isFile} executable=${rootfsDpkgDebFile.canExecute()} bytes=${rootfsDpkgDebFile.length()}" +
@@ -724,6 +777,20 @@ class MainActivity : Activity() {
             "\nalr dynamic glibc handoff faster than proot loop=${alrBenchmarkFasterThanProotLoop(alrTrampolineGlibcHelloBenchmarkResult, prootGlibcLoopBenchmarkResult, handoffBenchmarkRepeatCount)}" +
             "\nalr loop hot path measured faster count=${loopHotPathFasterCount(alrTrampolineEntryBenchmarkResult, prootHelloLoopBenchmarkResult, alrTrampolineGlibcHelloBenchmarkResult, prootGlibcLoopBenchmarkResult, handoffBenchmarkRepeatCount)}/2" +
             "\nalr loop hot path perf evidence=${loopHotPathPerfEvidence(alrTrampolineEntryBenchmarkResult, prootHelloLoopBenchmarkResult, alrTrampolineGlibcHelloBenchmarkResult, prootGlibcLoopBenchmarkResult, handoffBenchmarkRepeatCount)}" +
+            "\nalr syscall stat benchmark average us=${syscallBenchAverageUs(alrSyscallStatBenchmarkResult, alr = true)}" +
+            "\nproot syscall stat benchmark average us=${syscallBenchAverageUs(prootSyscallStatBenchmarkResult, alr = false)}" +
+            "\nalr syscall stat vs proot ratio pct=${syscallBenchRatioPct(alrSyscallStatBenchmarkResult, prootSyscallStatBenchmarkResult)}" +
+            "\nalr syscall stat faster than proot=${syscallBenchFasterThanProot(alrSyscallStatBenchmarkResult, prootSyscallStatBenchmarkResult)}" +
+            "\nalr syscall openread benchmark average us=${syscallBenchAverageUs(alrSyscallOpenReadBenchmarkResult, alr = true)}" +
+            "\nproot syscall openread benchmark average us=${syscallBenchAverageUs(prootSyscallOpenReadBenchmarkResult, alr = false)}" +
+            "\nalr syscall openread vs proot ratio pct=${syscallBenchRatioPct(alrSyscallOpenReadBenchmarkResult, prootSyscallOpenReadBenchmarkResult)}" +
+            "\nalr syscall openread faster than proot=${syscallBenchFasterThanProot(alrSyscallOpenReadBenchmarkResult, prootSyscallOpenReadBenchmarkResult)}" +
+            "\nalr syscall spawn benchmark average us=${syscallBenchAverageUs(alrSyscallSpawnBenchmarkResult, alr = true)}" +
+            "\nproot syscall spawn benchmark average us=${syscallBenchAverageUs(prootSyscallSpawnBenchmarkResult, alr = false)}" +
+            "\nalr syscall spawn vs proot ratio pct=${syscallBenchRatioPct(alrSyscallSpawnBenchmarkResult, prootSyscallSpawnBenchmarkResult)}" +
+            "\nalr syscall spawn faster than proot=${syscallBenchFasterThanProot(alrSyscallSpawnBenchmarkResult, prootSyscallSpawnBenchmarkResult)}" +
+            "\nalr syscall hot path measured faster count=${syscallHotPathFasterCount(alrSyscallStatBenchmarkResult, prootSyscallStatBenchmarkResult, alrSyscallOpenReadBenchmarkResult, prootSyscallOpenReadBenchmarkResult, alrSyscallSpawnBenchmarkResult, prootSyscallSpawnBenchmarkResult)}/3" +
+            "\nalr syscall hot path perf evidence=${syscallHotPathPerfEvidence(alrSyscallStatBenchmarkResult, prootSyscallStatBenchmarkResult, alrSyscallOpenReadBenchmarkResult, prootSyscallOpenReadBenchmarkResult, alrSyscallSpawnBenchmarkResult, prootSyscallSpawnBenchmarkResult)}" +
             "\nalr static hello elapsed ms=${alrTrampolineEntryProbeResult.elapsedMs}" +
             "\nproot static hello elapsed ms=${prootHelloResult.elapsedMs}" +
             "\nalr static hello elapsed ratio pct=${elapsedRatioPct(alrTrampolineEntryProbeResult, prootHelloResult)}" +
@@ -888,6 +955,9 @@ class MainActivity : Activity() {
             resultBlock("proot apt-get --version", prootAptGetVersionResult) +
             resultBlock("proot apt-cache --version", prootAptCacheVersionResult) +
             resultBlock("proot apt-config --version", prootAptConfigVersionResult) +
+            resultBlock("proot syscall stat benchmark", prootSyscallStatBenchmarkResult) +
+            resultBlock("proot syscall openread benchmark", prootSyscallOpenReadBenchmarkResult) +
+            resultBlock("proot syscall spawn benchmark", prootSyscallSpawnBenchmarkResult) +
             resultBlock("alr dpkg --version", alrDpkgVersionResult) +
             resultBlock("alr dpkg --print-architecture", alrDpkgArchResult) +
             resultBlock("alr dpkg-query --version", alrDpkgQueryVersionResult) +
@@ -895,6 +965,9 @@ class MainActivity : Activity() {
             resultBlock("alr apt-get --version", alrAptGetVersionResult) +
             resultBlock("alr apt-cache --version", alrAptCacheVersionResult) +
             resultBlock("alr apt-config --version", alrAptConfigVersionResult) +
+            resultBlock("alr syscall stat benchmark", alrSyscallStatBenchmarkResult) +
+            resultBlock("alr syscall openread benchmark", alrSyscallOpenReadBenchmarkResult) +
+            resultBlock("alr syscall spawn benchmark", alrSyscallSpawnBenchmarkResult) +
             resultBlock("alr dpkg -i local deb", alrDpkgInstallLocalResult) +
             resultBlock("proot dpkg -i local deb", prootDpkgInstallLocalResult) +
             resultBlock("proot installed package smoke", prootInstalledPackageSmokeResult) +
@@ -1311,6 +1384,80 @@ class MainActivity : Activity() {
                 repeatCount,
             ) == 2
         ) {
+            "PASS"
+        } else {
+            "NEEDS_WORK"
+        }
+    }
+
+    private fun syscallBenchAverageUs(result: NativeCommandResult, alr: Boolean): String {
+        val stdout = if (alr) result.stdout.alrHandoffStdoutText() else result.stdout
+        return stdout.lineStartingWith("alr syscall bench average us=")
+            .removePrefix("alr syscall bench average us=")
+            .toLongOrNull()
+            ?.toString()
+            ?: "unavailable"
+    }
+
+    private fun syscallBenchAverageUsValue(result: NativeCommandResult, alr: Boolean): Long? {
+        val stdout = if (alr) result.stdout.alrHandoffStdoutText() else result.stdout
+        return stdout.lineStartingWith("alr syscall bench average us=")
+            .removePrefix("alr syscall bench average us=")
+            .toLongOrNull()
+    }
+
+    private fun syscallBenchRatioPct(
+        alrBenchmark: NativeCommandResult,
+        prootBenchmark: NativeCommandResult,
+    ): String {
+        val alrAverageUs = syscallBenchAverageUsValue(alrBenchmark, alr = true) ?: return "unavailable"
+        val prootAverageUs = syscallBenchAverageUsValue(prootBenchmark, alr = false) ?: return "unavailable"
+        if (prootAverageUs <= 0) return "unavailable"
+        return ((alrAverageUs * 100) / prootAverageUs).toString()
+    }
+
+    private fun syscallBenchFasterThanProot(
+        alrBenchmark: NativeCommandResult,
+        prootBenchmark: NativeCommandResult,
+    ): Boolean {
+        val alrAverageUs = syscallBenchAverageUsValue(alrBenchmark, alr = true) ?: return false
+        val prootAverageUs = syscallBenchAverageUsValue(prootBenchmark, alr = false) ?: return false
+        return alrBenchmark.exitCode == 0 && prootBenchmark.exitCode == 0 && prootAverageUs > 0 && alrAverageUs < prootAverageUs
+    }
+
+    private fun syscallHotPathFasterCount(
+        statAlr: NativeCommandResult,
+        statProot: NativeCommandResult,
+        openReadAlr: NativeCommandResult,
+        openReadProot: NativeCommandResult,
+        spawnAlr: NativeCommandResult,
+        spawnProot: NativeCommandResult,
+    ): Int =
+        listOf(
+            syscallBenchFasterThanProot(statAlr, statProot),
+            syscallBenchFasterThanProot(openReadAlr, openReadProot),
+            syscallBenchFasterThanProot(spawnAlr, spawnProot),
+        ).count { it }
+
+    private fun syscallHotPathPerfEvidence(
+        statAlr: NativeCommandResult,
+        statProot: NativeCommandResult,
+        openReadAlr: NativeCommandResult,
+        openReadProot: NativeCommandResult,
+        spawnAlr: NativeCommandResult,
+        spawnProot: NativeCommandResult,
+    ): String {
+        if (
+            statAlr.exitCode != 0 ||
+            statProot.exitCode != 0 ||
+            openReadAlr.exitCode != 0 ||
+            openReadProot.exitCode != 0 ||
+            spawnAlr.exitCode != 0 ||
+            spawnProot.exitCode != 0
+        ) {
+            return "INCOMPLETE"
+        }
+        return if (syscallHotPathFasterCount(statAlr, statProot, openReadAlr, openReadProot, spawnAlr, spawnProot) >= 2) {
             "PASS"
         } else {
             "NEEDS_WORK"
