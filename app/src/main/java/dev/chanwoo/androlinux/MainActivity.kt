@@ -22,7 +22,7 @@ class MainActivity : Activity() {
 
         val rootfsManifest = RootfsManifest(
             name = "debian-arm64",
-            version = "bookworm-slim-2026-05-gui-gpu-v67",
+            version = "bookworm-slim-2026-05-gui-gpu-v69",
             assets = listOf(
                 RootfsAsset(
                     path = "rootfs.tar.zst",
@@ -455,7 +455,8 @@ class MainActivity : Activity() {
                 alrShellDpkgArchPreloadResult.stdout.alrHandoffStdoutText().trim() == "arm64"
         val alrInstalledPackagePreloadExecutionPassed =
             alrInstalledPackageSmokePreloadResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
-                alrInstalledPackageSmokePreloadResult.stdout.alrHandoffStdoutText().contains("alr local deb package smoke ok")
+                alrInstalledPackageSmokePreloadResult.stdout.alrHandoffStdoutText().contains("alr local deb package smoke ok") &&
+                alrInstalledPackageSmokePreloadResult.stdout.alrHandoffStdoutText().contains("ALR_SMOKE_ARCH=arm64")
         val guestGpuBridgeCommandPassed = prootGuestGpuClientResult.exitCode == 0 &&
             prootGuestGpuClientResult.stdout.contains("alr guest gpu client ok") &&
             guestGpuCommands.isNotEmpty()
@@ -548,7 +549,7 @@ class MainActivity : Activity() {
             alrGuestX11GuiBridgeResult.error == null
         val hostGpuHardwareCandidate = hostGpuProbe.lineStartingWith("host gpu hardware candidate=") == "host gpu hardware candidate=true"
 
-        val executionSummary = "build: 0.4.68-preload-shell-child-exec" +
+        val executionSummary = "build: 0.4.69-preload-package-child-exec" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +

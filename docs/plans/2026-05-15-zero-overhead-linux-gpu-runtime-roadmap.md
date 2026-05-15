@@ -333,6 +333,28 @@ access check against the rootfs view, allowing `/bin/dash -c "dpkg
 --print-architecture"` to locate `/usr/bin/dpkg`, rewrite the child exec through
 the glibc loader, and complete under ALR/preload.
 
+Latest V69 installed package child exec evidence:
+
+```text
+build: 0.4.69-preload-package-child-exec
+ALR DPKG LOCAL INSTALL PRELOAD EXECUTION: PASS
+ALR SHELL DPKG ARCH PRELOAD EXECUTION: PASS
+ALR INSTALLED PACKAGE PRELOAD EXECUTION: PASS
+alr installed package preload execve attempts=alr handoff execve attempt count=1
+alr installed package preload execve loader rewrites=alr handoff execve loader rewrite count=1
+alr installed package preload traced processes=alr handoff traced process count=3
+alr installed package preload last exec requested=alr handoff last exec requested path=/usr/bin/dpkg
+alr installed package preload stdout=alr local deb package smoke ok\nALR_SMOKE_PACKAGE_SCRIPT=1\nALR_SMOKE_ARCH=arm64
+surface gl renderer=Mali-G615 MC2
+surface gpu hardware render=true
+```
+
+The V69 result proves the installed package entrypoint can now run a nested
+glibc child command through the ALR/preload path. This is closer to real Linux
+desktop app launchers and package-installed wrapper scripts than the earlier
+single-process smoke, because the installed script performs PATH lookup and a
+child `execve` for `/usr/bin/dpkg` before reporting success.
+
 Known issue:
 
 - V35 summary says `GUEST WAYLAND GUI GPU BRIDGE EXECUTION: FAIL` and `GUEST X11 GUI GPU BRIDGE EXECUTION: FAIL` because ACK writing happens after socket input is closed. Frames were received and rendered losslessly; this is a report/ACK lifecycle bug, not a GPU-path failure.

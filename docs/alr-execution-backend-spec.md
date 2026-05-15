@@ -399,6 +399,26 @@ guest `faccessat2` PATH probing: the handoff layer now maps host-rootfs PATH
 entries back to guest paths and answers access checks from rootfs file mode
 metadata instead of Android host access policy.
 
+Current V69 installed package child exec snapshot:
+
+```text
+build: 0.4.69-preload-package-child-exec
+ALR DPKG LOCAL INSTALL PRELOAD EXECUTION: PASS
+ALR SHELL DPKG ARCH PRELOAD EXECUTION: PASS
+ALR INSTALLED PACKAGE PRELOAD EXECUTION: PASS
+alr installed package preload execve attempts=alr handoff execve attempt count=1
+alr installed package preload execve loader rewrites=alr handoff execve loader rewrite count=1
+alr installed package preload traced processes=alr handoff traced process count=3
+alr installed package preload last exec requested=alr handoff last exec requested path=/usr/bin/dpkg
+alr installed package preload stdout=alr local deb package smoke ok\nALR_SMOKE_PACKAGE_SCRIPT=1\nALR_SMOKE_ARCH=arm64
+```
+
+The v69 snapshot connects the v68 shell child exec support back into an
+installed package entrypoint. A package-installed shell script can now spawn a
+glibc child program through PATH lookup, have ALR rewrite that child `execve`
+through the glibc loader, and return the child result through the script while
+still running inside the non-root Android app sandbox.
+
 ### ALR Exec v3: Identity and Procfs
 
 Required behavior:
