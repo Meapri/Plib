@@ -147,6 +147,9 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "surface native gles frames rendered=" in text
     assert "surface native gles average frame render us=" in text
     assert "surface gles shim vs native average ratio pct=" in text
+    assert "ANDROID HOST VULKAN SURFACE EXECUTION:" in text
+    assert "surface vulkan present=ok" in text
+    assert "surface vulkan hardware render=true" in text
     assert "runProotRootfsGuestGlesShimBenchmark" in runner
     assert "runAlrRuntimeTrampolineGuestGlesShimBenchmark" in runner
     assert "runProotRootfsGuestGlesShimDrawBenchmark" in runner
@@ -264,6 +267,8 @@ def test_guest_vulkan_discovery_client_is_source_built_ipc_probe():
     assert "vkCreateInstance" in native_report
     assert "vkEnumeratePhysicalDevices" in native_report
     assert "vkGetPhysicalDeviceFeatures" in native_report
+    assert "vkCreateAndroidSurfaceKHR" in native_report
+    assert "vkQueuePresentKHR" in native_report
     assert "vkCreateDevice" in native_report
     assert "host vulkan feature robust buffer access=" in native_report
 

@@ -576,6 +576,12 @@ guest gles draw via android surface=true
 
 ```text
 ANDROID HOST VULKAN SURFACE EXECUTION: PASS
+surface vulkan device=Mali-G615 MC2
+surface vulkan present mode=mailbox
+surface vulkan swapchain image count=7
+surface vulkan clear command=ok color=0.12,0.64,0.92,1.0
+surface vulkan present=ok
+surface vulkan hardware render=true
 GUEST VULKAN ICD SMOKE EXECUTION: PASS
 GUEST VULKAN CLEAR PRESENT EXECUTION: PASS
 ```

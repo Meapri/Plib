@@ -1123,10 +1123,12 @@ surface gpu hardware render=true
 surface gles shim vs native average ratio pct=100
 ```
 
-Latest V78 Vulkan device-record bridge evidence:
+Latest V79 Android Vulkan Surface clear evidence:
 
 ```text
-build: 0.4.78-vulkan-device-records
+build: 0.4.79-vulkan-surface-clear
+versionCode=79
+versionName=0.4.79-vulkan-surface-clear
 HOST VULKAN DISCOVERY EXECUTION: PASS
 ALR INSTALLED PACKAGE VULKAN DISCOVERY EXECUTION: PASS
 rootfs installed alr vulkan discovery client exists=true executable=true bytes=6952
@@ -1142,12 +1144,23 @@ host vulkan hardware candidate=host vulkan hardware candidate=true
 installed package compatibility table=script:PASS,gpu-clear-ipc:PASS,gles-demo:PASS,gles-tcp-ack:PASS,gles-procaddr:PASS,wayland:PASS,x11:PASS,vulkan-discovery:PASS
 surface gl renderer=Mali-G615 MC2
 surface gpu hardware render=true
-surface gles shim vs native average ratio pct=99
+surface gles shim vs native average ratio pct=100
+ANDROID HOST VULKAN SURFACE EXECUTION: PASS
+surface vulkan device=Mali-G615 MC2
+surface vulkan api version=1.3.247
+surface vulkan graphics present queue=0
+surface vulkan present mode=mailbox
+surface vulkan swapchain image count=7
+surface vulkan clear command=ok color=0.12,0.64,0.92,1.0
+surface vulkan queue submit=ok
+surface vulkan present=ok
+surface vulkan hardware render=true
+surface vulkan render elapsed us=30482
 ```
 
 Next implementation batch:
 
-1. Add a host-side Android Vulkan Surface clear proof, then connect it to the guest discovery client as the first WSI-shaped command.
+1. Connect the guest Vulkan discovery client to the host Vulkan Surface clear path as the first WSI-shaped command.
 2. Replace the text Vulkan record stream with a bounded binary schema once command submission begins.
 3. Split known-fail legacy dpkg/proot diagnostics away from the active ALR summary.
 4. Add a small real toolkit fixture target, likely a tiny GTK/Qt-independent Wayland protocol smoke before pulling in a larger GUI stack.

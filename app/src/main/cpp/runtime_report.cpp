@@ -4,13 +4,16 @@
 
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
+#define VK_USE_PLATFORM_ANDROID_KHR
 #include <vulkan/vulkan.h>
+#include <vulkan/vulkan_android.h>
 
 #include <dlfcn.h>
 
 #include <algorithm>
 #include <cctype>
 #include <chrono>
+#include <cstdint>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -163,6 +166,16 @@ const char* vulkan_device_type_name(VkPhysicalDeviceType type) {
         case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU: return "virtual-gpu";
         case VK_PHYSICAL_DEVICE_TYPE_CPU: return "cpu";
         default: return "other";
+    }
+}
+
+const char* vulkan_present_mode_name(VkPresentModeKHR mode) {
+    switch (mode) {
+        case VK_PRESENT_MODE_IMMEDIATE_KHR: return "immediate";
+        case VK_PRESENT_MODE_MAILBOX_KHR: return "mailbox";
+        case VK_PRESENT_MODE_FIFO_KHR: return "fifo";
+        case VK_PRESENT_MODE_FIFO_RELAXED_KHR: return "fifo-relaxed";
+        default: return "unknown";
     }
 }
 
@@ -634,6 +647,457 @@ std::string render_to_android_surface_frames(JNIEnv* env, jobject surface_obj, c
     return out.str();
 }
 
+std::string render_vulkan_clear_to_android_surface(JNIEnv* env, jobject surface_obj) {
+    const auto render_started = std::chrono::steady_clock::now();
+    std::ostringstream out;
+    out << "host vulkan surface renderer=android-surface-vulkan-swapchain";
+    if (surface_obj == nullptr) {
+        out << "\nsurface vulkan render=fail reason=null-surface";
+        return out.str();
+    }
+
+    ANativeWindow* window = ANativeWindow_fromSurface(env, surface_obj);
+    VkInstance instance = VK_NULL_HANDLE;
+    VkSurfaceKHR surface = VK_NULL_HANDLE;
+    VkDevice device = VK_NULL_HANDLE;
+    VkSwapchainKHR swapchain = VK_NULL_HANDLE;
+    VkCommandPool command_pool = VK_NULL_HANDLE;
+    VkSemaphore image_available = VK_NULL_HANDLE;
+    VkSemaphore render_finished = VK_NULL_HANDLE;
+    VkFence fence = VK_NULL_HANDLE;
+    VkPhysicalDevice physical_device = VK_NULL_HANDLE;
+    VkQueue queue = VK_NULL_HANDLE;
+    VkFormat image_format = VK_FORMAT_UNDEFINED;
+    uint32_t queue_family_index = 0;
+    uint32_t image_index = 0;
+    uint32_t swapchain_image_count = 0;
+    VkExtent2D extent{};
+    VkPresentModeKHR present_mode = VK_PRESENT_MODE_FIFO_KHR;
+    VkResult result = VK_SUCCESS;
+    bool submitted = false;
+    bool presented = false;
+
+    const auto cleanup = [&]() {
+        if (device != VK_NULL_HANDLE) {
+            vkDeviceWaitIdle(device);
+            if (fence != VK_NULL_HANDLE) vkDestroyFence(device, fence, nullptr);
+            if (render_finished != VK_NULL_HANDLE) vkDestroySemaphore(device, render_finished, nullptr);
+            if (image_available != VK_NULL_HANDLE) vkDestroySemaphore(device, image_available, nullptr);
+            if (command_pool != VK_NULL_HANDLE) vkDestroyCommandPool(device, command_pool, nullptr);
+            if (swapchain != VK_NULL_HANDLE) vkDestroySwapchainKHR(device, swapchain, nullptr);
+            vkDestroyDevice(device, nullptr);
+        }
+        if (surface != VK_NULL_HANDLE) vkDestroySurfaceKHR(instance, surface, nullptr);
+        if (instance != VK_NULL_HANDLE) vkDestroyInstance(instance, nullptr);
+        if (window != nullptr) ANativeWindow_release(window);
+    };
+
+    if (window == nullptr) {
+        out << "\nsurface vulkan render=fail reason=ANativeWindow_fromSurface";
+        return out.str();
+    }
+    out << "\nsurface vulkan window=ok width=" << ANativeWindow_getWidth(window)
+        << " height=" << ANativeWindow_getHeight(window);
+
+    VkApplicationInfo app_info{};
+    app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+    app_info.pApplicationName = "PlibVulkanSurfaceClear";
+    app_info.applicationVersion = VK_MAKE_VERSION(0, 4, 79);
+    app_info.pEngineName = "Plib";
+    app_info.engineVersion = VK_MAKE_VERSION(0, 4, 79);
+    app_info.apiVersion = VK_API_VERSION_1_0;
+
+    const char* instance_extensions[] = {
+        VK_KHR_SURFACE_EXTENSION_NAME,
+        VK_KHR_ANDROID_SURFACE_EXTENSION_NAME,
+    };
+    VkInstanceCreateInfo instance_info{};
+    instance_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    instance_info.pApplicationInfo = &app_info;
+    instance_info.enabledExtensionCount = 2;
+    instance_info.ppEnabledExtensionNames = instance_extensions;
+    result = vkCreateInstance(&instance_info, nullptr, &instance);
+    if (result != VK_SUCCESS) {
+        out << "\nsurface vulkan create instance=fail result=" << vulkan_result_name(result);
+        cleanup();
+        return out.str();
+    }
+    out << "\nsurface vulkan create instance=ok";
+
+    VkAndroidSurfaceCreateInfoKHR surface_info{};
+    surface_info.sType = VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR;
+    surface_info.window = window;
+    result = vkCreateAndroidSurfaceKHR(instance, &surface_info, nullptr, &surface);
+    if (result != VK_SUCCESS) {
+        out << "\nsurface vulkan create android surface=fail result=" << vulkan_result_name(result);
+        cleanup();
+        return out.str();
+    }
+    out << "\nsurface vulkan create android surface=ok";
+
+    uint32_t physical_device_count = 0;
+    result = vkEnumeratePhysicalDevices(instance, &physical_device_count, nullptr);
+    if (result != VK_SUCCESS || physical_device_count == 0) {
+        out << "\nsurface vulkan physical device count=" << physical_device_count;
+        out << "\nsurface vulkan enumerate physical devices=" << (result == VK_SUCCESS ? "ok-empty" : vulkan_result_name(result));
+        cleanup();
+        return out.str();
+    }
+    std::vector<VkPhysicalDevice> devices(physical_device_count);
+    result = vkEnumeratePhysicalDevices(instance, &physical_device_count, devices.data());
+    if (result != VK_SUCCESS) {
+        out << "\nsurface vulkan enumerate physical devices=fail result=" << vulkan_result_name(result);
+        cleanup();
+        return out.str();
+    }
+    out << "\nsurface vulkan physical device count=" << physical_device_count;
+
+    int selected_queue_family = -1;
+    VkPhysicalDeviceProperties properties{};
+    for (VkPhysicalDevice candidate : devices) {
+        uint32_t queue_family_count = 0;
+        vkGetPhysicalDeviceQueueFamilyProperties(candidate, &queue_family_count, nullptr);
+        std::vector<VkQueueFamilyProperties> queue_families(queue_family_count);
+        vkGetPhysicalDeviceQueueFamilyProperties(candidate, &queue_family_count, queue_families.data());
+        for (uint32_t index = 0; index < queue_family_count; ++index) {
+            VkBool32 supported = VK_FALSE;
+            vkGetPhysicalDeviceSurfaceSupportKHR(candidate, index, surface, &supported);
+            if ((queue_families[index].queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0 && supported == VK_TRUE) {
+                physical_device = candidate;
+                selected_queue_family = static_cast<int>(index);
+                break;
+            }
+        }
+        if (physical_device != VK_NULL_HANDLE) break;
+    }
+    if (physical_device == VK_NULL_HANDLE || selected_queue_family < 0) {
+        out << "\nsurface vulkan graphics present queue=fail";
+        cleanup();
+        return out.str();
+    }
+    queue_family_index = static_cast<uint32_t>(selected_queue_family);
+    vkGetPhysicalDeviceProperties(physical_device, &properties);
+    out << "\nsurface vulkan device=" << properties.deviceName;
+    out << "\nsurface vulkan api version=" << vulkan_api_version_string(properties.apiVersion);
+    out << "\nsurface vulkan device type=" << vulkan_device_type_name(properties.deviceType);
+    out << "\nsurface vulkan graphics present queue=" << queue_family_index;
+
+    uint32_t device_extension_count = 0;
+    vkEnumerateDeviceExtensionProperties(physical_device, nullptr, &device_extension_count, nullptr);
+    std::vector<VkExtensionProperties> device_extensions(device_extension_count);
+    vkEnumerateDeviceExtensionProperties(physical_device, nullptr, &device_extension_count, device_extensions.data());
+    bool has_swapchain_extension = false;
+    for (const auto& extension : device_extensions) {
+        if (std::string(extension.extensionName) == VK_KHR_SWAPCHAIN_EXTENSION_NAME) {
+            has_swapchain_extension = true;
+            break;
+        }
+    }
+    if (!has_swapchain_extension) {
+        out << "\nsurface vulkan swapchain extension=missing";
+        cleanup();
+        return out.str();
+    }
+    out << "\nsurface vulkan swapchain extension=ok";
+
+    const float queue_priority = 1.0F;
+    VkDeviceQueueCreateInfo queue_info{};
+    queue_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    queue_info.queueFamilyIndex = queue_family_index;
+    queue_info.queueCount = 1;
+    queue_info.pQueuePriorities = &queue_priority;
+    const char* device_extensions_required[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+    VkDeviceCreateInfo device_info{};
+    device_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    device_info.queueCreateInfoCount = 1;
+    device_info.pQueueCreateInfos = &queue_info;
+    device_info.enabledExtensionCount = 1;
+    device_info.ppEnabledExtensionNames = device_extensions_required;
+    result = vkCreateDevice(physical_device, &device_info, nullptr, &device);
+    if (result != VK_SUCCESS) {
+        out << "\nsurface vulkan create device=fail result=" << vulkan_result_name(result);
+        cleanup();
+        return out.str();
+    }
+    out << "\nsurface vulkan create device=ok";
+    vkGetDeviceQueue(device, queue_family_index, 0, &queue);
+
+    VkSurfaceCapabilitiesKHR capabilities{};
+    result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device, surface, &capabilities);
+    if (result != VK_SUCCESS) {
+        out << "\nsurface vulkan capabilities=fail result=" << vulkan_result_name(result);
+        cleanup();
+        return out.str();
+    }
+    out << "\nsurface vulkan supported usage=0x" << std::hex << capabilities.supportedUsageFlags << std::dec;
+    if ((capabilities.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_DST_BIT) == 0) {
+        out << "\nsurface vulkan transfer dst support=false";
+        cleanup();
+        return out.str();
+    }
+    out << "\nsurface vulkan transfer dst support=true";
+
+    uint32_t format_count = 0;
+    vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, nullptr);
+    std::vector<VkSurfaceFormatKHR> formats(format_count);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, formats.data());
+    if (formats.empty()) {
+        out << "\nsurface vulkan formats=fail count=0";
+        cleanup();
+        return out.str();
+    }
+    VkSurfaceFormatKHR chosen_format = formats[0];
+    if (formats.size() == 1 && formats[0].format == VK_FORMAT_UNDEFINED) {
+        chosen_format.format = VK_FORMAT_R8G8B8A8_UNORM;
+        chosen_format.colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+    }
+    image_format = chosen_format.format;
+    out << "\nsurface vulkan format=" << image_format;
+
+    uint32_t present_mode_count = 0;
+    vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &present_mode_count, nullptr);
+    std::vector<VkPresentModeKHR> present_modes(present_mode_count);
+    vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &present_mode_count, present_modes.data());
+    for (VkPresentModeKHR mode : present_modes) {
+        if (mode == VK_PRESENT_MODE_MAILBOX_KHR) {
+            present_mode = mode;
+            break;
+        }
+    }
+    out << "\nsurface vulkan present mode=" << vulkan_present_mode_name(present_mode);
+
+    if (capabilities.currentExtent.width != UINT32_MAX) {
+        extent = capabilities.currentExtent;
+    } else {
+        extent.width = static_cast<uint32_t>(std::max(1, ANativeWindow_getWidth(window)));
+        extent.height = static_cast<uint32_t>(std::max(1, ANativeWindow_getHeight(window)));
+        extent.width = std::max(capabilities.minImageExtent.width, std::min(capabilities.maxImageExtent.width, extent.width));
+        extent.height = std::max(capabilities.minImageExtent.height, std::min(capabilities.maxImageExtent.height, extent.height));
+    }
+    out << "\nsurface vulkan extent=" << extent.width << "x" << extent.height;
+
+    uint32_t min_image_count = capabilities.minImageCount + 1;
+    if (capabilities.maxImageCount > 0 && min_image_count > capabilities.maxImageCount) {
+        min_image_count = capabilities.maxImageCount;
+    }
+    VkSwapchainCreateInfoKHR swapchain_info{};
+    swapchain_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+    swapchain_info.surface = surface;
+    swapchain_info.minImageCount = min_image_count;
+    swapchain_info.imageFormat = image_format;
+    swapchain_info.imageColorSpace = chosen_format.colorSpace;
+    swapchain_info.imageExtent = extent;
+    swapchain_info.imageArrayLayers = 1;
+    swapchain_info.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    swapchain_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    swapchain_info.preTransform = capabilities.currentTransform;
+    swapchain_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    swapchain_info.presentMode = present_mode;
+    swapchain_info.clipped = VK_TRUE;
+    result = vkCreateSwapchainKHR(device, &swapchain_info, nullptr, &swapchain);
+    if (result != VK_SUCCESS) {
+        out << "\nsurface vulkan create swapchain=fail result=" << vulkan_result_name(result);
+        cleanup();
+        return out.str();
+    }
+    out << "\nsurface vulkan create swapchain=ok";
+
+    result = vkGetSwapchainImagesKHR(device, swapchain, &swapchain_image_count, nullptr);
+    if (result != VK_SUCCESS || swapchain_image_count == 0) {
+        out << "\nsurface vulkan swapchain image count=" << swapchain_image_count;
+        out << "\nsurface vulkan get swapchain images=" << (result == VK_SUCCESS ? "ok-empty" : vulkan_result_name(result));
+        cleanup();
+        return out.str();
+    }
+    std::vector<VkImage> images(swapchain_image_count);
+    result = vkGetSwapchainImagesKHR(device, swapchain, &swapchain_image_count, images.data());
+    if (result != VK_SUCCESS) {
+        out << "\nsurface vulkan get swapchain images=fail result=" << vulkan_result_name(result);
+        cleanup();
+        return out.str();
+    }
+    out << "\nsurface vulkan swapchain image count=" << swapchain_image_count;
+
+    VkCommandPoolCreateInfo pool_info{};
+    pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    pool_info.queueFamilyIndex = queue_family_index;
+    pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    result = vkCreateCommandPool(device, &pool_info, nullptr, &command_pool);
+    if (result != VK_SUCCESS) {
+        out << "\nsurface vulkan create command pool=fail result=" << vulkan_result_name(result);
+        cleanup();
+        return out.str();
+    }
+
+    VkCommandBuffer command_buffer = VK_NULL_HANDLE;
+    VkCommandBufferAllocateInfo command_buffer_info{};
+    command_buffer_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    command_buffer_info.commandPool = command_pool;
+    command_buffer_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    command_buffer_info.commandBufferCount = 1;
+    result = vkAllocateCommandBuffers(device, &command_buffer_info, &command_buffer);
+    if (result != VK_SUCCESS) {
+        out << "\nsurface vulkan allocate command buffer=fail result=" << vulkan_result_name(result);
+        cleanup();
+        return out.str();
+    }
+
+    VkSemaphoreCreateInfo semaphore_info{};
+    semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    result = vkCreateSemaphore(device, &semaphore_info, nullptr, &image_available);
+    if (result != VK_SUCCESS) {
+        out << "\nsurface vulkan create image semaphore=fail result=" << vulkan_result_name(result);
+        cleanup();
+        return out.str();
+    }
+    result = vkCreateSemaphore(device, &semaphore_info, nullptr, &render_finished);
+    if (result != VK_SUCCESS) {
+        out << "\nsurface vulkan create render semaphore=fail result=" << vulkan_result_name(result);
+        cleanup();
+        return out.str();
+    }
+    VkFenceCreateInfo fence_info{};
+    fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    result = vkCreateFence(device, &fence_info, nullptr, &fence);
+    if (result != VK_SUCCESS) {
+        out << "\nsurface vulkan create fence=fail result=" << vulkan_result_name(result);
+        cleanup();
+        return out.str();
+    }
+
+    result = vkAcquireNextImageKHR(device, swapchain, 1000000000ULL, image_available, VK_NULL_HANDLE, &image_index);
+    if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+        out << "\nsurface vulkan acquire image=fail result=" << vulkan_result_name(result);
+        cleanup();
+        return out.str();
+    }
+    out << "\nsurface vulkan acquire image=ok index=" << image_index;
+
+    VkCommandBufferBeginInfo begin_info{};
+    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    result = vkBeginCommandBuffer(command_buffer, &begin_info);
+    if (result != VK_SUCCESS) {
+        out << "\nsurface vulkan begin command buffer=fail result=" << vulkan_result_name(result);
+        cleanup();
+        return out.str();
+    }
+
+    VkImageMemoryBarrier to_transfer{};
+    to_transfer.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    to_transfer.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    to_transfer.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    to_transfer.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    to_transfer.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    to_transfer.image = images[image_index];
+    to_transfer.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    to_transfer.subresourceRange.levelCount = 1;
+    to_transfer.subresourceRange.layerCount = 1;
+    to_transfer.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    vkCmdPipelineBarrier(
+        command_buffer,
+        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        0,
+        0,
+        nullptr,
+        0,
+        nullptr,
+        1,
+        &to_transfer
+    );
+
+    const VkClearColorValue clear_color{{0.12F, 0.64F, 0.92F, 1.0F}};
+    VkImageSubresourceRange clear_range{};
+    clear_range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    clear_range.levelCount = 1;
+    clear_range.layerCount = 1;
+    vkCmdClearColorImage(command_buffer, images[image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clear_color, 1, &clear_range);
+
+    VkImageMemoryBarrier to_present{};
+    to_present.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    to_present.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    to_present.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    to_present.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    to_present.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    to_present.image = images[image_index];
+    to_present.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    to_present.subresourceRange.levelCount = 1;
+    to_present.subresourceRange.layerCount = 1;
+    to_present.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    vkCmdPipelineBarrier(
+        command_buffer,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+        0,
+        0,
+        nullptr,
+        0,
+        nullptr,
+        1,
+        &to_present
+    );
+    result = vkEndCommandBuffer(command_buffer);
+    if (result != VK_SUCCESS) {
+        out << "\nsurface vulkan end command buffer=fail result=" << vulkan_result_name(result);
+        cleanup();
+        return out.str();
+    }
+    out << "\nsurface vulkan clear command=ok color=0.12,0.64,0.92,1.0";
+
+    const VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    VkSubmitInfo submit_info{};
+    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submit_info.waitSemaphoreCount = 1;
+    submit_info.pWaitSemaphores = &image_available;
+    submit_info.pWaitDstStageMask = &wait_stage;
+    submit_info.commandBufferCount = 1;
+    submit_info.pCommandBuffers = &command_buffer;
+    submit_info.signalSemaphoreCount = 1;
+    submit_info.pSignalSemaphores = &render_finished;
+    result = vkQueueSubmit(queue, 1, &submit_info, fence);
+    if (result != VK_SUCCESS) {
+        out << "\nsurface vulkan queue submit=fail result=" << vulkan_result_name(result);
+        cleanup();
+        return out.str();
+    }
+    submitted = true;
+    result = vkWaitForFences(device, 1, &fence, VK_TRUE, 1000000000ULL);
+    if (result != VK_SUCCESS) {
+        out << "\nsurface vulkan wait fence=fail result=" << vulkan_result_name(result);
+        cleanup();
+        return out.str();
+    }
+    out << "\nsurface vulkan queue submit=ok";
+
+    VkPresentInfoKHR present_info{};
+    present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    present_info.waitSemaphoreCount = 1;
+    present_info.pWaitSemaphores = &render_finished;
+    present_info.swapchainCount = 1;
+    present_info.pSwapchains = &swapchain;
+    present_info.pImageIndices = &image_index;
+    result = vkQueuePresentKHR(queue, &present_info);
+    if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+        out << "\nsurface vulkan present=fail result=" << vulkan_result_name(result);
+        cleanup();
+        return out.str();
+    }
+    presented = true;
+    vkQueueWaitIdle(queue);
+    const bool hardware = properties.deviceType != VK_PHYSICAL_DEVICE_TYPE_CPU;
+    const auto render_elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now() - render_started
+    ).count();
+    out << "\nsurface vulkan present=ok";
+    out << "\nsurface vulkan hardware render=" << (hardware && submitted && presented ? "true" : "false");
+    out << "\nsurface vulkan frames rendered=" << (presented ? 1 : 0);
+    out << "\nsurface vulkan render elapsed us=" << render_elapsed_us;
+    out << "\nandroid host vulkan surface execution=" << (hardware && submitted && presented ? "PASS" : "FAIL");
+
+    cleanup();
+    return out.str();
+}
+
 void append_dlopen_probe(std::ostringstream& out, const std::string& path, const std::string& label) {
     dlerror();
     void* handle = dlopen(path.c_str(), RTLD_NOW | RTLD_LOCAL);
@@ -769,5 +1233,14 @@ Java_dev_chanwoo_androlinux_MainActivity_nativeRenderGpuSurfaceFrames(
     jobject surface,
     jstring encoded_frames) {
     const auto report = render_to_android_surface_frames(env, surface, jstring_to_string(env, encoded_frames));
+    return env->NewStringUTF(report.c_str());
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_dev_chanwoo_androlinux_MainActivity_nativeRenderVulkanSurfaceClear(
+    JNIEnv* env,
+    jobject /* thiz */,
+    jobject surface) {
+    const auto report = render_vulkan_clear_to_android_surface(env, surface);
     return env->NewStringUTF(report.c_str());
 }

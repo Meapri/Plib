@@ -926,6 +926,34 @@ probe unless the host returns both `ALR_VK_DEVICE_RECORD` and
 than a Vulkan command stream, but it gives the future ICD/proxy path concrete
 device, queue, feature, and limit fields to negotiate against.
 
+Current V79 Android Vulkan Surface clear snapshot:
+
+```text
+build: 0.4.79-vulkan-surface-clear
+versionCode=79
+versionName=0.4.79-vulkan-surface-clear
+ANDROID HOST VULKAN SURFACE EXECUTION: PASS
+surface vulkan device=Mali-G615 MC2
+surface vulkan api version=1.3.247
+surface vulkan graphics present queue=0
+surface vulkan present mode=mailbox
+surface vulkan swapchain image count=7
+surface vulkan clear command=ok color=0.12,0.64,0.92,1.0
+surface vulkan queue submit=ok
+surface vulkan present=ok
+surface vulkan hardware render=true
+surface vulkan render elapsed us=30482
+surface gl renderer=Mali-G615 MC2
+surface gles shim vs native average ratio pct=100
+```
+
+V79 adds the first Android-native Vulkan WSI proof. The APK process creates an
+Android `VkSurfaceKHR` from the live `SurfaceView`, creates a swapchain, clears
+one acquired image through a Vulkan command buffer, submits it to a graphics
+present queue, and presents it. This is still host-side proof rather than guest
+Vulkan command forwarding, but it confirms that the same Android surface used
+by the GLES bridge can be driven by Vulkan without a software renderer.
+
 Report:
 
 ```text

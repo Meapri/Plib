@@ -19,6 +19,19 @@ def test_native_surface_renderer_links_android_window_and_egl():
     assert "SwiftShader".lower() in text.lower()
 
 
+def test_native_vulkan_surface_renderer_builds_android_swapchain_clear_path():
+    text = CPP.read_text()
+    assert "#define VK_USE_PLATFORM_ANDROID_KHR" in text
+    assert "#include <vulkan/vulkan_android.h>" in text
+    assert "vkCreateAndroidSurfaceKHR" in text
+    assert "VK_KHR_SWAPCHAIN_EXTENSION_NAME" in text
+    assert "vkCreateSwapchainKHR" in text
+    assert "vkAcquireNextImageKHR" in text
+    assert "vkCmdClearColorImage" in text
+    assert "vkQueuePresentKHR" in text
+    assert "android host vulkan surface execution=" in text
+
+
 def test_main_activity_owns_surface_view_and_appends_native_surface_report():
     text = MAIN.read_text()
     assert "SurfaceView" in text
@@ -44,3 +57,8 @@ def test_main_activity_owns_surface_view_and_appends_native_surface_report():
     assert 'surfaceReport.lineStartingWith("guest gles hardware render=")' in text
     assert 'surfaceReport.lineStartingWith("guest gles draw via android surface=")' in text
     assert "Linux guest Wayland/X11 GUI GPU surface renderer" in text
+    assert "nativeRenderVulkanSurfaceClear" in text
+    assert "ANDROID HOST VULKAN SURFACE EXECUTION:" in text
+    assert 'vulkanSurfaceReport.lineStartingWith("surface vulkan present=")' in text
+    assert 'vulkanSurfaceReport.lineStartingWith("surface vulkan hardware render=")' in text
+    assert "Android host Vulkan Surface clear renderer" in text

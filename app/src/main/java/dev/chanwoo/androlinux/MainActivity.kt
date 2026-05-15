@@ -649,7 +649,7 @@ class MainActivity : Activity() {
                 "x11:${if (alrInstalledPackageX11GuiBridgePassed) "PASS" else "FAIL"}," +
                 "vulkan-discovery:${if (alrInstalledPackageVulkanDiscoveryPassed) "PASS" else "FAIL"}"
 
-        val executionSummary = "build: 0.4.78-vulkan-device-records" +
+        val executionSummary = "build: 0.4.79-vulkan-surface-clear" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -1396,6 +1396,7 @@ class MainActivity : Activity() {
                 override fun surfaceCreated(holder: SurfaceHolder) {
                     val encodedFrames = encodeSurfaceFrames(surfaceGpuCommands)
                     val surfaceReport = nativeRenderGpuSurfaceFrames(holder.surface, encodedFrames)
+                    val vulkanSurfaceReport = nativeRenderVulkanSurfaceClear(holder.surface)
                     val executionUpdate = surfaceExecutionUpdate(
                         surfaceReport,
                         guestGlesShimInitPassed,
@@ -1404,8 +1405,15 @@ class MainActivity : Activity() {
                         guestGlesShimSwapPassed,
                         guestGlesShimDrawApiPassed,
                     )
-                    surfaceStatusView.text = "Linux guest GPU Surface renderer callback complete\n$executionUpdate"
-                    view.append("\n\n--- Linux guest Wayland/X11 GUI GPU surface renderer ---\n$executionUpdate\n$surfaceReport")
+                    val vulkanExecutionUpdate = vulkanSurfaceExecutionUpdate(vulkanSurfaceReport)
+                    surfaceStatusView.text =
+                        "Linux guest GPU Surface renderer callback complete\n$executionUpdate\n$vulkanExecutionUpdate"
+                    view.append(
+                        "\n\n--- Linux guest Wayland/X11 GUI GPU surface renderer ---\n" +
+                            "$executionUpdate\n$surfaceReport" +
+                            "\n\n--- Android host Vulkan Surface clear renderer ---\n" +
+                            "$vulkanExecutionUpdate\n$vulkanSurfaceReport",
+                    )
                 }
 
                 override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) = Unit
@@ -2247,6 +2255,25 @@ class MainActivity : Activity() {
             "\n${surfaceReport.lineStartingWith("surface x11 frames rendered=")}"
     }
 
+    private fun vulkanSurfaceExecutionUpdate(vulkanSurfaceReport: String): String {
+        val passed =
+            vulkanSurfaceReport.lineStartingWith("surface vulkan present=") == "surface vulkan present=ok" &&
+                vulkanSurfaceReport.lineStartingWith("surface vulkan hardware render=") == "surface vulkan hardware render=true" &&
+                vulkanSurfaceReport.lineStartingWith("android host vulkan surface execution=") ==
+                "android host vulkan surface execution=PASS"
+        return "ANDROID HOST VULKAN SURFACE EXECUTION: ${if (passed) "PASS" else "FAIL"}" +
+            "\n${vulkanSurfaceReport.lineStartingWith("surface vulkan device=")}" +
+            "\n${vulkanSurfaceReport.lineStartingWith("surface vulkan api version=")}" +
+            "\n${vulkanSurfaceReport.lineStartingWith("surface vulkan graphics present queue=")}" +
+            "\n${vulkanSurfaceReport.lineStartingWith("surface vulkan present mode=")}" +
+            "\n${vulkanSurfaceReport.lineStartingWith("surface vulkan swapchain image count=")}" +
+            "\n${vulkanSurfaceReport.lineStartingWith("surface vulkan clear command=")}" +
+            "\n${vulkanSurfaceReport.lineStartingWith("surface vulkan queue submit=")}" +
+            "\n${vulkanSurfaceReport.lineStartingWith("surface vulkan present=")}" +
+            "\n${vulkanSurfaceReport.lineStartingWith("surface vulkan hardware render=")}" +
+            "\n${vulkanSurfaceReport.lineStartingWith("surface vulkan render elapsed us=")}"
+    }
+
     private fun String.lineStartingWith(prefix: String): String =
         lineSequence().firstOrNull { it.startsWith(prefix) } ?: "missing"
 
@@ -2290,4 +2317,6 @@ class MainActivity : Activity() {
         surface: android.view.Surface,
         encodedFrames: String,
     ): String
+
+    private external fun nativeRenderVulkanSurfaceClear(surface: android.view.Surface): String
 }
