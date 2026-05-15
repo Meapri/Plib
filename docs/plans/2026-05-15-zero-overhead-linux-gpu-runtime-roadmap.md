@@ -1123,9 +1123,28 @@ surface gpu hardware render=true
 surface gles shim vs native average ratio pct=100
 ```
 
+Latest V77 installed-package Vulkan discovery evidence:
+
+```text
+build: 0.4.77-installed-vulkan-discovery
+HOST VULKAN DISCOVERY EXECUTION: PASS
+ALR INSTALLED PACKAGE VULKAN DISCOVERY EXECUTION: PASS
+rootfs installed alr vulkan discovery client exists=true executable=true bytes=6312
+alr installed package vulkan discovery raw=ALR_VK_DISCOVERY_HELLO version=1 request=instance-device
+alr installed package vulkan discovery ack=ALR_VK_DISCOVERY_ACK status=PASS physical_devices=1 hardware=true device=Mali-G615_MC2
+alr installed package vulkan discovery handoff=ALR STATIC ENTRY HANDOFF: PASS
+alr installed package vulkan discovery stdout=alr guest vulkan discovery client ok
+host vulkan device=host vulkan device=Mali-G615 MC2
+host vulkan hardware candidate=host vulkan hardware candidate=true
+installed package compatibility table=script:PASS,gpu-clear-ipc:PASS,gles-demo:PASS,gles-tcp-ack:PASS,gles-procaddr:PASS,wayland:PASS,x11:PASS,vulkan-discovery:PASS
+surface gl renderer=Mali-G615 MC2
+surface gpu hardware render=true
+surface gles shim vs native average ratio pct=99
+```
+
 Next implementation batch:
 
-1. Add per-frame ACK timing extraction on the Android side, not only guest-side RTT.
-2. Split known-fail legacy dpkg/proot diagnostics away from the active ALR summary.
-3. Start a minimal installed Vulkan/WSI discovery probe once GLES and GUI installed-package coverage stays stable.
+1. Add Vulkan bridge request/response schema beyond discovery: instance info, physical device properties, queue family, and feature bits as structured records.
+2. Add a host-side Android Vulkan Surface clear proof, then connect it to the guest discovery client as the first WSI-shaped command.
+3. Split known-fail legacy dpkg/proot diagnostics away from the active ALR summary.
 4. Add a small real toolkit fixture target, likely a tiny GTK/Qt-independent Wayland protocol smoke before pulling in a larger GUI stack.

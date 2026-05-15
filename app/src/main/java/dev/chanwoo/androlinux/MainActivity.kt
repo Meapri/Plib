@@ -22,7 +22,7 @@ class MainActivity : Activity() {
 
         val rootfsManifest = RootfsManifest(
             name = "debian-arm64",
-            version = "bookworm-slim-2026-05-gui-gpu-v76",
+            version = "bookworm-slim-2026-05-gui-gpu-v77",
             assets = listOf(
                 RootfsAsset(
                     path = "rootfs.tar.zst",
@@ -230,6 +230,7 @@ class MainActivity : Activity() {
         val alrGuestX11GuiBridgeResult = runGuestGuiBridge(nativeCommandRunner, rootfsStatus.rootfsDir, "X11", useAlr = true)
         val alrInstalledPackageWaylandGuiBridgeResult = runGuestGuiBridge(nativeCommandRunner, rootfsStatus.rootfsDir, "WAYLAND", useInstalledPackage = true)
         val alrInstalledPackageX11GuiBridgeResult = runGuestGuiBridge(nativeCommandRunner, rootfsStatus.rootfsDir, "X11", useInstalledPackage = true)
+        val alrInstalledPackageVulkanDiscoveryBridgeResult = runInstalledPackageVulkanDiscoveryBridge(nativeCommandRunner, rootfsStatus.rootfsDir)
         val nativeGlesBaselineCommands = buildNativeGlesBaselineCommands(glesShimBenchmarkFrameCount)
         val guestGuiSurfaceCommands = alrInstalledPackageWaylandGuiBridgeResult.commands + alrInstalledPackageX11GuiBridgeResult.commands +
             alrGuestWaylandGuiBridgeResult.commands + alrGuestX11GuiBridgeResult.commands +
@@ -260,6 +261,7 @@ class MainActivity : Activity() {
         }
         val nativeProbe = nativeLibraryProbe(applicationInfo.nativeLibraryDir)
         val hostGpuProbe = nativeHostGpuProbe()
+        val hostVulkanProbe = alrInstalledPackageVulkanDiscoveryBridgeResult.hostProbe
         val requestedPermissions = requestedPermissionNames()
         val internetPermissionDeclared = Manifest.permission.INTERNET in requestedPermissions
         val networkStatePermissionDeclared = Manifest.permission.ACCESS_NETWORK_STATE in requestedPermissions
@@ -306,6 +308,7 @@ class MainActivity : Activity() {
         val rootfsInstalledGlesProcaddrDemoFile = File(rootfsStatus.rootfsDir, "usr/local/bin/alr-package-gles-procaddr-demo")
         val rootfsInstalledWaylandGuiClientFile = File(rootfsStatus.rootfsDir, "usr/local/bin/alr-package-wayland-gpu-client")
         val rootfsInstalledX11GuiClientFile = File(rootfsStatus.rootfsDir, "usr/local/bin/alr-package-x11-gpu-client")
+        val rootfsInstalledVulkanDiscoveryClientFile = File(rootfsStatus.rootfsDir, "usr/local/bin/alr-package-vulkan-discovery-client")
         val rootfsDpkgStatusFile = File(rootfsStatus.rootfsDir, "var/lib/dpkg/status")
         val rootfsDevNullFile = File(rootfsStatus.rootfsDir, "dev/null")
         val rootfsDpkgTriggersFile = File(rootfsStatus.rootfsDir, "var/lib/dpkg/triggers/File")
@@ -617,6 +620,18 @@ class MainActivity : Activity() {
                 alrInstalledPackageX11GuiBridgeResult.expectedFrames > 0 &&
                 alrInstalledPackageX11GuiBridgeResult.error == null
         val hostGpuHardwareCandidate = hostGpuProbe.lineStartingWith("host gpu hardware candidate=") == "host gpu hardware candidate=true"
+        val hostVulkanHardwareCandidate = hostVulkanProbe.lineStartingWith("host vulkan hardware candidate=") == "host vulkan hardware candidate=true"
+        val hostVulkanDiscoveryPassed = hostVulkanHardwareCandidate &&
+            hostVulkanProbe.lineStartingWith("vulkan create device=") == "vulkan create device=ok"
+        val alrInstalledPackageVulkanDiscoveryPassed =
+            alrInstalledPackageVulkanDiscoveryBridgeResult.clientResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+                rootfsInstalledVulkanDiscoveryClientFile.isFile &&
+                rootfsInstalledVulkanDiscoveryClientFile.canExecute() &&
+                alrInstalledPackageVulkanDiscoveryBridgeResult.rawLines.any { it.startsWith("ALR_VK_DISCOVERY_HELLO ") } &&
+                alrInstalledPackageVulkanDiscoveryBridgeResult.ackLine.startsWith("ALR_VK_DISCOVERY_ACK status=PASS") &&
+                alrInstalledPackageVulkanDiscoveryBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("ALR_VK_DISCOVERY_ACK status=PASS") &&
+                alrInstalledPackageVulkanDiscoveryBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("ALR_VK_DISCOVERY_DONE ok") &&
+                alrInstalledPackageVulkanDiscoveryBridgeResult.error == null
 
         val installedPackageCompatibilityTable =
             "script:${if (alrInstalledPackagePreloadExecutionPassed) "PASS" else "FAIL"}," +
@@ -625,9 +640,10 @@ class MainActivity : Activity() {
                 "gles-tcp-ack:${if (alrInstalledPackageGlesIpcBridgePassed) "PASS" else "FAIL"}," +
                 "gles-procaddr:${if (alrInstalledPackageGlesProcaddrDemoPassed) "PASS" else "FAIL"}," +
                 "wayland:${if (alrInstalledPackageWaylandGuiBridgePassed) "PASS" else "FAIL"}," +
-                "x11:${if (alrInstalledPackageX11GuiBridgePassed) "PASS" else "FAIL"}"
+                "x11:${if (alrInstalledPackageX11GuiBridgePassed) "PASS" else "FAIL"}," +
+                "vulkan-discovery:${if (alrInstalledPackageVulkanDiscoveryPassed) "PASS" else "FAIL"}"
 
-        val executionSummary = "build: 0.4.76-installed-gui" +
+        val executionSummary = "build: 0.4.77-installed-vulkan-discovery" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -677,6 +693,7 @@ class MainActivity : Activity() {
             "\nINSTALLED PACKAGE EXECUTION: ${if (installedPackageExecutionPassed) "PASS" else "FAIL"}" +
             "\nALR INSTALLED PACKAGE PRELOAD EXECUTION: ${if (alrInstalledPackagePreloadExecutionPassed) "PASS" else "FAIL"}" +
             "\nHOST GPU EGL/GLES EXECUTION: ${if (hostGpuHardwareCandidate) "PASS" else "FAIL"}" +
+            "\nHOST VULKAN DISCOVERY EXECUTION: ${if (hostVulkanDiscoveryPassed) "PASS" else "FAIL"}" +
             "\nHOST GPU SURFACE EXECUTION: PENDING_SURFACE_CALLBACK" +
             "\nGUEST GPU BRIDGE COMMAND EXECUTION: ${if (guestGpuBridgeCommandPassed) "PASS" else "FAIL"}" +
             "\nALR GUEST GPU BRIDGE COMMAND EXECUTION: ${if (alrGuestGpuBridgeCommandPassed) "PASS" else "FAIL"}" +
@@ -711,8 +728,11 @@ class MainActivity : Activity() {
             "\nALR GUEST X11 GUI GPU BRIDGE EXECUTION: ${if (alrGuestX11GuiBridgePassed) "PASS" else "FAIL"}" +
             "\nALR INSTALLED PACKAGE WAYLAND GUI GPU BRIDGE EXECUTION: ${if (alrInstalledPackageWaylandGuiBridgePassed) "PASS" else "FAIL"}" +
             "\nALR INSTALLED PACKAGE X11 GUI GPU BRIDGE EXECUTION: ${if (alrInstalledPackageX11GuiBridgePassed) "PASS" else "FAIL"}" +
+            "\nALR INSTALLED PACKAGE VULKAN DISCOVERY EXECUTION: ${if (alrInstalledPackageVulkanDiscoveryPassed) "PASS" else "FAIL"}" +
             "\nGUEST GUI GPU SURFACE EXECUTION: PENDING_SURFACE_CALLBACK" +
             "\nANDROID PERMISSION MODEL: ${if (internetPermissionDeclared && networkStatePermissionDeclared && !broadStoragePermissionDeclared) "PASS" else "FAIL"}" +
+            "\nhost vulkan device=${hostVulkanProbe.lineStartingWith("host vulkan device=")}" +
+            "\nhost vulkan hardware candidate=${hostVulkanProbe.lineStartingWith("host vulkan hardware candidate=")}" +
             "\nidentity numeric root=$identityNumericRoot" +
             "\nidentity named root=$identityNamedRoot" +
             "\nidentity proot mode=raw -r" +
@@ -760,6 +780,7 @@ class MainActivity : Activity() {
             "\nrootfs installed alr gles procaddr demo exists=${rootfsInstalledGlesProcaddrDemoFile.isFile} executable=${rootfsInstalledGlesProcaddrDemoFile.canExecute()} bytes=${rootfsInstalledGlesProcaddrDemoFile.length()}" +
             "\nrootfs installed alr wayland gui client exists=${rootfsInstalledWaylandGuiClientFile.isFile} executable=${rootfsInstalledWaylandGuiClientFile.canExecute()} bytes=${rootfsInstalledWaylandGuiClientFile.length()}" +
             "\nrootfs installed alr x11 gui client exists=${rootfsInstalledX11GuiClientFile.isFile} executable=${rootfsInstalledX11GuiClientFile.canExecute()} bytes=${rootfsInstalledX11GuiClientFile.length()}" +
+            "\nrootfs installed alr vulkan discovery client exists=${rootfsInstalledVulkanDiscoveryClientFile.isFile} executable=${rootfsInstalledVulkanDiscoveryClientFile.canExecute()} bytes=${rootfsInstalledVulkanDiscoveryClientFile.length()}" +
             "\ninstalled package compatibility table=$installedPackageCompatibilityTable" +
             "\nrootfs dpkg status exists=${rootfsDpkgStatusFile.isFile} bytes=${rootfsDpkgStatusFile.length()}" +
             "\nrootfs /dev/null placeholder exists=${rootfsDevNullFile.isFile} bytes=${rootfsDevNullFile.length()}" +
@@ -926,6 +947,13 @@ class MainActivity : Activity() {
             "\nalr installed package x11 gui ipc error=${alrInstalledPackageX11GuiBridgeResult.error ?: "none"}" +
             "\nalr installed package x11 gui ipc client handoff=${alrInstalledPackageX11GuiBridgeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
             "\nalr installed package x11 gui ipc stdout=${alrInstalledPackageX11GuiBridgeResult.clientResult.stdout.alrHandoffStdoutText()}" +
+            "\nalr installed package vulkan discovery host=${alrInstalledPackageVulkanDiscoveryBridgeResult.host}" +
+            "\nalr installed package vulkan discovery port=${alrInstalledPackageVulkanDiscoveryBridgeResult.port}" +
+            "\nalr installed package vulkan discovery raw=${alrInstalledPackageVulkanDiscoveryBridgeResult.rawLines.joinToString("|")}" +
+            "\nalr installed package vulkan discovery ack=${alrInstalledPackageVulkanDiscoveryBridgeResult.ackLine}" +
+            "\nalr installed package vulkan discovery error=${alrInstalledPackageVulkanDiscoveryBridgeResult.error ?: "none"}" +
+            "\nalr installed package vulkan discovery handoff=${alrInstalledPackageVulkanDiscoveryBridgeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr installed package vulkan discovery stdout=${alrInstalledPackageVulkanDiscoveryBridgeResult.clientResult.stdout.alrHandoffStdoutText()}" +
             "\nsurface gpu command source frames=${surfaceGpuCommands.size}" +
             "\nproot dpkg-split --version exit=${prootDpkgSplitVersionResult.exitCode}" +
             "\nproot dpkg-split --version stdout=${prootDpkgSplitVersionResult.stdout}" +
@@ -1212,6 +1240,8 @@ class MainActivity : Activity() {
             "\nhost gpu vendor=${hostGpuProbe.lineStartingWith("gl vendor=")}" +
             "\nhost gpu software renderer=${hostGpuProbe.lineStartingWith("host gpu software renderer=")}" +
             "\nhost gpu hardware candidate=${hostGpuProbe.lineStartingWith("host gpu hardware candidate=")}" +
+            "\nhost vulkan device=${hostVulkanProbe.lineStartingWith("host vulkan device=")}" +
+            "\nhost vulkan hardware candidate=${hostVulkanProbe.lineStartingWith("host vulkan hardware candidate=")}" +
             "\npermission INTERNET declared=$internetPermissionDeclared" +
             "\npermission ACCESS_NETWORK_STATE declared=$networkStatePermissionDeclared" +
             "\npermission broad storage declared=$broadStoragePermissionDeclared" +
@@ -1248,6 +1278,8 @@ class MainActivity : Activity() {
             "\n$nativeProbe" +
             "\n\nAndroid host GPU probe:" +
             "\n$hostGpuProbe" +
+            "\n\nAndroid host Vulkan probe:" +
+            "\n$hostVulkanProbe" +
             "\n\nproot backend candidate: packaged native executable" +
             "\nproot actual env:" +
             prootCandidateResult.environment.entries.joinToString(separator = "") { "\n  ${it.key}=${it.value}" } +
@@ -1333,6 +1365,7 @@ class MainActivity : Activity() {
             resultBlock("alr guest x11 gui ipc client", alrGuestX11GuiBridgeResult.clientResult) +
             resultBlock("alr installed package wayland gui ipc client", alrInstalledPackageWaylandGuiBridgeResult.clientResult) +
             resultBlock("alr installed package x11 gui ipc client", alrInstalledPackageX11GuiBridgeResult.clientResult) +
+            resultBlock("alr installed package vulkan discovery client", alrInstalledPackageVulkanDiscoveryBridgeResult.clientResult) +
             optionalResultBlock("proot hello verbose on failure", prootHelloVerboseResult)
 
         val report = executionSummary + "\n\n--- verbose report ---\n" + verboseReport
@@ -1404,6 +1437,79 @@ class MainActivity : Activity() {
         val clientResult: NativeCommandResult,
         val ackLines: List<String> = emptyList(),
     )
+
+    private data class GuestVulkanDiscoveryBridgeResult(
+        val host: String,
+        val port: Int,
+        val rawLines: List<String>,
+        val ackLine: String,
+        val hostProbe: String,
+        val error: String?,
+        val clientResult: NativeCommandResult,
+    )
+
+    private fun runInstalledPackageVulkanDiscoveryBridge(
+        nativeCommandRunner: NativeCommandRunner,
+        rootfsDir: File,
+    ): GuestVulkanDiscoveryBridgeResult {
+        val host = "127.0.0.1"
+        val server = ServerSocket(0, 1, InetAddress.getByName(host)).apply { soTimeout = 3000 }
+        val port = server.localPort
+        val rawLines = mutableListOf<String>()
+        val errors = mutableListOf<String>()
+        val hostProbe = nativeHostVulkanProbe()
+        val physicalDevices = hostProbe.lineStartingWith("vulkan physical device count=")
+            .substringAfter("=", "0")
+            .toIntOrNull()
+            ?: 0
+        val hardware = hostProbe.lineStartingWith("host vulkan hardware candidate=") == "host vulkan hardware candidate=true"
+        val createDeviceOk = hostProbe.lineStartingWith("vulkan create device=") == "vulkan create device=ok"
+        val deviceName = hostProbe.lineStartingWith("host vulkan device=")
+            .substringAfter("=", "unknown")
+            .replace(Regex("\\s+"), "_")
+        val status = if (physicalDevices > 0 && hardware && createDeviceOk) "PASS" else "FAIL"
+        val ackLine = "ALR_VK_DISCOVERY_ACK status=$status physical_devices=$physicalDevices hardware=$hardware device=$deviceName"
+        val acceptThread = thread(name = "alr-vulkan-discovery-bridge", start = true) {
+            try {
+                server.use { srv ->
+                    val socket = srv.accept()
+                    socket.use { accepted ->
+                        accepted.soTimeout = 1500
+                        val reader = accepted.getInputStream().bufferedReader()
+                        while (true) {
+                            val line = try {
+                                reader.readLine()
+                            } catch (timeout: SocketTimeoutException) {
+                                null
+                            } ?: break
+                            rawLines += line
+                        }
+                        accepted.getOutputStream().write((ackLine + "\n").toByteArray())
+                        accepted.getOutputStream().flush()
+                    }
+                }
+            } catch (error: SocketTimeoutException) {
+                errors += "timeout waiting for guest vulkan discovery client"
+            } catch (error: Exception) {
+                errors += error.javaClass.simpleName + ": " + (error.message ?: "unknown")
+            }
+        }
+        val clientResult = nativeCommandRunner.runAlrRuntimeTrampolineInstalledPackageVulkanDiscovery(rootfsDir, port)
+        acceptThread.join(3500)
+        if (acceptThread.isAlive) {
+            errors += "vulkan discovery accept thread still alive after join"
+            server.close()
+        }
+        return GuestVulkanDiscoveryBridgeResult(
+            host = host,
+            port = port,
+            rawLines = rawLines.toList(),
+            ackLine = ackLine,
+            hostProbe = hostProbe,
+            error = errors.firstOrNull(),
+            clientResult = clientResult,
+        )
+    }
 
     private fun runGuestGpuIpcBridge(
         nativeCommandRunner: NativeCommandRunner,
@@ -2137,6 +2243,8 @@ class MainActivity : Activity() {
     private external fun nativeLibraryProbe(nativeLibraryDir: String): String
 
     private external fun nativeHostGpuProbe(): String
+
+    private external fun nativeHostVulkanProbe(): String
 
     private external fun nativeRenderGpuSurfaceFrames(
         surface: android.view.Surface,

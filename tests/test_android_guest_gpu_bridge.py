@@ -17,6 +17,7 @@ def test_rootfs_contains_guest_gpu_ipc_client_and_gles_shim():
             "./usr/bin/alr-gles-abi-smoke",
             "./usr/bin/alr-gles-demo-gears",
             "./usr/bin/alr-gles-procaddr-demo",
+            "./usr/bin/alr-vulkan-discovery-client",
             "./usr/lib/androlinux/libalr_gles_shim.so",
             "./usr/lib/androlinux/libEGL.so",
             "./usr/lib/androlinux/libGLESv2.so",
@@ -98,6 +99,7 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "gles-procaddr:" in text
     assert "wayland:${if (alrInstalledPackageWaylandGuiBridgePassed)" in text
     assert "x11:${if (alrInstalledPackageX11GuiBridgePassed)" in text
+    assert "vulkan-discovery:${if (alrInstalledPackageVulkanDiscoveryPassed)" in text
     assert "alr installed package gles ipc draw frames" in text
     assert "alr installed package gles ipc ack frames" in text
     assert "alr installed package gles ipc ack raw" in text
@@ -110,9 +112,16 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "ALR GUEST X11 GUI GPU BRIDGE EXECUTION" in text
     assert "ALR INSTALLED PACKAGE WAYLAND GUI GPU BRIDGE EXECUTION" in text
     assert "ALR INSTALLED PACKAGE X11 GUI GPU BRIDGE EXECUTION" in text
+    assert "HOST VULKAN DISCOVERY EXECUTION" in text
+    assert "ALR INSTALLED PACKAGE VULKAN DISCOVERY EXECUTION" in text
     assert "runAlrRuntimeTrampolineInstalledPackageGuiClientIpc" in runner
+    assert "runAlrRuntimeTrampolineInstalledPackageVulkanDiscovery" in runner
     assert "alr installed package wayland gui ipc received frames" in text
     assert "alr installed package x11 gui ipc received frames" in text
+    assert "alr installed package vulkan discovery ack" in text
+    assert "alr installed package vulkan discovery stdout" in text
+    assert "nativeHostVulkanProbe" in text
+    assert "host vulkan hardware candidate=" in text
     assert "alr guest gles shim smoke path rewrite" in text
     assert "GUEST EGL INIT VIA SHIM EXECUTION:" in text
     assert "GUEST EGL CONTEXT VIA SHIM EXECUTION:" in text
@@ -229,6 +238,25 @@ def test_guest_gles_shim_is_source_built_api_subset():
     assert "alr-gles-abi-smoke" in build_script
     assert "alr-gles-demo-gears" in build_script
     assert "alr-gles-procaddr-demo" in build_script
+
+
+def test_guest_vulkan_discovery_client_is_source_built_ipc_probe():
+    source = (ROOT / "rootfs/guest-src/vulkan/alr_vulkan_discovery_client.c").read_text()
+    build_script = (ROOT / "scripts/build-guest-vulkan-probe.sh").read_text()
+    cmake = (ROOT / "app/src/main/cpp/CMakeLists.txt").read_text()
+    native_report = (ROOT / "app/src/main/cpp/runtime_report.cpp").read_text()
+
+    assert "ALR_VK_DISCOVERY_HELLO" in source
+    assert "ALR_VK_DISCOVERY_ACK status=PASS" in source
+    assert "ALR_VK_BRIDGE_HOST" in source
+    assert "ALR_VK_BRIDGE_PORT" in source
+    assert "-target aarch64-linux-gnu" in build_script
+    assert "alr-vulkan-discovery-client" in build_script
+    assert "vulkan)" in cmake
+    assert "#include <vulkan/vulkan.h>" in native_report
+    assert "vkCreateInstance" in native_report
+    assert "vkEnumeratePhysicalDevices" in native_report
+    assert "vkCreateDevice" in native_report
 
 
 def test_guest_syscall_bench_is_source_built_fixture():

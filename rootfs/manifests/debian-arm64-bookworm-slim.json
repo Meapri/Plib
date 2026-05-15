@@ -1,12 +1,12 @@
 {
   "name": "debian-arm64",
-  "version": "bookworm-slim-2026-05-gui-gpu-v76",
-  "description": "Tiny PoC rootfs with source-built guest GLES/EGL shim API smoke, libEGL/libGLESv2 ABI-name smoke, eglGetProcAddress GLES demo workload, es2gears-like GLES demo workload, syscall-heavy benchmark fixture, LD_PRELOAD path fast path shim with glibc stat metadata directory stream realpath mkstemp rename mkdir unlink rmdir and fakeroot chown compatibility, multi-frame clear and triangle draw GLES workloads, TCP loopback guest GPU bridge client, GLES shim TCP bridge submit and ACK timing path, clean extraction schema, dpkg-split smoke, apt/dpkg bundle, installed-script smoke, installed-package GPU IPC smoke, installed-package GLES demo smoke, installed-package GLES IPC ACK smoke, installed-package eglGetProcAddress GLES procaddr demo smoke, and installed-package Wayland/X11 GUI GPU bridge client smoke.",
+  "version": "bookworm-slim-2026-05-gui-gpu-v77",
+  "description": "Tiny PoC rootfs with source-built guest GLES/EGL shim API smoke, libEGL/libGLESv2 ABI-name smoke, eglGetProcAddress GLES demo workload, es2gears-like GLES demo workload, syscall-heavy benchmark fixture, LD_PRELOAD path fast path shim with glibc stat metadata directory stream realpath mkstemp rename mkdir unlink rmdir and fakeroot chown compatibility, multi-frame clear and triangle draw GLES workloads, TCP loopback guest GPU bridge client, GLES shim TCP bridge submit and ACK timing path, clean extraction schema, dpkg-split smoke, apt/dpkg bundle, installed-script smoke, installed-package GPU IPC smoke, installed-package GLES demo smoke, installed-package GLES IPC ACK smoke, installed-package eglGetProcAddress GLES procaddr demo smoke, installed-package Wayland/X11 GUI GPU bridge client smoke, and installed-package Vulkan discovery IPC client smoke.",
   "assets": [
     {
       "path": "tiny-rootfs.tar",
-      "sha256": "d3242d31732b13513ba0d06487eb4bbecee27ba228f599c117d8212f299cc23a",
-      "size_bytes": 35829760
+      "sha256": "f2f80b6d812b51286f374f27ae428175e60185c638685cd67648d07cbcd499dd",
+      "size_bytes": 35840000
     }
   ],
   "unsupported_features": [

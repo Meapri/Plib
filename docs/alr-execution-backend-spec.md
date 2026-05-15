@@ -877,6 +877,32 @@ surface as `/usr/local/bin/alr-package-wayland-gpu-client` and
 table is now backed by real package entrypoints for script, GPU clear, GLES
 stdout, GLES TCP+ACK, GLES procaddr, Wayland, and X11.
 
+Current V77 installed-package Vulkan discovery snapshot:
+
+```text
+build: 0.4.77-installed-vulkan-discovery
+HOST VULKAN DISCOVERY EXECUTION: PASS
+ALR INSTALLED PACKAGE VULKAN DISCOVERY EXECUTION: PASS
+rootfs installed alr vulkan discovery client exists=true executable=true bytes=6312
+alr installed package vulkan discovery raw=ALR_VK_DISCOVERY_HELLO version=1 request=instance-device
+alr installed package vulkan discovery ack=ALR_VK_DISCOVERY_ACK status=PASS physical_devices=1 hardware=true device=Mali-G615_MC2
+alr installed package vulkan discovery handoff=ALR STATIC ENTRY HANDOFF: PASS
+alr installed package vulkan discovery stdout=alr guest vulkan discovery client ok
+host vulkan device=host vulkan device=Mali-G615 MC2
+host vulkan hardware candidate=host vulkan hardware candidate=true
+installed package compatibility table=script:PASS,gpu-clear-ipc:PASS,gles-demo:PASS,gles-tcp-ack:PASS,gles-procaddr:PASS,wayland:PASS,x11:PASS,vulkan-discovery:PASS
+surface gl renderer=Mali-G615 MC2
+surface gpu hardware render=true
+surface gles shim vs native average ratio pct=99
+```
+
+V77 adds the first Vulkan-shaped installed package probe. The guest side is a
+glibc Linux TCP client installed from the local `.deb`; the host side stays in
+the Android APK process and uses the NDK Vulkan loader to create an instance,
+enumerate a physical device, find a graphics queue family, and create a logical
+device. This is intentionally discovery-only, not yet a Vulkan ICD or WSI
+present path, but it proves the process split needed for a future Vulkan proxy.
+
 Report:
 
 ```text

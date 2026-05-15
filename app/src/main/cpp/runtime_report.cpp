@@ -4,6 +4,7 @@
 
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
+#include <vulkan/vulkan.h>
 
 #include <dlfcn.h>
 
@@ -130,6 +131,153 @@ bool renderer_looks_software(const std::string& vendor, const std::string& rende
            combined.find("softpipe") != std::string::npos ||
            combined.find("software") != std::string::npos ||
            combined.find("mesa offscreen") != std::string::npos;
+}
+
+const char* vulkan_result_name(VkResult result) {
+    switch (result) {
+        case VK_SUCCESS: return "VK_SUCCESS";
+        case VK_NOT_READY: return "VK_NOT_READY";
+        case VK_TIMEOUT: return "VK_TIMEOUT";
+        case VK_EVENT_SET: return "VK_EVENT_SET";
+        case VK_EVENT_RESET: return "VK_EVENT_RESET";
+        case VK_INCOMPLETE: return "VK_INCOMPLETE";
+        case VK_ERROR_OUT_OF_HOST_MEMORY: return "VK_ERROR_OUT_OF_HOST_MEMORY";
+        case VK_ERROR_OUT_OF_DEVICE_MEMORY: return "VK_ERROR_OUT_OF_DEVICE_MEMORY";
+        case VK_ERROR_INITIALIZATION_FAILED: return "VK_ERROR_INITIALIZATION_FAILED";
+        case VK_ERROR_DEVICE_LOST: return "VK_ERROR_DEVICE_LOST";
+        case VK_ERROR_MEMORY_MAP_FAILED: return "VK_ERROR_MEMORY_MAP_FAILED";
+        case VK_ERROR_LAYER_NOT_PRESENT: return "VK_ERROR_LAYER_NOT_PRESENT";
+        case VK_ERROR_EXTENSION_NOT_PRESENT: return "VK_ERROR_EXTENSION_NOT_PRESENT";
+        case VK_ERROR_FEATURE_NOT_PRESENT: return "VK_ERROR_FEATURE_NOT_PRESENT";
+        case VK_ERROR_INCOMPATIBLE_DRIVER: return "VK_ERROR_INCOMPATIBLE_DRIVER";
+        case VK_ERROR_TOO_MANY_OBJECTS: return "VK_ERROR_TOO_MANY_OBJECTS";
+        case VK_ERROR_FORMAT_NOT_SUPPORTED: return "VK_ERROR_FORMAT_NOT_SUPPORTED";
+        default: return "VK_RESULT_OTHER";
+    }
+}
+
+const char* vulkan_device_type_name(VkPhysicalDeviceType type) {
+    switch (type) {
+        case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU: return "integrated-gpu";
+        case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU: return "discrete-gpu";
+        case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU: return "virtual-gpu";
+        case VK_PHYSICAL_DEVICE_TYPE_CPU: return "cpu";
+        default: return "other";
+    }
+}
+
+std::string vulkan_api_version_string(uint32_t version) {
+    std::ostringstream out;
+    out << VK_API_VERSION_MAJOR(version) << "."
+        << VK_API_VERSION_MINOR(version) << "."
+        << VK_API_VERSION_PATCH(version);
+    return out.str();
+}
+
+std::string build_host_vulkan_probe_report() {
+    std::ostringstream out;
+    out << "host vulkan probe=android-vulkan-loader";
+
+    uint32_t instance_extension_count = 0;
+    VkResult result = vkEnumerateInstanceExtensionProperties(nullptr, &instance_extension_count, nullptr);
+    if (result != VK_SUCCESS) {
+        out << "\nvulkan enumerate instance extensions=fail result=" << vulkan_result_name(result);
+        return out.str();
+    }
+    out << "\nvulkan instance extension count=" << instance_extension_count;
+
+    VkApplicationInfo app_info{};
+    app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+    app_info.pApplicationName = "PlibVulkanProbe";
+    app_info.applicationVersion = VK_MAKE_VERSION(0, 4, 77);
+    app_info.pEngineName = "Plib";
+    app_info.engineVersion = VK_MAKE_VERSION(0, 4, 77);
+    app_info.apiVersion = VK_API_VERSION_1_0;
+
+    VkInstanceCreateInfo instance_info{};
+    instance_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    instance_info.pApplicationInfo = &app_info;
+
+    VkInstance instance = VK_NULL_HANDLE;
+    result = vkCreateInstance(&instance_info, nullptr, &instance);
+    if (result != VK_SUCCESS) {
+        out << "\nvulkan create instance=fail result=" << vulkan_result_name(result);
+        return out.str();
+    }
+    out << "\nvulkan create instance=ok api=1.0";
+
+    uint32_t physical_device_count = 0;
+    result = vkEnumeratePhysicalDevices(instance, &physical_device_count, nullptr);
+    if (result != VK_SUCCESS || physical_device_count == 0) {
+        out << "\nvulkan physical device count=" << physical_device_count;
+        out << "\nvulkan enumerate physical devices=" << (result == VK_SUCCESS ? "ok-empty" : vulkan_result_name(result));
+        vkDestroyInstance(instance, nullptr);
+        return out.str();
+    }
+    out << "\nvulkan physical device count=" << physical_device_count;
+
+    std::vector<VkPhysicalDevice> devices(physical_device_count);
+    result = vkEnumeratePhysicalDevices(instance, &physical_device_count, devices.data());
+    if (result != VK_SUCCESS) {
+        out << "\nvulkan enumerate physical devices=fail result=" << vulkan_result_name(result);
+        vkDestroyInstance(instance, nullptr);
+        return out.str();
+    }
+
+    VkPhysicalDeviceProperties properties{};
+    vkGetPhysicalDeviceProperties(devices[0], &properties);
+    out << "\nhost vulkan device=" << properties.deviceName;
+    out << "\nhost vulkan api version=" << vulkan_api_version_string(properties.apiVersion);
+    out << "\nhost vulkan driver version=" << properties.driverVersion;
+    out << "\nhost vulkan vendor id=0x" << std::hex << properties.vendorID << std::dec;
+    out << "\nhost vulkan device id=0x" << std::hex << properties.deviceID << std::dec;
+    out << "\nhost vulkan device type=" << vulkan_device_type_name(properties.deviceType);
+
+    uint32_t queue_family_count = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties(devices[0], &queue_family_count, nullptr);
+    std::vector<VkQueueFamilyProperties> queue_families(queue_family_count);
+    vkGetPhysicalDeviceQueueFamilyProperties(devices[0], &queue_family_count, queue_families.data());
+    int graphics_queue_family = -1;
+    for (uint32_t index = 0; index < queue_family_count; ++index) {
+        if ((queue_families[index].queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0) {
+            graphics_queue_family = static_cast<int>(index);
+            break;
+        }
+    }
+    out << "\nhost vulkan queue family count=" << queue_family_count;
+    out << "\nhost vulkan graphics queue family=" << graphics_queue_family;
+
+    if (graphics_queue_family >= 0) {
+        const float priority = 1.0F;
+        VkDeviceQueueCreateInfo queue_info{};
+        queue_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        queue_info.queueFamilyIndex = static_cast<uint32_t>(graphics_queue_family);
+        queue_info.queueCount = 1;
+        queue_info.pQueuePriorities = &priority;
+
+        VkDeviceCreateInfo device_info{};
+        device_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+        device_info.queueCreateInfoCount = 1;
+        device_info.pQueueCreateInfos = &queue_info;
+
+        VkDevice device = VK_NULL_HANDLE;
+        result = vkCreateDevice(devices[0], &device_info, nullptr, &device);
+        if (result == VK_SUCCESS) {
+            out << "\nvulkan create device=ok";
+            vkDestroyDevice(device, nullptr);
+        } else {
+            out << "\nvulkan create device=fail result=" << vulkan_result_name(result);
+        }
+    }
+
+    const bool hardware =
+        physical_device_count > 0 &&
+        graphics_queue_family >= 0 &&
+        properties.deviceType != VK_PHYSICAL_DEVICE_TYPE_CPU;
+    out << "\nhost vulkan hardware candidate=" << (hardware ? "true" : "false");
+
+    vkDestroyInstance(instance, nullptr);
+    return out.str();
 }
 
 std::string build_host_gpu_probe_report() {
@@ -595,6 +743,14 @@ Java_dev_chanwoo_androlinux_MainActivity_nativeHostGpuProbe(
     JNIEnv* env,
     jobject /* thiz */) {
     const auto report = build_host_gpu_probe_report();
+    return env->NewStringUTF(report.c_str());
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_dev_chanwoo_androlinux_MainActivity_nativeHostVulkanProbe(
+    JNIEnv* env,
+    jobject /* thiz */) {
+    const auto report = build_host_vulkan_probe_report();
     return env->NewStringUTF(report.c_str());
 }
 

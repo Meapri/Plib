@@ -221,6 +221,19 @@ class NativeCommandRunner(
             ),
         )
 
+    fun runAlrRuntimeTrampolineInstalledPackageVulkanDiscovery(rootfsDir: File, port: Int): NativeCommandResult =
+        runAlrRuntimeTrampolineGlibcRootfsProgram(
+            rootfsDir,
+            "/usr/local/bin/alr-package-vulkan-discovery-client",
+            emptyList(),
+            timeoutMs = 3000,
+            extraGuestEnvironment = mapOf(
+                "ALR_VK_BRIDGE_HOST" to "127.0.0.1",
+                "ALR_VK_BRIDGE_PORT" to port.toString(),
+                "ALR_GPU_BRIDGE_TRANSPORT" to "tcp-loopback-vulkan",
+            ),
+        )
+
     fun runAlrRuntimeTrampolineDpkgVersion(rootfsDir: File): NativeCommandResult =
         runAlrRuntimeTrampolineGlibcRootfsProgram(rootfsDir, "/usr/bin/dpkg", listOf("--version"))
 
