@@ -1118,6 +1118,7 @@ GIMP CONSOLE BATCH QUIT PROBE EXECUTION: FAIL
 GIMP CONSOLE BATCH QUIT BLOCKER: CORE_BATCH_TIMEOUT
 full gimp probe mode=fast-scout
 GIMP GTK WAYLAND PROBE EXECUTION: PASS
+GIMP GTK WINDOW WAYLAND PROBE EXECUTION: PASS
 GIMP GUI QUIT WAYLAND PROBE EXECUTION: PASS
 GIMP GUI WAYLAND PROBE EXECUTION:
 GIMP GUI WAYLAND BLOCKER: PRE_WAYLAND_CONNECT
@@ -1155,6 +1156,11 @@ gimp gtk wayland server bind trace=wl_compositor,wl_shm,wl_output
 gimp gtk wayland server last request=wl_shm_pool.resize
 gimp gtk wayland handoff=ALR STATIC ENTRY HANDOFF: PASS
 gimp gtk wayland stdout=ALR_GIMP3_GTK_WAYLAND_PROBE ok
+gimp gtk window wayland connected=true
+gimp gtk window wayland server request trace=wl_display.get_registry,wl_display.sync,wl_registry.bind:wl_compositor,wl_registry.bind:wl_shm,wl_registry.bind:wl_output,wl_display.sync,wl_shm.create_pool,wl_shm_pool.resize
+gimp gtk window wayland server bind trace=wl_compositor,wl_shm,wl_output
+gimp gtk window wayland server last request=wl_shm_pool.resize
+gimp gtk window wayland handoff=ALR STATIC ENTRY HANDOFF: FAIL
 gimp gui quit wayland connected=true
 gimp gui quit wayland request=wl_display.get_registry
 gimp gui quit wayland server request trace=wl_display.get_registry,wl_display.sync,wl_registry.bind:wl_compositor,wl_registry.bind:wl_shm,wl_registry.bind:wl_output,wl_display.sync,wl_shm.create_pool,wl_shm_pool.resize

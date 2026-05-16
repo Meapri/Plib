@@ -766,6 +766,29 @@ class NativeCommandRunner(
             ),
         )
 
+    fun runAlrRuntimeTrampolineGimp3GtkWaylandWindowPythonProbe(rootfsDir: File): NativeCommandResult =
+        runAlrRuntimeTrampolineGlibcRootfsProgram(
+            rootfsDir,
+            "/usr/bin/python3",
+            listOf(
+                "-c",
+                "import gi,time; gi.require_version('Gtk','3.0'); from gi.repository import Gtk; Gtk.init([]); w=Gtk.Window(); w.set_default_size(320,200); w.set_title('ALR GTK Wayland'); w.show_all(); end=time.time()+0.8\nwhile time.time()<end:\n    while Gtk.events_pending(): Gtk.main_iteration_do(False)\n    time.sleep(0.02)\nprint('ALR_GIMP3_GTK_WAYLAND_WINDOW_PROBE ok')",
+            ),
+            timeoutMs = 20000,
+            pathRewrite = true,
+            pathRewriteLimit = 90000,
+            pathRewriteIdleSyscallLimit = 20000,
+            extraGuestEnvironment = preloadPathFastPathEnvironment(rootfsDir) + mapOf(
+                "GDK_BACKEND" to "wayland",
+                "WAYLAND_DISPLAY" to File(rootfsDir, "tmp/alr-gimp-gtk-window-0").absolutePath,
+                "XDG_RUNTIME_DIR" to File(rootfsDir, "tmp").absolutePath,
+                "HOME" to File(rootfsDir, "tmp").absolutePath,
+                "USER" to "android",
+                "LOGNAME" to "android",
+                "NO_AT_BRIDGE" to "1",
+            ),
+        )
+
     fun runAlrRuntimeTrampolineInstalledPackageGpuSmoke(rootfsDir: File, port: Int): NativeCommandResult =
         runAlrRuntimeTrampoline(
             rootfsDir,

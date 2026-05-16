@@ -2219,6 +2219,7 @@ class MainActivity : Activity() {
         val gimpCoreQuitResult = nativeCommandRunner.runAlrRuntimeTrampolineGimp3CoreQuitProbe(rootfsStatus.rootfsDir)
         val gimpConsoleBatchQuitResult = nativeCommandRunner.runAlrRuntimeTrampolineGimp3ConsoleBatchQuitProbe(rootfsStatus.rootfsDir)
         val gimpGtkWaylandProbeResult = runGimpGtkWaylandProbe(nativeCommandRunner, rootfsStatus.rootfsDir)
+        val gimpGtkWindowWaylandProbeResult = runGimpGtkWindowWaylandProbe(nativeCommandRunner, rootfsStatus.rootfsDir)
         val gimpGuiQuitWaylandProbeResult = runGimpGuiQuitWaylandProbe(nativeCommandRunner, rootfsStatus.rootfsDir)
         val gimpGuiWaylandProbeResult = runGimpGuiWaylandProbe(
             nativeCommandRunner,
@@ -2288,6 +2289,8 @@ class MainActivity : Activity() {
         val gimpCoreQuitBlocker = describeGimpCoreQuitBlocker(gimpCoreQuitPassed, gimpCoreQuitResult)
         val gimpConsoleBatchQuitBlocker = describeGimpConsoleBatchQuitBlocker(gimpConsoleBatchQuitPassed, gimpConsoleBatchQuitResult)
         val gimpGtkWaylandProbePassed = isWaylandRegistryProbe(gimpGtkWaylandProbeResult)
+        val gimpGtkWindowWaylandProbePassed = gimpGtkWindowWaylandProbeResult.connected &&
+            gimpGtkWindowWaylandProbeResult.waylandRequestNames.any { it == "wl_shm.create_pool" || it == "wl_compositor.create_surface" }
         val gimpGuiQuitWaylandProbePassed = isWaylandRegistryProbe(gimpGuiQuitWaylandProbeResult)
         val gimpGuiWaylandProbePassed = isWaylandRegistryProbe(gimpGuiWaylandProbeResult)
         val gimpGuiWaylandBlocker = if (runDeepGimpProbe || gimpGuiWaylandProbeResult.connected) {
@@ -2311,6 +2314,7 @@ class MainActivity : Activity() {
             "GIMP CONSOLE BATCH QUIT PROBE EXECUTION: ${if (gimpConsoleBatchQuitPassed) "PASS" else "FAIL"}",
             "GIMP CONSOLE BATCH QUIT BLOCKER: ${gimpConsoleBatchQuitBlocker.uppercase().replace('-', '_')}",
             "GIMP GTK WAYLAND PROBE EXECUTION: ${if (gimpGtkWaylandProbePassed) "PASS" else "FAIL"}",
+            "GIMP GTK WINDOW WAYLAND PROBE EXECUTION: ${if (gimpGtkWindowWaylandProbePassed) "PASS" else "FAIL"}",
             "GIMP GUI QUIT WAYLAND PROBE EXECUTION: ${if (gimpGuiQuitWaylandProbePassed) "PASS" else "FAIL"}",
             "GIMP GUI WAYLAND PROBE EXECUTION: ${if (gimpGuiWaylandProbePassed) "PASS" else "FAIL"}",
             "GIMP GUI WAYLAND BLOCKER: ${gimpGuiWaylandBlocker.uppercase().replace('-', '_')}",
@@ -2373,6 +2377,24 @@ class MainActivity : Activity() {
             "gimp gtk wayland handoff=${gimpGtkWaylandProbeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}",
             "gimp gtk wayland stdout=${gimpGtkWaylandProbeResult.clientResult.stdout.alrHandoffStdoutText().forEvidenceLog()}",
             "gimp gtk wayland stderr=${gimpGtkWaylandProbeResult.clientResult.stdout.alrHandoffStderrText().forEvidenceLog()}",
+            "gimp gtk window wayland socket path=${gimpGtkWindowWaylandProbeResult.socketPath}",
+            "gimp gtk window wayland connected=${gimpGtkWindowWaylandProbeResult.connected}",
+            "gimp gtk window wayland setup bytes=${gimpGtkWindowWaylandProbeResult.setupBytes}",
+            "gimp gtk window wayland object=${gimpGtkWindowWaylandProbeResult.objectId}",
+            "gimp gtk window wayland opcode=${gimpGtkWindowWaylandProbeResult.opcode}",
+            "gimp gtk window wayland size=${gimpGtkWindowWaylandProbeResult.messageSize}",
+            "gimp gtk window wayland request=${gimpGtkWindowWaylandProbeResult.requestName}",
+            "gimp gtk window wayland raw prefix=${gimpGtkWindowWaylandProbeResult.rawPrefixHex}",
+            "gimp gtk window wayland server requests=${gimpGtkWindowWaylandProbeResult.waylandRequestCount}",
+            "gimp gtk window wayland server response bytes=${gimpGtkWindowWaylandProbeResult.waylandResponseBytes}",
+            "gimp gtk window wayland server globals=${gimpGtkWindowWaylandProbeResult.waylandGlobals.joinToString(",")}",
+            "gimp gtk window wayland server request trace=${gimpGtkWindowWaylandProbeResult.waylandRequestNames.joinToString(",")}",
+            "gimp gtk window wayland server bind trace=${gimpGtkWindowWaylandProbeResult.waylandBindInterfaces.joinToString(",")}",
+            "gimp gtk window wayland server last request=${gimpGtkWindowWaylandProbeResult.lastWaylandRequest}",
+            "gimp gtk window wayland error=${gimpGtkWindowWaylandProbeResult.error ?: "none"}",
+            "gimp gtk window wayland handoff=${gimpGtkWindowWaylandProbeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}",
+            "gimp gtk window wayland stdout=${gimpGtkWindowWaylandProbeResult.clientResult.stdout.alrHandoffStdoutText().forEvidenceLog()}",
+            "gimp gtk window wayland stderr=${gimpGtkWindowWaylandProbeResult.clientResult.stdout.alrHandoffStderrText().forEvidenceLog()}",
             "gimp gui quit wayland socket path=${gimpGuiQuitWaylandProbeResult.socketPath}",
             "gimp gui quit wayland connected=${gimpGuiQuitWaylandProbeResult.connected}",
             "gimp gui quit wayland setup bytes=${gimpGuiQuitWaylandProbeResult.setupBytes}",
@@ -3530,6 +3552,19 @@ class MainActivity : Activity() {
             socketLeaf = "alr-gimp-gtk-0",
             threadName = "alr-gimp-gtk-wayland-probe",
             runClient = { nativeCommandRunner.runAlrRuntimeTrampolineGimp3GtkWaylandPythonProbe(rootfsDir) },
+        )
+    }
+
+    private fun runGimpGtkWindowWaylandProbe(
+        nativeCommandRunner: NativeCommandRunner,
+        rootfsDir: File,
+    ): GimpWaylandProbeResult {
+        return runGimpWaylandSocketProbe(
+            rootfsDir = rootfsDir,
+            socketLeaf = "alr-gimp-gtk-window-0",
+            threadName = "alr-gimp-gtk-window-wayland-probe",
+            acceptJoinTimeoutMs = 25000,
+            runClient = { nativeCommandRunner.runAlrRuntimeTrampolineGimp3GtkWaylandWindowPythonProbe(rootfsDir) },
         )
     }
 
