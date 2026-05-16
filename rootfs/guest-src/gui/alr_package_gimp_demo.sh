@@ -7,28 +7,32 @@ MATERIALIZED="/usr/share/androlinux/gimp-demo-materialized.txt"
 GIMP_BIN="/usr/bin/gimp"
 WAYLAND_NAME="${WAYLAND_DISPLAY:-alr-gimp-0}"
 DISPLAY_NAME="${DISPLAY:-:0}"
-RUNTIME_DIR="${XDG_RUNTIME_DIR:-/usr/share/alr-smoke/alr-wayland-runtime}"
+RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp}"
 
-echo "ALR_GIMP_DEMO_PROFILE_READY target=gimp version=v103 profile=$PROFILE lock=$LOCK"
+echo "ALR_GIMP_DEMO_PROFILE_READY target=gimp version=v104 profile=$PROFILE lock=$LOCK"
 echo "ALR_GIMP_DEMO_PROFILE_PROGRAM path=$GIMP_BIN argv=gimp,--new-instance,--no-data,--no-fonts"
-echo "ALR_GIMP_DEMO_PROFILE_ENV GDK_BACKEND=${GDK_BACKEND:-x11} DISPLAY=$DISPLAY_NAME WAYLAND_DISPLAY=$WAYLAND_NAME XDG_RUNTIME_DIR=$RUNTIME_DIR NO_AT_BRIDGE=${NO_AT_BRIDGE:-1}"
+echo "ALR_GIMP_DEMO_PROFILE_ENV GDK_BACKEND=${GDK_BACKEND:-wayland} WAYLAND_DISPLAY=$WAYLAND_NAME XDG_RUNTIME_DIR=$RUNTIME_DIR NO_AT_BRIDGE=${NO_AT_BRIDGE:-1}"
 
 if [ -r "$LOCK" ]; then
-  echo "ALR_GIMP_DEMO_BUNDLE_LOCK present=true package_count=246 download_size_mib=122.27"
+  LOCK_PACKAGE_COUNT="$(sed -n 's/.*\"package_count\": \\([0-9][0-9]*\\).*/\\1/p' "$LOCK" | head -n 1)"
+  LOCK_DOWNLOAD_MIB="$(sed -n 's/.*\"download_size_mib\": \\([0-9.][0-9.]*\\).*/\\1/p' "$LOCK" | head -n 1)"
+  echo "ALR_GIMP_DEMO_BUNDLE_LOCK present=true package_count=${LOCK_PACKAGE_COUNT:-unknown} download_size_mib=${LOCK_DOWNLOAD_MIB:-unknown}"
 else
   echo "ALR_GIMP_DEMO_BUNDLE_LOCK present=false package_count=0 download_size_mib=0"
 fi
 
 if [ -r "$MATERIALIZED" ]; then
-  echo "ALR_GIMP_DEMO_MATERIALIZED present=true package_count=246"
+  MATERIALIZED_PACKAGE_COUNT="$(sed -n 's/^package_count=//p' "$MATERIALIZED" | head -n 1)"
+  MATERIALIZED_GIMP_VERSION="$(sed -n 's/^gimp_version=//p' "$MATERIALIZED" | head -n 1)"
+  echo "ALR_GIMP_DEMO_MATERIALIZED present=true package_count=${MATERIALIZED_PACKAGE_COUNT:-unknown} gimp_version=${MATERIALIZED_GIMP_VERSION:-unknown}"
 else
   echo "ALR_GIMP_DEMO_MATERIALIZED present=false package_count=0"
 fi
 
 if [ -x "$GIMP_BIN" ]; then
   echo "ALR_GIMP_DEMO_BINARY present=true path=$GIMP_BIN"
-  export GDK_BACKEND="${GDK_BACKEND:-x11}"
-  export DISPLAY="$DISPLAY_NAME"
+  export GDK_BACKEND="${GDK_BACKEND:-wayland}"
+  unset DISPLAY
   export WAYLAND_DISPLAY="$WAYLAND_NAME"
   export XDG_RUNTIME_DIR="$RUNTIME_DIR"
   export NO_AT_BRIDGE="${NO_AT_BRIDGE:-1}"

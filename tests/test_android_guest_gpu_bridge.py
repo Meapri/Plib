@@ -261,42 +261,48 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "alr installed package vulkan proxy stdout" in text
 
 
-def test_v103_adb_verifier_checks_gimp_materialized_evidence():
-    script = (ROOT / "scripts/verify-android-v103-gimp-materialized.sh").read_text()
+def test_v104_adb_verifier_checks_gimp3_wayland_evidence():
+    script = (ROOT / "scripts/verify-android-v104-gimp3-wayland.sh").read_text()
     text = MAIN.read_text()
     runner = RUNNER.read_text()
     display_source = (ROOT / "rootfs/guest-src/gui/alr_wayland_display_client.c").read_text()
-    assert "WAYLAND AHARDWAREBUFFER SURFACE COMPOSITOR EXECUTION: PASS" in script
-    assert "wayland display continuous stream ready=true" in script
-    assert "wayland display wire messages=30" in script
-    assert "wayland display wire subset ready=true" in script
-    assert "wayland display wire surface lifecycle=true" in script
-    assert "wayland display binary messages=30" in script
-    assert "wayland display binary bytes=568" in script
-    assert "wayland display binary subset ready=true" in script
-    assert "wayland ahardwarebuffer surface compositor=egl-image-texture-to-android-surface" in script
-    assert "wayland ahardwarebuffer surface replay passes=1" in script
-    assert "wayland ahardwarebuffer surface continuous guest commits=true" in script
-    assert "wayland ahardwarebuffer surface simple gui demo candidate=true" in script
-    assert "wayland ahardwarebuffer surface total frame submissions=8" in script
-    assert "wayland ahardwarebuffer surface buffer pool reuses=5" in script
-    assert "wayland ahardwarebuffer surface presented frames=8" in script
-    assert "wayland ahardwarebuffer surface hardware render=true" in script
-    assert "wayland ahardwarebuffer surface dirty rect bytes=460800" in script
-    assert "wayland ahardwarebuffer surface fence pacing mode=reuse-slot-fence-handoff" in script
-    assert "wayland ahardwarebuffer surface sync fence accounting=ok" in script
-    assert "surface vulkan hardware render=true" in script
-    assert "SIMPLE GUI DEMO EXECUTION: PASS" in script
-    assert "SIMPLE GUI DEMO GLIBC DYNAMIC EXECUTION: PASS" in script
-    assert "simple gui demo glibc dynamic=true" in script
-    assert "simple gui demo android surface candidate=true" in script
+    assert "--es ALR_VERIFY_MODE gimp3-wayland" in script
+    assert "WAYLAND AHARDWAREBUFFER SURFACE COMPOSITOR EXECUTION: ${if (passed) \"PASS\" else \"FAIL\"}" in text
+    assert "wayland display continuous stream ready=" in text
+    assert "wayland display wire messages=" in text
+    assert "wayland display binary bytes=" in text
+    assert 'lineStartingWith("wayland ahardwarebuffer surface compositor=")' in text
+    assert 'lineStartingWith("wayland ahardwarebuffer surface replay passes=")' in text
+    assert 'lineStartingWith("wayland ahardwarebuffer surface continuous guest commits=")' in text
+    assert 'lineStartingWith("wayland ahardwarebuffer surface simple gui demo candidate=")' in text
+    assert 'lineStartingWith("wayland ahardwarebuffer surface total frame submissions=")' in text
+    assert 'lineStartingWith("wayland ahardwarebuffer surface buffer pool reuses=")' in text
+    assert 'lineStartingWith("wayland ahardwarebuffer surface hardware render=")' in text
+    assert 'lineStartingWith("wayland ahardwarebuffer surface dirty rect bytes=")' in text
+    assert 'lineStartingWith("wayland ahardwarebuffer surface fence pacing mode=")' in text
+    assert 'lineStartingWith("wayland ahardwarebuffer surface sync fence accounting=")' in text
+    assert "surface vulkan hardware render=" in text
+    assert "SIMPLE GUI DEMO EXECUTION:" in text
+    assert "SIMPLE GUI DEMO GLIBC DYNAMIC EXECUTION:" in text
+    assert "simple gui demo glibc dynamic=" in text
+    assert "simple gui demo android surface candidate=" in text
     assert "GIMP DEMO PROFILE EXECUTION: PASS" in script
+    assert "GIMP GTK WAYLAND PROBE EXECUTION: PASS" in script
+    assert "GIMP GUI WAYLAND PROBE EXECUTION:" in script
+    assert "GIMP GUI WAYLAND BLOCKER:" in script
     assert "ALR_GIMP_DEMO_PROFILE_READY target=gimp" in script
-    assert "ALR_GIMP_DEMO_BUNDLE_LOCK present=true package_count=246" in script
-    assert "ALR_GIMP_DEMO_MATERIALIZED present=true package_count=246" in script
+    assert "ALR_GIMP_DEMO_PROFILE_ENV GDK_BACKEND=wayland WAYLAND_DISPLAY=alr-gimp-0 XDG_RUNTIME_DIR=/tmp" in script
+    assert "ALR_GIMP_DEMO_BUNDLE_LOCK present=true suite=trixie package_count=313" in script
+    assert "ALR_GIMP_DEMO_MATERIALIZED present=true package_count=313 gimp_version=3." in script
     assert "ALR_GIMP_DEMO_BINARY present=true path=/usr/bin/gimp" in script
     assert "ALR_GIMP_DEMO_VERSION_EXIT 0" in script
-    assert "versionName=0.4.103-gimp-materialized" in script
+    assert "ALR_GIMP_DEMO_VERSION_STDOUT GNU Image Manipulation Program version 3." in script
+    assert "gimp gtk wayland object=1" in script
+    assert "gimp gtk wayland opcode=1" in script
+    assert "gimp gtk wayland size=12" in script
+    assert "gimp gtk wayland request=wl_display.get_registry" in script
+    assert "gimp gui wayland blocker=" in script
+    assert "versionName=0.4.104-gimp3-wayland" in script
     assert "ALR_WL_BINARY_STREAM bytes=%zu messages=%d checksum=%08x wire=wayland-binary-v1 endian=little" in display_source
     assert "ALR_WL_APP_STREAM_BEGIN frames=%d mode=%s" in display_source
     assert "ALR_WL_APP_STREAM_END frames=%d commits=%d mode=%s" in display_source

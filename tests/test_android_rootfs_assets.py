@@ -9,7 +9,7 @@ PAYLOAD = ROOT / "app" / "src" / "main" / "assets" / "rootfs" / "payloads" / "ti
 def test_android_assets_include_rootfs_manifest_and_payload():
     assert MANIFEST.is_file()
     assert PAYLOAD.is_file()
-    assert PAYLOAD.stat().st_size == 473436160
+    assert PAYLOAD.stat().st_size == 1365166080
 
 
 def test_android_asset_manifest_matches_host_manifest():
@@ -367,10 +367,15 @@ def test_tiny_rootfs_contains_local_deb_install_smoke_package():
         assert b"ALR_GIMP_DEMO_BINARY present=true" in gimp_demo
         assert b"ALR_GIMP_DEMO_LAUNCH_MODE version-probe" in gimp_demo
         assert b'"target_app": "gimp"' in gimp_profile
-        assert b'"status": "bundle-materialized-version-probe-ready"' in gimp_profile
-        assert b'"package_count": 246' in gimp_lock
+        assert b'"status": "gimp3-wayland-materialized-version-and-display-probe-ready"' in gimp_profile
+        assert b'"GDK_BACKEND": "wayland"' in gimp_profile
+        assert b'"XDG_RUNTIME_DIR": "/tmp"' in gimp_profile
+        assert b'"package_count": 313' in gimp_lock
+        assert b'"suite": "trixie"' in gimp_lock
         assert b'"package": "gimp"' in gimp_lock
-        assert b'"download_size_mib": 122.27' in gimp_lock
+        assert b'"package": "libgtk-3-0t64"' in gimp_lock
+        assert b'"package": "libwayland-client0"' in gimp_lock
+        assert b'"download_size_mib": 122.13' in gimp_lock
         assert vulkan_discovery.startswith(b"\x7fELF")
         assert b"ALR_VK_DEVICE_RECORD" in vulkan_discovery
         assert b"ALR_VK_DISCOVERY_DEVICE_RECORD ok" in vulkan_discovery

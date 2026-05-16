@@ -10,7 +10,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
-DEFAULT_PACKAGES_URL = "https://deb.debian.org/debian/dists/bookworm/main/binary-arm64/Packages.xz"
+DEFAULT_SUITE = "trixie"
+DEFAULT_PACKAGES_URL = f"https://deb.debian.org/debian/dists/{DEFAULT_SUITE}/main/binary-arm64/Packages.xz"
 DEFAULT_TARGETS = ["gimp"]
 DEPENDENCY_FIELDS = ["Pre-Depends", "Depends", "Recommends"]
 
@@ -151,12 +152,13 @@ def emit_lock(
     missing: list[str],
     url: str,
     include_fields: list[str],
+    suite: str,
 ) -> dict[str, object]:
     package_records = [records[name] for name in packages]
     total_download = sum(record.size for record in package_records)
     return {
         "name": "plib-gimp-demo-bundle",
-        "suite": "bookworm",
+        "suite": suite,
         "architecture": "arm64",
         "source_index": url,
         "targets": DEFAULT_TARGETS,
@@ -196,6 +198,7 @@ def emit_lock(
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="Resolve the Debian arm64 package closure for the Plib GIMP demo bundle.")
     parser.add_argument("--packages-url", default=DEFAULT_PACKAGES_URL)
+    parser.add_argument("--suite", default=DEFAULT_SUITE)
     parser.add_argument("--output", type=Path, default=Path("rootfs/gimp-demo-bundle.lock.json"))
     parser.add_argument("--include-recommends", action="store_true")
     args = parser.parse_args(argv)
@@ -205,7 +208,7 @@ def main(argv: list[str]) -> int:
         include_fields.append("Recommends")
     records = load_packages(args.packages_url)
     packages, missing = resolve_closure(DEFAULT_TARGETS, records, include_fields)
-    lock = emit_lock(records, packages, missing, args.packages_url, include_fields)
+    lock = emit_lock(records, packages, missing, args.packages_url, include_fields, args.suite)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(lock, indent=2, sort_keys=True) + "\n")
     print(f"resolved {len(packages)} packages, {lock['download_size_mib']} MiB, missing={len(missing)}")

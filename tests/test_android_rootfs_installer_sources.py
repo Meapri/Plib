@@ -13,6 +13,7 @@ def test_rootfs_installer_reads_bundled_manifest_and_payload_names():
     assert "rootfs/payloads/" in text
     assert "MessageDigest.getInstance(\"SHA-256\")" in text
     assert "verifyAsset" in text
+    assert "if (isExtracted(plan))" in text
 
 
 def test_main_activity_uses_rootfs_installer_status():

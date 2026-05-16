@@ -21,7 +21,7 @@ DEFAULT_LOCK = Path("rootfs/gimp-demo-bundle.lock.json")
 DEFAULT_INPUT_ROOTFS = Path("rootfs/tiny-rootfs.tar")
 DEFAULT_OUTPUT_ROOTFS = Path("rootfs/tiny-rootfs.tar")
 DEFAULT_ANDROID_ASSET = Path("app/src/main/assets/rootfs/payloads/tiny-rootfs.tar")
-DEFAULT_DOWNLOAD_DIR = Path(".cache/debian-gimp-bookworm-arm64")
+DEFAULT_DOWNLOAD_DIR = Path(".cache/debian-gimp-trixie-arm64")
 DEFAULT_WORK_DIR = Path(".cache/gimp-rootfs-materialize")
 DEFAULT_PROFILE = Path("rootfs/gimp-demo-profile.json")
 DEFAULT_LAUNCHER = Path("rootfs/guest-src/gui/alr_package_gimp_demo.sh")
@@ -37,6 +37,13 @@ PRUNE_PREFIXES = (
 
 PRESERVE_FROM_BASE_ROOTFS = (
     "usr/bin/dpkg-deb",
+    "lib/aarch64-linux-gnu/libapt-pkg.so.6.0",
+    "lib/aarch64-linux-gnu/libapt-private.so.0.0",
+)
+
+PRESERVE_TREES_FROM_BASE_ROOTFS = (
+    "bin",
+    "sbin",
 )
 
 
@@ -73,6 +80,10 @@ def load_locked_packages(lock_path: Path) -> list[LockedPackage]:
             )
         )
     return packages
+
+
+def load_lock_metadata(lock_path: Path) -> dict[str, object]:
+    return json.loads(lock_path.read_text())
 
 
 def sha256_file(path: Path) -> str:
@@ -278,7 +289,7 @@ def write_minimal_dpkg_status(rootfs_dir: Path, packages: list[LockedPackage]) -
         status_path.write_text(existing + suffix + "\n".join(additions) + "\n")
 
 
-def write_materialized_marker(rootfs_dir: Path, packages: list[LockedPackage]) -> None:
+def write_materialized_marker(rootfs_dir: Path, packages: list[LockedPackage], lock: dict[str, object]) -> None:
     marker = rootfs_dir / "usr/share/androlinux/gimp-demo-materialized.txt"
     marker.parent.mkdir(parents=True, exist_ok=True)
     total = sum(package.size for package in packages)
@@ -289,8 +300,10 @@ def write_materialized_marker(rootfs_dir: Path, packages: list[LockedPackage]) -
                 f"package_count={len(packages)}",
                 f"download_size_bytes={total}",
                 "target=/usr/bin/gimp",
-                "suite=bookworm",
-                "architecture=arm64",
+                f"suite={lock.get('suite', 'unknown')}",
+                f"architecture={lock.get('architecture', 'arm64')}",
+                f"gimp_version={next((package.version for package in packages if package.name == 'gimp'), 'unknown')}",
+                "display_backend=wayland",
                 "",
             ]
         )
@@ -327,6 +340,24 @@ def restore_preserved_files(rootfs_dir: Path, preserved: dict[str, bytes]) -> No
         path.chmod(mode)
 
 
+def capture_preserved_trees(rootfs_dir: Path, destination: Path) -> None:
+    for relative in PRESERVE_TREES_FROM_BASE_ROOTFS:
+        source = rootfs_dir / relative
+        if source.exists() and not source.is_symlink():
+            shutil.copytree(source, destination / relative, dirs_exist_ok=True, symlinks=True)
+
+
+def restore_preserved_trees(rootfs_dir: Path, source_root: Path) -> None:
+    for relative in PRESERVE_TREES_FROM_BASE_ROOTFS:
+        source = source_root / relative
+        if source.exists():
+            target = rootfs_dir / relative
+            if target.is_symlink():
+                target.unlink()
+            target.mkdir(parents=True, exist_ok=True)
+            shutil.copytree(source, target, dirs_exist_ok=True, symlinks=True)
+
+
 def patch_android_dpkg_deb(rootfs_dir: Path) -> None:
     path = rootfs_dir / "usr/bin/dpkg-deb"
     if not path.is_file():
@@ -346,7 +377,7 @@ def materialize_unsafe_symlinks(rootfs_dir: Path) -> None:
             continue
         target = os.readlink(path)
         target_parts = Path(target).parts
-        if not target.startswith("/") and ".." not in target_parts:
+        if not target.startswith("/") and ".." not in target_parts and path.parent != rootfs_dir:
             continue
         if target.startswith("/"):
             target_inside_rootfs = rootfs_dir / target.lstrip("/")
@@ -365,6 +396,7 @@ def materialize_unsafe_symlinks(rootfs_dir: Path) -> None:
         path.unlink()
         if resolved_target.is_dir():
             path.mkdir(parents=True, exist_ok=True)
+            shutil.copytree(resolved_target, path, dirs_exist_ok=True, symlinks=True)
         elif resolved_target.is_file():
             shutil.copy2(resolved_target, path)
         else:
@@ -415,6 +447,7 @@ def update_embedded_smoke_deb(rootfs_dir: Path, args: argparse.Namespace) -> Non
 
 
 def materialize(args: argparse.Namespace) -> None:
+    lock = load_lock_metadata(args.lock)
     packages = load_locked_packages(args.lock)
     if not packages:
         raise RuntimeError("lock contains no packages")
@@ -426,6 +459,9 @@ def materialize(args: argparse.Namespace) -> None:
         with tarfile.open(args.input_rootfs) as archive:
             archive.extractall(rootfs_dir)
         preserved = capture_preserved_files(rootfs_dir)
+        preserved_tree_dir = Path(tmp_dir) / "preserved-base-trees"
+        preserved_tree_dir.mkdir()
+        capture_preserved_trees(rootfs_dir, preserved_tree_dir)
         for index, package in enumerate(packages, 1):
             deb_path = download_package(package, args.download_dir)
             print(f"[{index:03d}/{len(packages):03d}] extracting {package.name} {package.version}")
@@ -435,9 +471,11 @@ def materialize(args: argparse.Namespace) -> None:
         if args.prune:
             prune_rootfs(rootfs_dir)
         materialize_unsafe_symlinks(rootfs_dir)
+        restore_preserved_trees(rootfs_dir, preserved_tree_dir)
+        materialize_unsafe_symlinks(rootfs_dir)
         verify_debian_libc(rootfs_dir)
         write_minimal_dpkg_status(rootfs_dir, packages)
-        write_materialized_marker(rootfs_dir, packages)
+        write_materialized_marker(rootfs_dir, packages, lock)
         overlay_plib_gimp_artifacts(rootfs_dir, args)
         update_embedded_smoke_deb(rootfs_dir, args)
         args.output_rootfs.parent.mkdir(parents=True, exist_ok=True)

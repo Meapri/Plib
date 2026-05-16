@@ -4,7 +4,10 @@ import android.Manifest
 import android.app.Activity
 import android.content.pm.PackageManager
 import android.net.LocalServerSocket
+import android.net.LocalSocket
+import android.net.LocalSocketAddress
 import android.os.Bundle
+import android.system.Os
 import android.util.Log
 import android.view.SurfaceHolder
 import android.view.SurfaceView
@@ -35,14 +38,19 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         System.loadLibrary("alr_loader")
 
+        if (intent.getStringExtra("ALR_VERIFY_MODE") == "gimp3-wayland") {
+            runGimp3WaylandVerificationMode()
+            return
+        }
+
         val rootfsManifest = RootfsManifest(
             name = "debian-arm64",
-            version = "bookworm-slim-2026-05-gimp-materialized-v103",
+            version = "trixie-slim-2026-05-gimp3-wayland-v104",
             assets = listOf(
                 RootfsAsset(
                     path = "tiny-rootfs.tar",
-                    sha256 = "41a737724a1f67c2c9ad0aa31598c770163edc3ab3b0c9d99380ae9ff3e332fd",
-                    sizeBytes = 473436160,
+                    sha256 = "9ed659c149510393662754f2508805f84edef5721a49539c26fe820481fcd75e",
+                    sizeBytes = 1365166080,
                 ),
             ),
         )
@@ -180,6 +188,8 @@ class MainActivity : Activity() {
         val alrDpkgInstallLocalPreloadResult = nativeCommandRunner.runAlrRuntimeTrampolineDpkgInstallLocalSmokePreload(rootfsStatus.rootfsDir)
         val alrInstalledPackageSmokePreloadResult = nativeCommandRunner.runAlrRuntimeTrampolineInstalledPackageSmokePreload(rootfsStatus.rootfsDir)
         val alrInstalledPackageGimpDemoProfileResult = nativeCommandRunner.runAlrRuntimeTrampolineInstalledPackageGimpDemoProfile(rootfsStatus.rootfsDir)
+        val gimpGtkWaylandProbeResult = runGimpGtkWaylandProbe(nativeCommandRunner, rootfsStatus.rootfsDir)
+        val gimpGuiWaylandProbeResult = runGimpGuiWaylandProbe(nativeCommandRunner, rootfsStatus.rootfsDir, fast = true)
         val prootDpkgInstallLocalResult = nativeCommandRunner.runProotRootfsDpkgInstallLocalSmoke(rootfsStatus.rootfsDir)
         val prootInstalledPackageSmokeResult = nativeCommandRunner.runProotRootfsInstalledPackageSmoke(rootfsStatus.rootfsDir)
         val prootGuestGpuClientResult = nativeCommandRunner.runProotRootfsGuestGpuClient(rootfsStatus.rootfsDir)
@@ -544,12 +554,19 @@ class MainActivity : Activity() {
         } else {
             "1"
         }
+        val gimpLockText = if (rootfsGimpDemoBundleLockFile.isFile) rootfsGimpDemoBundleLockFile.readText() else ""
+        val gimpLockPackageCount = Regex("\"package_count\"\\s*:\\s*(\\d+)").find(gimpLockText)?.groupValues?.get(1) ?: "0"
+        val gimpLockDownloadSizeMib = Regex("\"download_size_mib\"\\s*:\\s*([0-9.]+)").find(gimpLockText)?.groupValues?.get(1) ?: "0"
+        val gimpLockSuite = Regex("\"suite\"\\s*:\\s*\"([^\"]+)\"").find(gimpLockText)?.groupValues?.get(1) ?: "unknown"
+        val gimpMaterializedText = if (rootfsGimpDemoMaterializedFile.isFile) rootfsGimpDemoMaterializedFile.readText() else ""
+        val gimpMaterializedPackageCount = gimpMaterializedText.lineStartingWith("package_count=").removePrefix("package_count=").ifBlank { "0" }
+        val gimpMaterializedVersion = gimpMaterializedText.lineStartingWith("gimp_version=").removePrefix("gimp_version=").ifBlank { "unknown" }
         val gimpDemoProfileStdout = buildString {
-            appendLine("ALR_GIMP_DEMO_PROFILE_READY target=gimp version=v103 profile=/usr/share/androlinux/gimp-demo-profile.json lock=/usr/share/androlinux/gimp-demo-bundle.lock.json")
+            appendLine("ALR_GIMP_DEMO_PROFILE_READY target=gimp version=v104 profile=/usr/share/androlinux/gimp-demo-profile.json lock=/usr/share/androlinux/gimp-demo-bundle.lock.json")
             appendLine("ALR_GIMP_DEMO_PROFILE_PROGRAM path=/usr/bin/gimp argv=gimp,--version")
-            appendLine("ALR_GIMP_DEMO_PROFILE_ENV GDK_BACKEND=x11 DISPLAY=:0 WAYLAND_DISPLAY=alr-gimp-0 XDG_RUNTIME_DIR=/usr/share/alr-smoke/alr-wayland-runtime NO_AT_BRIDGE=1")
-            appendLine("ALR_GIMP_DEMO_BUNDLE_LOCK present=${rootfsGimpDemoBundleLockFile.isFile} package_count=${if (rootfsGimpDemoBundleLockFile.isFile) "246" else "0"} download_size_mib=122.27")
-            appendLine("ALR_GIMP_DEMO_MATERIALIZED present=${rootfsGimpDemoMaterializedFile.isFile} package_count=${if (rootfsGimpDemoMaterializedFile.isFile) "246" else "0"}")
+            appendLine("ALR_GIMP_DEMO_PROFILE_ENV GDK_BACKEND=wayland WAYLAND_DISPLAY=alr-gimp-0 XDG_RUNTIME_DIR=/tmp NO_AT_BRIDGE=1")
+            appendLine("ALR_GIMP_DEMO_BUNDLE_LOCK present=${rootfsGimpDemoBundleLockFile.isFile} suite=$gimpLockSuite package_count=$gimpLockPackageCount download_size_mib=$gimpLockDownloadSizeMib")
+            appendLine("ALR_GIMP_DEMO_MATERIALIZED present=${rootfsGimpDemoMaterializedFile.isFile} package_count=$gimpMaterializedPackageCount gimp_version=$gimpMaterializedVersion")
             appendLine("ALR_GIMP_DEMO_BINARY present=${rootfsGimpBinaryFile.isFile && rootfsGimpBinaryFile.canExecute()} path=/usr/bin/gimp")
             appendLine("ALR_GIMP_DEMO_LAUNCH_MODE version-probe")
             appendLine("ALR_GIMP_DEMO_VERSION_EXIT $gimpVersionExit")
@@ -570,14 +587,19 @@ class MainActivity : Activity() {
                 rootfsGimpBinaryFile.canExecute() &&
                 gimpDemoProfileStdout.contains("ALR_GIMP_DEMO_PROFILE_READY target=gimp") &&
                 gimpDemoProfileStdout.contains("ALR_GIMP_DEMO_PROFILE_PROGRAM path=/usr/bin/gimp") &&
-                gimpDemoProfileStdout.contains("ALR_GIMP_DEMO_PROFILE_ENV GDK_BACKEND=x11 DISPLAY=:0 WAYLAND_DISPLAY=alr-gimp-0") &&
-                gimpDemoProfileStdout.contains("ALR_GIMP_DEMO_BUNDLE_LOCK present=true package_count=246") &&
-                gimpDemoProfileStdout.contains("ALR_GIMP_DEMO_MATERIALIZED present=true package_count=246") &&
+                gimpDemoProfileStdout.contains("ALR_GIMP_DEMO_PROFILE_ENV GDK_BACKEND=wayland WAYLAND_DISPLAY=alr-gimp-0 XDG_RUNTIME_DIR=/tmp") &&
+                gimpDemoProfileStdout.contains("ALR_GIMP_DEMO_BUNDLE_LOCK present=true suite=trixie") &&
+                gimpLockPackageCount.toIntOrNull()?.let { it >= 300 } == true &&
+                gimpDemoProfileStdout.contains("ALR_GIMP_DEMO_MATERIALIZED present=true") &&
+                gimpMaterializedVersion.startsWith("3.") &&
                 gimpDemoProfileStdout.contains("ALR_GIMP_DEMO_BINARY present=true path=/usr/bin/gimp") &&
                 gimpDemoProfileStdout.contains("ALR_GIMP_DEMO_LAUNCH_MODE version-probe") &&
                 gimpDemoProfileStdout.contains("ALR_GIMP_DEMO_VERSION_EXIT 0") &&
-                gimpDemoProfileStdout.contains("ALR_GIMP_DEMO_VERSION_STDOUT GNU Image Manipulation Program version") &&
+                gimpDemoProfileStdout.contains("ALR_GIMP_DEMO_VERSION_STDOUT GNU Image Manipulation Program version 3.") &&
                 gimpDemoProfileStdout.contains("ALR_GIMP_DEMO_EXEC_READY true mode=version-probe")
+        val gimpGuiWaylandProbePassed = isWaylandRegistryProbe(gimpGuiWaylandProbeResult)
+        val gimpGtkWaylandProbePassed = isWaylandRegistryProbe(gimpGtkWaylandProbeResult)
+        val gimpGuiWaylandBlocker = describeGimpGuiWaylandBlocker(gimpGuiWaylandProbePassed, gimpGuiWaylandProbeResult)
         val guestGpuBridgeCommandPassed = prootGuestGpuClientResult.exitCode == 0 &&
             prootGuestGpuClientResult.stdout.contains("alr guest gpu client ok") &&
             guestGpuCommands.isNotEmpty()
@@ -974,7 +996,7 @@ class MainActivity : Activity() {
                 "vulkan-loader:${if (alrInstalledPackageVulkanLoaderInfoPassed) "PASS" else "FAIL"}," +
                 "vulkan-loader-unix:${if (alrInstalledPackageVulkanUnixLoaderInfoPassed) "PASS" else "FAIL"}"
 
-        val executionSummary = "build: 0.4.103-gimp-materialized" +
+        val executionSummary = "build: 0.4.104-gimp3-wayland" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -1024,6 +1046,9 @@ class MainActivity : Activity() {
             "\nINSTALLED PACKAGE EXECUTION: ${if (installedPackageExecutionPassed) "PASS" else "FAIL"}" +
             "\nALR INSTALLED PACKAGE PRELOAD EXECUTION: ${if (alrInstalledPackagePreloadExecutionPassed) "PASS" else "FAIL"}" +
             "\nGIMP DEMO PROFILE EXECUTION: ${if (gimpDemoProfileExecutionPassed) "PASS" else "FAIL"}" +
+            "\nGIMP GTK WAYLAND PROBE EXECUTION: ${if (gimpGtkWaylandProbePassed) "PASS" else "FAIL"}" +
+            "\nGIMP GUI WAYLAND PROBE EXECUTION: ${if (gimpGuiWaylandProbePassed) "PASS" else "FAIL"}" +
+            "\nGIMP GUI WAYLAND BLOCKER: ${gimpGuiWaylandBlocker.uppercase().replace('-', '_')}" +
             "\nGIMP DEMO BUNDLE LOCK: ${if (rootfsGimpDemoBundleLockFile.isFile) "PASS" else "FAIL"}" +
             "\nHOST GPU EGL/GLES EXECUTION: ${if (hostGpuHardwareCandidate) "PASS" else "FAIL"}" +
             "\nHOST VULKAN DISCOVERY EXECUTION: ${if (hostVulkanDiscoveryPassed) "PASS" else "FAIL"}" +
@@ -1124,6 +1149,31 @@ class MainActivity : Activity() {
             "\nrootfs gimp demo bundle lock exists=${rootfsGimpDemoBundleLockFile.isFile} bytes=${rootfsGimpDemoBundleLockFile.length()}" +
             "\nrootfs gimp demo materialized exists=${rootfsGimpDemoMaterializedFile.isFile} bytes=${rootfsGimpDemoMaterializedFile.length()}" +
             "\nrootfs /usr/bin/gimp exists=${rootfsGimpBinaryFile.isFile} executable=${rootfsGimpBinaryFile.canExecute()} bytes=${rootfsGimpBinaryFile.length()}" +
+            "\ngimp gtk wayland socket path=${gimpGtkWaylandProbeResult.socketPath}" +
+            "\ngimp gtk wayland connected=${gimpGtkWaylandProbeResult.connected}" +
+            "\ngimp gtk wayland setup bytes=${gimpGtkWaylandProbeResult.setupBytes}" +
+            "\ngimp gtk wayland object=${gimpGtkWaylandProbeResult.objectId}" +
+            "\ngimp gtk wayland opcode=${gimpGtkWaylandProbeResult.opcode}" +
+            "\ngimp gtk wayland size=${gimpGtkWaylandProbeResult.messageSize}" +
+            "\ngimp gtk wayland request=${gimpGtkWaylandProbeResult.requestName}" +
+            "\ngimp gtk wayland raw prefix=${gimpGtkWaylandProbeResult.rawPrefixHex}" +
+            "\ngimp gtk wayland error=${gimpGtkWaylandProbeResult.error ?: "none"}" +
+            "\ngimp gtk wayland handoff=${gimpGtkWaylandProbeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\ngimp gtk wayland stdout=${gimpGtkWaylandProbeResult.clientResult.stdout.alrHandoffStdoutText().forEvidenceLog()}" +
+            "\ngimp gtk wayland stderr=${gimpGtkWaylandProbeResult.clientResult.stdout.alrHandoffStderrText().forEvidenceLog()}" +
+            "\ngimp gui wayland socket path=${gimpGuiWaylandProbeResult.socketPath}" +
+            "\ngimp gui wayland connected=${gimpGuiWaylandProbeResult.connected}" +
+            "\ngimp gui wayland setup bytes=${gimpGuiWaylandProbeResult.setupBytes}" +
+            "\ngimp gui wayland object=${gimpGuiWaylandProbeResult.objectId}" +
+            "\ngimp gui wayland opcode=${gimpGuiWaylandProbeResult.opcode}" +
+            "\ngimp gui wayland size=${gimpGuiWaylandProbeResult.messageSize}" +
+            "\ngimp gui wayland request=${gimpGuiWaylandProbeResult.requestName}" +
+            "\ngimp gui wayland raw prefix=${gimpGuiWaylandProbeResult.rawPrefixHex}" +
+            "\ngimp gui wayland error=${gimpGuiWaylandProbeResult.error ?: "none"}" +
+            "\ngimp gui wayland blocker=$gimpGuiWaylandBlocker" +
+            "\ngimp gui wayland handoff=${gimpGuiWaylandProbeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\ngimp gui wayland stdout=${gimpGuiWaylandProbeResult.clientResult.stdout.alrHandoffStdoutText().forEvidenceLog()}" +
+            "\ngimp gui wayland stderr=${gimpGuiWaylandProbeResult.clientResult.stdout.alrHandoffStderrText().forEvidenceLog()}" +
             "\nrootfs installed alr gpu smoke exists=${rootfsInstalledGpuSmokeFile.isFile} executable=${rootfsInstalledGpuSmokeFile.canExecute()} bytes=${rootfsInstalledGpuSmokeFile.length()}" +
             "\nrootfs installed alr gles demo exists=${rootfsInstalledGlesDemoFile.isFile} executable=${rootfsInstalledGlesDemoFile.canExecute()} bytes=${rootfsInstalledGlesDemoFile.length()}" +
             "\nrootfs installed alr gles procaddr demo exists=${rootfsInstalledGlesProcaddrDemoFile.isFile} executable=${rootfsInstalledGlesProcaddrDemoFile.canExecute()} bytes=${rootfsInstalledGlesProcaddrDemoFile.length()}" +
@@ -1859,13 +1909,41 @@ class MainActivity : Activity() {
         Log.i(
             "ALR_DEVICE_EVIDENCE",
             listOf(
-                "build: 0.4.103-gimp-materialized",
+                "build: 0.4.104-gimp3-wayland",
                 "WAYLAND DISPLAY SOCKET AVAILABLE: ${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}",
                 "WAYLAND DISPLAY COMMIT SURFACE EXECUTION: ${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}",
                 "SIMPLE GUI DEMO EXECUTION: ${if (alrInstalledPackageSimpleGuiDemoPassed) "PASS" else "FAIL"}",
                 "SIMPLE GUI DEMO GLIBC DYNAMIC EXECUTION: ${if (alrInstalledPackageSimpleGuiDemoPassed) "PASS" else "FAIL"}",
                 "GIMP DEMO PROFILE EXECUTION: ${if (gimpDemoProfileExecutionPassed) "PASS" else "FAIL"}",
+                "GIMP GTK WAYLAND PROBE EXECUTION: ${if (gimpGtkWaylandProbePassed) "PASS" else "FAIL"}",
+                "GIMP GUI WAYLAND PROBE EXECUTION: ${if (gimpGuiWaylandProbePassed) "PASS" else "FAIL"}",
+                "GIMP GUI WAYLAND BLOCKER: ${gimpGuiWaylandBlocker.uppercase().replace('-', '_')}",
                 "GIMP DEMO BUNDLE LOCK: ${if (rootfsGimpDemoBundleLockFile.isFile) "PASS" else "FAIL"}",
+                "gimp gtk wayland socket path=${gimpGtkWaylandProbeResult.socketPath}",
+                "gimp gtk wayland connected=${gimpGtkWaylandProbeResult.connected}",
+                "gimp gtk wayland setup bytes=${gimpGtkWaylandProbeResult.setupBytes}",
+                "gimp gtk wayland object=${gimpGtkWaylandProbeResult.objectId}",
+                "gimp gtk wayland opcode=${gimpGtkWaylandProbeResult.opcode}",
+                "gimp gtk wayland size=${gimpGtkWaylandProbeResult.messageSize}",
+                "gimp gtk wayland request=${gimpGtkWaylandProbeResult.requestName}",
+                "gimp gtk wayland raw prefix=${gimpGtkWaylandProbeResult.rawPrefixHex}",
+                "gimp gtk wayland error=${gimpGtkWaylandProbeResult.error ?: "none"}",
+                "gimp gtk wayland handoff=${gimpGtkWaylandProbeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}",
+                "gimp gtk wayland stdout=${gimpGtkWaylandProbeResult.clientResult.stdout.alrHandoffStdoutText().forEvidenceLog()}",
+                "gimp gtk wayland stderr=${gimpGtkWaylandProbeResult.clientResult.stdout.alrHandoffStderrText().forEvidenceLog()}",
+                "gimp gui wayland socket path=${gimpGuiWaylandProbeResult.socketPath}",
+                "gimp gui wayland connected=${gimpGuiWaylandProbeResult.connected}",
+                "gimp gui wayland setup bytes=${gimpGuiWaylandProbeResult.setupBytes}",
+                "gimp gui wayland object=${gimpGuiWaylandProbeResult.objectId}",
+                "gimp gui wayland opcode=${gimpGuiWaylandProbeResult.opcode}",
+                "gimp gui wayland size=${gimpGuiWaylandProbeResult.messageSize}",
+                "gimp gui wayland request=${gimpGuiWaylandProbeResult.requestName}",
+                "gimp gui wayland raw prefix=${gimpGuiWaylandProbeResult.rawPrefixHex}",
+                "gimp gui wayland error=${gimpGuiWaylandProbeResult.error ?: "none"}",
+                "gimp gui wayland blocker=$gimpGuiWaylandBlocker",
+                "gimp gui wayland handoff=${gimpGuiWaylandProbeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}",
+                "gimp gui wayland stdout=${gimpGuiWaylandProbeResult.clientResult.stdout.alrHandoffStdoutText().forEvidenceLog()}",
+                "gimp gui wayland stderr=${gimpGuiWaylandProbeResult.clientResult.stdout.alrHandoffStderrText().forEvidenceLog()}",
                 "ANDROID HOST AHARDWAREBUFFER EXECUTION: ${if (hostHardwareBufferPassed) "PASS" else "FAIL"}",
                 "WAYLAND DISPLAY AHARDWAREBUFFER BACKING EXECUTION: ${if (waylandHardwareBufferBridgePassed) "PASS" else "FAIL"}",
                 hostHardwareBufferProbe.lineStartingWith("ahardwarebuffer allocated buffers="),
@@ -2002,7 +2080,7 @@ class MainActivity : Activity() {
                     Log.i(
                         "ALR_SURFACE_EVIDENCE",
                         listOf(
-                            "build: 0.4.103-gimp-materialized",
+                            "build: 0.4.104-gimp3-wayland",
                             "WAYLAND DISPLAY SOCKET AVAILABLE: ${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}",
                             "WAYLAND DISPLAY COMMIT SURFACE EXECUTION: ${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}",
                             "SIMPLE GUI DEMO EXECUTION: ${if (alrInstalledPackageSimpleGuiDemoPassed) "PASS" else "FAIL"}",
@@ -2103,6 +2181,179 @@ class MainActivity : Activity() {
         )
     }
 
+    private fun runGimp3WaylandVerificationMode() {
+        val rootfsManifest = RootfsManifest(
+            name = "debian-arm64",
+            version = "trixie-slim-2026-05-gimp3-wayland-v104",
+            assets = listOf(
+                RootfsAsset(
+                    path = "tiny-rootfs.tar",
+                    sha256 = "9ed659c149510393662754f2508805f84edef5721a49539c26fe820481fcd75e",
+                    sizeBytes = 1365166080,
+                ),
+            ),
+        )
+        val rootfsPlan = buildRootfsInstallPlan(rootfsManifest, filesDir)
+        val rootfsStatus = RootfsInstaller(this).prepareBundledTinyRootfs()
+        val nativeCommandRunner = NativeCommandRunner(
+            File(applicationInfo.nativeLibraryDir),
+            File(cacheDir, "proot-tmp"),
+        )
+        val runFullGimpProbe = intent.getBooleanExtra("ALR_RUN_FULL_GIMP_PROBE", false)
+        val gimpProfileResult = nativeCommandRunner.runAlrRuntimeTrampolineInstalledPackageGimpDemoProfile(rootfsStatus.rootfsDir)
+        val gimpGtkWaylandProbeResult = runGimpGtkWaylandProbe(nativeCommandRunner, rootfsStatus.rootfsDir)
+        val gimpGuiWaylandProbeResult = if (runFullGimpProbe) {
+            runGimpGuiWaylandProbe(nativeCommandRunner, rootfsStatus.rootfsDir, fast = true)
+        } else {
+            skippedGimpGuiWaylandProbe(rootfsStatus.rootfsDir)
+        }
+
+        val rootfsInstalledGimpDemoFile = File(rootfsStatus.rootfsDir, "usr/local/bin/alr-package-gimp-demo")
+        val rootfsGimpDemoProfileFile = File(rootfsStatus.rootfsDir, "usr/share/androlinux/gimp-demo-profile.json")
+        val rootfsGimpDemoBundleLockFile = File(rootfsStatus.rootfsDir, "usr/share/androlinux/gimp-demo-bundle.lock.json")
+        val rootfsGimpDemoMaterializedFile = File(rootfsStatus.rootfsDir, "usr/share/androlinux/gimp-demo-materialized.txt")
+        val rootfsGimpBinaryFile = File(rootfsStatus.rootfsDir, "usr/bin/gimp")
+        val gimpLockText = if (rootfsGimpDemoBundleLockFile.isFile) rootfsGimpDemoBundleLockFile.readText() else ""
+        val gimpLockPackageCount = Regex("\"package_count\"\\s*:\\s*(\\d+)").find(gimpLockText)?.groupValues?.get(1) ?: "0"
+        val gimpLockDownloadSizeMib = Regex("\"download_size_mib\"\\s*:\\s*([0-9.]+)").find(gimpLockText)?.groupValues?.get(1) ?: "0"
+        val gimpLockSuite = Regex("\"suite\"\\s*:\\s*\"([^\"]+)\"").find(gimpLockText)?.groupValues?.get(1) ?: "unknown"
+        val gimpMaterializedText = if (rootfsGimpDemoMaterializedFile.isFile) rootfsGimpDemoMaterializedFile.readText() else ""
+        val gimpMaterializedPackageCount = gimpMaterializedText.lineStartingWith("package_count=").removePrefix("package_count=").ifBlank { "0" }
+        val gimpMaterializedVersion = gimpMaterializedText.lineStartingWith("gimp_version=").removePrefix("gimp_version=").ifBlank { "unknown" }
+        val gimpVersionStdout = gimpProfileResult.stdout.alrHandoffStdoutText()
+        val gimpVersionExit = if (
+            gimpProfileResult.exitCode == 0 &&
+            gimpProfileResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS")
+        ) {
+            "0"
+        } else {
+            "1"
+        }
+        val gimpDemoProfileStdout = buildString {
+            appendLine("ALR_GIMP_DEMO_PROFILE_READY target=gimp version=v104 profile=/usr/share/androlinux/gimp-demo-profile.json lock=/usr/share/androlinux/gimp-demo-bundle.lock.json")
+            appendLine("ALR_GIMP_DEMO_PROFILE_PROGRAM path=/usr/bin/gimp argv=gimp,--version")
+            appendLine("ALR_GIMP_DEMO_PROFILE_ENV GDK_BACKEND=wayland WAYLAND_DISPLAY=alr-gimp-0 XDG_RUNTIME_DIR=/tmp NO_AT_BRIDGE=1")
+            appendLine("ALR_GIMP_DEMO_BUNDLE_LOCK present=${rootfsGimpDemoBundleLockFile.isFile} suite=$gimpLockSuite package_count=$gimpLockPackageCount download_size_mib=$gimpLockDownloadSizeMib")
+            appendLine("ALR_GIMP_DEMO_MATERIALIZED present=${rootfsGimpDemoMaterializedFile.isFile} package_count=$gimpMaterializedPackageCount gimp_version=$gimpMaterializedVersion")
+            appendLine("ALR_GIMP_DEMO_BINARY present=${rootfsGimpBinaryFile.isFile && rootfsGimpBinaryFile.canExecute()} path=/usr/bin/gimp")
+            appendLine("ALR_GIMP_DEMO_LAUNCH_MODE version-probe")
+            appendLine("ALR_GIMP_DEMO_VERSION_EXIT $gimpVersionExit")
+            gimpVersionStdout.lineSequence()
+                .filter { it.isNotBlank() }
+                .forEach { line -> appendLine("ALR_GIMP_DEMO_VERSION_STDOUT $line") }
+            appendLine("ALR_GIMP_DEMO_EXEC_READY ${gimpVersionExit == "0"} mode=version-probe")
+        }.trim()
+        val gimpDemoProfileExecutionPassed =
+            gimpProfileResult.exitCode == 0 &&
+                gimpProfileResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+                rootfsInstalledGimpDemoFile.isFile &&
+                rootfsInstalledGimpDemoFile.canExecute() &&
+                rootfsGimpDemoProfileFile.isFile &&
+                rootfsGimpDemoBundleLockFile.isFile &&
+                rootfsGimpDemoMaterializedFile.isFile &&
+                rootfsGimpBinaryFile.isFile &&
+                rootfsGimpBinaryFile.canExecute() &&
+                gimpDemoProfileStdout.contains("ALR_GIMP_DEMO_VERSION_STDOUT GNU Image Manipulation Program version 3.")
+        val gimpGtkWaylandProbePassed = isWaylandRegistryProbe(gimpGtkWaylandProbeResult)
+        val gimpGuiWaylandProbePassed = isWaylandRegistryProbe(gimpGuiWaylandProbeResult)
+        val gimpGuiWaylandBlocker = if (runFullGimpProbe) {
+            describeGimpGuiWaylandBlocker(gimpGuiWaylandProbePassed, gimpGuiWaylandProbeResult)
+        } else {
+            "fast-verifier-skipped"
+        }
+
+        val evidence = listOf(
+            "build: 0.4.104-gimp3-wayland",
+            "versionCode=104",
+            "versionName=0.4.104-gimp3-wayland",
+            "rootfs plan verified=${rootfsPlan.assetDestinations.values.all { it.exists() }}",
+            "rootfs verified=${rootfsStatus.verified} extracted=${rootfsStatus.extracted}",
+            "full gimp probe mode=${if (runFullGimpProbe) "enabled" else "skipped"}",
+            "GIMP DEMO PROFILE EXECUTION: ${if (gimpDemoProfileExecutionPassed) "PASS" else "FAIL"}",
+            "GIMP GTK WAYLAND PROBE EXECUTION: ${if (gimpGtkWaylandProbePassed) "PASS" else "FAIL"}",
+            "GIMP GUI WAYLAND PROBE EXECUTION: ${if (gimpGuiWaylandProbePassed) "PASS" else "FAIL"}",
+            "GIMP GUI WAYLAND BLOCKER: ${gimpGuiWaylandBlocker.uppercase().replace('-', '_')}",
+            "GIMP DEMO BUNDLE LOCK: ${if (rootfsGimpDemoBundleLockFile.isFile) "PASS" else "FAIL"}",
+            gimpDemoProfileStdout,
+            "rootfs gimp demo materialized exists=${rootfsGimpDemoMaterializedFile.isFile}",
+            "rootfs /usr/bin/gimp exists=${rootfsGimpBinaryFile.isFile} executable=${rootfsGimpBinaryFile.canExecute()}",
+            "gimp gtk wayland socket path=${gimpGtkWaylandProbeResult.socketPath}",
+            "gimp gtk wayland connected=${gimpGtkWaylandProbeResult.connected}",
+            "gimp gtk wayland setup bytes=${gimpGtkWaylandProbeResult.setupBytes}",
+            "gimp gtk wayland object=${gimpGtkWaylandProbeResult.objectId}",
+            "gimp gtk wayland opcode=${gimpGtkWaylandProbeResult.opcode}",
+            "gimp gtk wayland size=${gimpGtkWaylandProbeResult.messageSize}",
+            "gimp gtk wayland request=${gimpGtkWaylandProbeResult.requestName}",
+            "gimp gtk wayland raw prefix=${gimpGtkWaylandProbeResult.rawPrefixHex}",
+            "gimp gtk wayland error=${gimpGtkWaylandProbeResult.error ?: "none"}",
+            "gimp gtk wayland handoff=${gimpGtkWaylandProbeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}",
+            "gimp gtk wayland stdout=${gimpGtkWaylandProbeResult.clientResult.stdout.alrHandoffStdoutText().forEvidenceLog()}",
+            "gimp gtk wayland stderr=${gimpGtkWaylandProbeResult.clientResult.stdout.alrHandoffStderrText().forEvidenceLog()}",
+            "gimp gui wayland socket path=${gimpGuiWaylandProbeResult.socketPath}",
+            "gimp gui wayland connected=${gimpGuiWaylandProbeResult.connected}",
+            "gimp gui wayland setup bytes=${gimpGuiWaylandProbeResult.setupBytes}",
+            "gimp gui wayland object=${gimpGuiWaylandProbeResult.objectId}",
+            "gimp gui wayland opcode=${gimpGuiWaylandProbeResult.opcode}",
+            "gimp gui wayland size=${gimpGuiWaylandProbeResult.messageSize}",
+            "gimp gui wayland request=${gimpGuiWaylandProbeResult.requestName}",
+            "gimp gui wayland raw prefix=${gimpGuiWaylandProbeResult.rawPrefixHex}",
+            "gimp gui wayland error=${gimpGuiWaylandProbeResult.error ?: "none"}",
+            "gimp gui wayland blocker=$gimpGuiWaylandBlocker",
+            "gimp gui wayland handoff=${gimpGuiWaylandProbeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}",
+            "gimp gui wayland stdout=${gimpGuiWaylandProbeResult.clientResult.stdout.alrHandoffStdoutText().forEvidenceLog()}",
+            "gimp gui wayland stderr=${gimpGuiWaylandProbeResult.clientResult.stdout.alrHandoffStderrText().forEvidenceLog()}",
+        ).joinToString("\n")
+        Log.i("ALR_DEVICE_EVIDENCE", evidence)
+        setContentView(
+            ScrollView(this).apply {
+                addView(TextView(this@MainActivity).apply { text = evidence })
+            },
+        )
+    }
+
+    private fun skippedGimpGuiWaylandProbe(rootfsDir: File): GimpWaylandProbeResult =
+        GimpWaylandProbeResult(
+            socketPath = File(rootfsDir, "tmp/alr-gimp-0").absolutePath,
+            connected = false,
+            setupBytes = 0,
+            objectId = 0,
+            opcode = 0,
+            messageSize = 0,
+            requestName = "skipped",
+            rawPrefixHex = "",
+            error = "fast verifier skipped full GIMP GUI probe",
+            clientResult = NativeCommandResult(
+                command = File(rootfsDir, "usr/bin/gimp"),
+                environment = emptyMap(),
+                exitCode = -125,
+                stdout = "",
+                stderr = "fast verifier skipped full GIMP GUI probe",
+                elapsedMs = 0,
+            ),
+        )
+
+    private fun isWaylandRegistryProbe(result: GimpWaylandProbeResult): Boolean =
+        result.connected &&
+            result.setupBytes >= 12 &&
+            result.objectId == 1 &&
+            result.opcode == 1 &&
+            result.messageSize == 12 &&
+            result.requestName == "wl_display.get_registry"
+
+    private fun describeGimpGuiWaylandBlocker(
+        passed: Boolean,
+        result: GimpWaylandProbeResult,
+    ): String =
+        if (passed) {
+            "none"
+        } else if (!result.connected) {
+            "pre-wayland-connect"
+        } else if (!result.clientResult.stdout.contains("ALR STATIC ENTRY HANDOFF:")) {
+            "pre-handoff-timeout"
+        } else {
+            "wayland-handshake-incomplete"
+        }
+
     private data class GuestGpuCommand(
         val red: Float,
         val green: Float,
@@ -2136,6 +2387,19 @@ class MainActivity : Activity() {
         val error: String?,
         val clientResult: NativeCommandResult,
         val ackLines: List<String> = emptyList(),
+    )
+
+    private data class GimpWaylandProbeResult(
+        val socketPath: String,
+        val connected: Boolean,
+        val setupBytes: Int,
+        val objectId: Int,
+        val opcode: Int,
+        val messageSize: Int,
+        val requestName: String,
+        val rawPrefixHex: String,
+        val error: String?,
+        val clientResult: NativeCommandResult,
     )
 
     private data class GuestFdPayloadVerification(
@@ -3087,6 +3351,128 @@ class MainActivity : Activity() {
         )
     }
 
+    private fun runGimpGuiWaylandProbe(
+        nativeCommandRunner: NativeCommandRunner,
+        rootfsDir: File,
+        fast: Boolean = false,
+    ): GimpWaylandProbeResult {
+        return runGimpWaylandSocketProbe(
+            rootfsDir = rootfsDir,
+            socketLeaf = "alr-gimp-0",
+            threadName = "alr-gimp-wayland-probe",
+            acceptJoinTimeoutMs = if (fast) 20000 else 95000,
+            runClient = {
+                if (fast) {
+                    nativeCommandRunner.runAlrRuntimeTrampolineInstalledPackageGimpGuiWaylandFastProbe(rootfsDir)
+                } else {
+                    nativeCommandRunner.runAlrRuntimeTrampolineInstalledPackageGimpGuiWaylandProbe(rootfsDir)
+                }
+            },
+        )
+    }
+
+    private fun runGimpGtkWaylandProbe(
+        nativeCommandRunner: NativeCommandRunner,
+        rootfsDir: File,
+    ): GimpWaylandProbeResult {
+        return runGimpWaylandSocketProbe(
+            rootfsDir = rootfsDir,
+            socketLeaf = "alr-gimp-gtk-0",
+            threadName = "alr-gimp-gtk-wayland-probe",
+            runClient = { nativeCommandRunner.runAlrRuntimeTrampolineGimp3GtkWaylandPythonProbe(rootfsDir) },
+        )
+    }
+
+    private fun runGimpWaylandSocketProbe(
+        rootfsDir: File,
+        socketLeaf: String,
+        threadName: String,
+        acceptJoinTimeoutMs: Long = 95000,
+        runClient: () -> NativeCommandResult,
+    ): GimpWaylandProbeResult {
+        val runtimeDir = File(rootfsDir, "tmp").apply { mkdirs() }
+        val socketFile = File(runtimeDir, socketLeaf)
+        if (socketFile.exists()) socketFile.delete()
+
+        val rawBytes = ByteArrayOutputStream()
+        val errors = mutableListOf<String>()
+        var connected = false
+        var server: LocalServerSocket? = null
+        val listenSocket = try {
+            LocalSocket().also { socket ->
+                socket.bind(LocalSocketAddress(socketFile.absolutePath, LocalSocketAddress.Namespace.FILESYSTEM))
+                Os.listen(socket.fileDescriptor, 1)
+                server = LocalServerSocket(socket.fileDescriptor)
+            }
+        } catch (error: Exception) {
+            errors += error.javaClass.simpleName + ": " + (error.message ?: "socket bind failed")
+            null
+        }
+
+        val acceptThread = if (server != null) {
+            thread(name = threadName, start = true) {
+                try {
+                    server.use { srv ->
+                        val accepted = srv.accept()
+                        accepted.use { socket ->
+                            connected = true
+                            socket.setSoTimeout(5000)
+                            val buffer = ByteArray(256)
+                            val read = socket.getInputStream().read(buffer)
+                            if (read > 0) {
+                                rawBytes.write(buffer, 0, read)
+                            }
+                        }
+                    }
+                } catch (error: SocketTimeoutException) {
+                    errors += "timeout waiting for gimp wayland bytes"
+                } catch (error: Exception) {
+                    errors += error.javaClass.simpleName + ": " + (error.message ?: "unknown")
+                }
+            }
+        } else {
+            null
+        }
+
+        val clientResult = runClient()
+        acceptThread?.join(acceptJoinTimeoutMs)
+        if (acceptThread?.isAlive == true) {
+            errors += "gimp wayland accept thread still alive after join"
+            try {
+                server?.close()
+            } catch (_: Exception) {
+            }
+        }
+        try {
+            listenSocket?.close()
+        } catch (_: Exception) {
+        }
+        if (socketFile.exists()) socketFile.delete()
+
+        val bytes = rawBytes.toByteArray()
+        val objectId = if (bytes.size >= 4) readLe32(bytes, 0) else 0
+        val secondWord = if (bytes.size >= 8) readLe32(bytes, 4) else 0
+        val opcode = secondWord and 0xffff
+        val messageSize = (secondWord ushr 16) and 0xffff
+        val requestName = if (objectId == 1 && opcode == 1 && messageSize == 12) {
+            "wl_display.get_registry"
+        } else {
+            "unknown"
+        }
+        return GimpWaylandProbeResult(
+            socketPath = socketFile.absolutePath,
+            connected = connected,
+            setupBytes = bytes.size,
+            objectId = objectId,
+            opcode = opcode,
+            messageSize = messageSize,
+            requestName = requestName,
+            rawPrefixHex = bytes.hexPrefix(),
+            error = errors.firstOrNull(),
+            clientResult = clientResult,
+        )
+    }
+
     private fun runInstalledPackageWaylandDisplayBridge(
         nativeCommandRunner: NativeCommandRunner,
         rootfsDir: File,
@@ -3452,6 +3838,15 @@ class MainActivity : Activity() {
         }
         return hash
     }
+
+    private fun readLe32(bytes: ByteArray, offset: Int): Int =
+        (bytes[offset].toInt() and 0xff) or
+            ((bytes[offset + 1].toInt() and 0xff) shl 8) or
+            ((bytes[offset + 2].toInt() and 0xff) shl 16) or
+            ((bytes[offset + 3].toInt() and 0xff) shl 24)
+
+    private fun ByteArray.hexPrefix(maxBytes: Int = 32): String =
+        take(maxBytes).joinToString("") { "%02x".format(it.toInt() and 0xff) }
 
     private fun parseGuestGuiFrameLine(line: String, expectedProtocol: String): GuestGpuCommand? {
         val parts = line.trim().split(Regex("\\s+"))

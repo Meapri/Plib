@@ -265,7 +265,7 @@ class NativeCommandRunner(
             extraGuestEnvironment = mapOf(
                 "ALR_WAYLAND_DISPLAY_SOCKET" to "@$socketName",
                 "WAYLAND_DISPLAY" to displayName,
-                "XDG_RUNTIME_DIR" to "/usr/share/alr-smoke/alr-wayland-runtime",
+                "XDG_RUNTIME_DIR" to "/tmp",
                 "ALR_WAYLAND_PAYLOAD_DIR" to "/usr/share/alr-smoke/alr-wayland-runtime",
                 "ALR_GPU_BRIDGE_TRANSPORT" to "unix-abstract-wayland-display",
             ),
@@ -295,7 +295,7 @@ class NativeCommandRunner(
             extraGuestEnvironment = mapOf(
                 "ALR_WAYLAND_DISPLAY_SOCKET" to "@$socketName",
                 "WAYLAND_DISPLAY" to displayName,
-                "XDG_RUNTIME_DIR" to "/usr/share/alr-smoke/alr-wayland-runtime",
+                "XDG_RUNTIME_DIR" to "/tmp",
                 "ALR_WAYLAND_PAYLOAD_DIR" to "/usr/share/alr-smoke/alr-wayland-runtime",
                 "ALR_GPU_BRIDGE_TRANSPORT" to "unix-abstract-wayland-simple-gui",
             ),
@@ -613,10 +613,72 @@ class NativeCommandRunner(
             pathRewriteLimit = 16384,
             pathRewriteIdleSyscallLimit = 2048,
             extraGuestEnvironment = preloadPathFastPathEnvironment(rootfsDir) + mapOf(
-                "GDK_BACKEND" to "x11",
-                "DISPLAY" to ":0",
+                "GDK_BACKEND" to "wayland",
                 "WAYLAND_DISPLAY" to "alr-gimp-0",
-                "XDG_RUNTIME_DIR" to "/usr/share/alr-smoke/alr-wayland-runtime",
+                "XDG_RUNTIME_DIR" to "/tmp",
+                "NO_AT_BRIDGE" to "1",
+            ),
+        )
+
+    fun runAlrRuntimeTrampolineInstalledPackageGimpGuiWaylandProbe(rootfsDir: File): NativeCommandResult =
+        runAlrRuntimeTrampolineGlibcRootfsProgram(
+            rootfsDir,
+            "/usr/bin/gimp",
+            listOf("--new-instance", "--no-data", "--no-fonts", "--no-splash"),
+            timeoutMs = 90000,
+            pathRewrite = true,
+            pathRewriteLimit = 250000,
+            pathRewriteIdleSyscallLimit = 50000,
+            extraGuestEnvironment = preloadPathFastPathEnvironment(rootfsDir) + mapOf(
+                "GDK_BACKEND" to "wayland",
+                "WAYLAND_DISPLAY" to File(rootfsDir, "tmp/alr-gimp-0").absolutePath,
+                "XDG_RUNTIME_DIR" to File(rootfsDir, "tmp").absolutePath,
+                "HOME" to File(rootfsDir, "tmp").absolutePath,
+                "USER" to "android",
+                "LOGNAME" to "android",
+                "NO_AT_BRIDGE" to "1",
+            ),
+        )
+
+    fun runAlrRuntimeTrampolineInstalledPackageGimpGuiWaylandFastProbe(rootfsDir: File): NativeCommandResult =
+        runAlrRuntimeTrampolineGlibcRootfsProgram(
+            rootfsDir,
+            "/usr/bin/gimp",
+            listOf("--new-instance", "--no-data", "--no-fonts", "--no-splash"),
+            timeoutMs = 15000,
+            pathRewrite = true,
+            pathRewriteLimit = 80000,
+            pathRewriteIdleSyscallLimit = 10000,
+            extraGuestEnvironment = preloadPathFastPathEnvironment(rootfsDir) + mapOf(
+                "GDK_BACKEND" to "wayland",
+                "WAYLAND_DISPLAY" to File(rootfsDir, "tmp/alr-gimp-0").absolutePath,
+                "XDG_RUNTIME_DIR" to File(rootfsDir, "tmp").absolutePath,
+                "HOME" to File(rootfsDir, "tmp").absolutePath,
+                "USER" to "android",
+                "LOGNAME" to "android",
+                "NO_AT_BRIDGE" to "1",
+            ),
+        )
+
+    fun runAlrRuntimeTrampolineGimp3GtkWaylandPythonProbe(rootfsDir: File): NativeCommandResult =
+        runAlrRuntimeTrampolineGlibcRootfsProgram(
+            rootfsDir,
+            "/usr/bin/python3",
+            listOf(
+                "-c",
+                "import gi; gi.require_version('Gtk','3.0'); from gi.repository import Gtk; Gtk.init([]); print('ALR_GIMP3_GTK_WAYLAND_PROBE ok')",
+            ),
+            timeoutMs = 15000,
+            pathRewrite = true,
+            pathRewriteLimit = 50000,
+            pathRewriteIdleSyscallLimit = 10000,
+            extraGuestEnvironment = preloadPathFastPathEnvironment(rootfsDir) + mapOf(
+                "GDK_BACKEND" to "wayland",
+                "WAYLAND_DISPLAY" to File(rootfsDir, "tmp/alr-gimp-gtk-0").absolutePath,
+                "XDG_RUNTIME_DIR" to File(rootfsDir, "tmp").absolutePath,
+                "HOME" to File(rootfsDir, "tmp").absolutePath,
+                "USER" to "android",
+                "LOGNAME" to "android",
                 "NO_AT_BRIDGE" to "1",
             ),
         )

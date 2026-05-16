@@ -41,6 +41,17 @@ class RootfsInstaller(private val context: Context) {
         val plan = buildRootfsInstallPlan(manifest, context.filesDir)
         val asset = manifest.assets.first()
         val stagedArchive = plan.assetDestinations.getValue(asset.path)
+        if (isExtracted(plan)) {
+            return RootfsInstallStatus(
+                manifestName = manifest.name,
+                assetPath = asset.path,
+                verified = true,
+                extracted = true,
+                stagedArchive = stagedArchive,
+                rootfsDir = plan.rootfsDir,
+                markerPath = plan.markerPath,
+            )
+        }
         stagedArchive.parentFile?.mkdirs()
         context.assets.open("rootfs/payloads/${asset.path}").use { input ->
             stagedArchive.outputStream().use { output -> input.copyTo(output) }

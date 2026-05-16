@@ -1685,6 +1685,43 @@ strict `Pre-Depends` + `Depends` only, currently 246 packages and 122.27 MiB of
 `.deb` downloads. `tools/gimp_bundle_materializer.py` is the reproducible host
 step that turns that lock into the larger V103 rootfs tar.
 
+Build `0.4.104-gimp3-wayland` switches the named GIMP target from Debian
+bookworm/GIMP 2.10/X11 staging to Debian trixie/GIMP 3.0 native Wayland
+staging. The lock now resolves the trixie arm64 strict dependency closure,
+including GTK3 and `libwayland-client0`, and the materialized rootfs records the
+GIMP package version in `gimp-demo-materialized.txt`.
+
+V104 also splits the GIMP 3 Wayland gate into two Android-side filesystem
+Unix-domain probes. The GTK/PyGObject probe at `$rootfs/tmp/alr-gimp-gtk-0`
+proves that the trixie GTK3 stack can enter Wayland and emit the little-endian
+`wl_display.get_registry` header through ALR. The full GIMP probe at
+`$rootfs/tmp/alr-gimp-0` remains a separate evidence line so the current blocker
+is visible instead of being hidden behind the version check.
+
+```text
+build: 0.4.104-gimp3-wayland
+versionCode=104
+versionName=0.4.104-gimp3-wayland
+rootfs_version=trixie-slim-2026-05-gimp3-wayland-v104
+rootfs_sha256=9ed659c149510393662754f2508805f84edef5721a49539c26fe820481fcd75e
+rootfs_size=1365166080
+GIMP DEMO PROFILE EXECUTION: PASS
+GIMP GTK WAYLAND PROBE EXECUTION: PASS
+GIMP GUI WAYLAND PROBE EXECUTION:
+GIMP GUI WAYLAND BLOCKER:
+GIMP DEMO BUNDLE LOCK: PASS
+ALR_GIMP_DEMO_PROFILE_ENV GDK_BACKEND=wayland WAYLAND_DISPLAY=alr-gimp-0 XDG_RUNTIME_DIR=/tmp
+ALR_GIMP_DEMO_BUNDLE_LOCK present=true suite=trixie package_count=313
+ALR_GIMP_DEMO_MATERIALIZED present=true package_count=313 gimp_version=3.0.4-3+deb13u7
+ALR_GIMP_DEMO_VERSION_STDOUT GNU Image Manipulation Program version 3.
+gimp gtk wayland connected=true
+gimp gtk wayland object=1
+gimp gtk wayland opcode=1
+gimp gtk wayland size=12
+gimp gtk wayland request=wl_display.get_registry
+gimp gui wayland blocker=
+```
+
 Report:
 
 ```text

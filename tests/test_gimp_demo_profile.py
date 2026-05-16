@@ -17,27 +17,29 @@ def test_gimp_bundle_lock_resolves_debian_arm64_gimp_depends_closure():
     lock = json.loads(LOCK.read_text())
 
     assert lock["name"] == "plib-gimp-demo-bundle"
-    assert lock["suite"] == "bookworm"
+    assert lock["suite"] == "trixie"
     assert lock["architecture"] == "arm64"
     assert lock["targets"] == ["gimp"]
     assert lock["dependency_fields"] == ["Pre-Depends", "Depends"]
-    assert lock["package_count"] == 246
-    assert lock["download_size_mib"] == 122.27
+    assert lock["package_count"] == 313
+    assert lock["download_size_mib"] == 122.13
     assert lock["missing_relations"] == []
     assert any(package["package"] == "gimp" for package in lock["packages"])
     assert any(package["package"] == "gimp-data" for package in lock["packages"])
-    assert any(package["package"] == "libgtk2.0-0" for package in lock["packages"])
+    assert any(package["package"] == "libgtk-3-0t64" for package in lock["packages"])
+    assert any(package["package"] == "libwayland-client0" for package in lock["packages"])
 
 
-def test_gimp_profile_targets_x11_android_surface_launch():
+def test_gimp_profile_targets_wayland_android_surface_launch():
     profile = json.loads(PROFILE.read_text())
 
     assert profile["target_app"] == "gimp"
     assert profile["program"] == "/usr/bin/gimp"
     assert profile["argv"] == ["gimp", "--new-instance", "--no-data", "--no-fonts"]
-    assert profile["env"]["GDK_BACKEND"] == "x11"
-    assert profile["env"]["DISPLAY"] == ":0"
+    assert profile["version"] == "v104"
+    assert profile["env"]["GDK_BACKEND"] == "wayland"
     assert profile["env"]["WAYLAND_DISPLAY"] == "alr-gimp-0"
+    assert profile["env"]["XDG_RUNTIME_DIR"] == "/tmp"
     assert "Android Surface" in profile["presentation"]
 
 
@@ -50,18 +52,21 @@ def test_rootfs_contains_gimp_demo_launcher_profile_and_lock():
         assert "./usr/share/androlinux/gimp-demo-bundle.lock.json" in names
         assert "./usr/share/androlinux/gimp-demo-materialized.txt" in names
         assert "./usr/bin/gimp" in names
-        assert "./usr/bin/gimp-2.10" in names
-        assert "./usr/lib/aarch64-linux-gnu/libgtk-x11-2.0.so.0" in names
+        assert "./usr/bin/gimp-3.0" in names
+        assert "./usr/lib/aarch64-linux-gnu/libgtk-3.so.0" in names
+        assert "./usr/lib/aarch64-linux-gnu/libwayland-client.so.0" in names
         launcher = archive.extractfile("./usr/local/bin/alr-package-gimp-demo").read()
         lock = archive.extractfile("./usr/share/androlinux/gimp-demo-bundle.lock.json").read()
         materialized = archive.extractfile("./usr/share/androlinux/gimp-demo-materialized.txt").read()
 
     assert b"ALR_GIMP_DEMO_PROFILE_READY target=gimp" in launcher
-    assert b"ALR_GIMP_DEMO_MATERIALIZED present=true package_count=246" in launcher
+    assert b"ALR_GIMP_DEMO_MATERIALIZED present=true package_count=" in launcher
     assert b"ALR_GIMP_DEMO_LAUNCH_MODE version-probe" in launcher
     assert b"ALR_GIMP_DEMO_VERSION_EXIT" in launcher
-    assert b'"package_count": 246' in lock
+    assert b'"package_count": 313' in lock
+    assert b'"suite": "trixie"' in lock
     assert b"ALR_GIMP_DEMO_MATERIALIZED=true" in materialized
+    assert b"display_backend=wayland" in materialized
 
 
 def test_materialized_gimp_rootfs_has_no_unsafe_symlinks_for_safe_android_extract():
@@ -80,10 +85,18 @@ def test_android_reports_materialized_gimp_version_probe():
     runner = RUNNER.read_text()
 
     assert "runAlrRuntimeTrampolineInstalledPackageGimpDemoProfile" in runner
-    assert '"GDK_BACKEND" to "x11"' in runner
-    assert '"DISPLAY" to ":0"' in runner
+    assert "runAlrRuntimeTrampolineInstalledPackageGimpGuiWaylandProbe" in runner
+    assert "runAlrRuntimeTrampolineInstalledPackageGimpGuiWaylandFastProbe" in runner
+    assert "runAlrRuntimeTrampolineGimp3GtkWaylandPythonProbe" in runner
+    assert '"GDK_BACKEND" to "wayland"' in runner
     assert "WAYLAND_DISPLAY" in runner
+    assert '"XDG_RUNTIME_DIR" to "/tmp"' in runner
     assert "GIMP DEMO PROFILE EXECUTION:" in text
+    assert "GIMP GTK WAYLAND PROBE EXECUTION:" in text
+    assert "GIMP GUI WAYLAND PROBE EXECUTION:" in text
+    assert "GIMP GUI WAYLAND BLOCKER:" in text
+    assert "gimp gtk wayland request=" in text
+    assert "gimp gui wayland request=" in text
     assert "GIMP DEMO BUNDLE LOCK:" in text
     assert "rootfs /usr/bin/gimp exists=" in text
     assert "rootfs gimp demo materialized exists=" in text
@@ -95,7 +108,7 @@ def test_gimp_bundle_resolver_defaults_to_minimal_depends_profile():
     text = RESOLVER.read_text()
 
     assert "DEFAULT_PACKAGES_URL" in text
-    assert "bookworm/main/binary-arm64/Packages.xz" in text
+    assert 'DEFAULT_SUITE = "trixie"' in text
     assert "DEFAULT_TARGETS = [\"gimp\"]" in text
     assert "--include-recommends" in text
     assert "include_fields = [\"Pre-Depends\", \"Depends\"]" in text

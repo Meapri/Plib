@@ -1089,6 +1089,35 @@ ALR_GIMP_DEMO_VERSION_STDOUT GNU Image Manipulation Program version
 ALR_GIMP_DEMO_EXEC_READY true mode=version-probe
 ```
 
+Build `0.4.104-gimp3-wayland` moves the GIMP target to Debian trixie arm64
+GIMP 3.0.4 and makes Wayland the only intended GUI backend for the GIMP demo
+profile. The simple GUI demo remains the current full Android Surface rendering
+source, while GIMP now has layered Wayland ingress evidence: Android creates a
+filesystem Unix socket for a GTK/PyGObject Wayland probe and a separate socket
+for full GIMP, then reports the full-GIMP blocker independently.
+
+Expected V104 GIMP 3 Wayland evidence:
+
+```text
+GIMP DEMO PROFILE EXECUTION: PASS
+GIMP GTK WAYLAND PROBE EXECUTION: PASS
+GIMP GUI WAYLAND PROBE EXECUTION:
+GIMP GUI WAYLAND BLOCKER:
+GIMP DEMO BUNDLE LOCK: PASS
+ALR_GIMP_DEMO_PROFILE_ENV GDK_BACKEND=wayland WAYLAND_DISPLAY=alr-gimp-0 XDG_RUNTIME_DIR=/tmp
+ALR_GIMP_DEMO_BUNDLE_LOCK present=true suite=trixie package_count=313
+ALR_GIMP_DEMO_MATERIALIZED present=true package_count=313 gimp_version=3.
+ALR_GIMP_DEMO_VERSION_STDOUT GNU Image Manipulation Program version 3.
+gimp gtk wayland connected=true
+gimp gtk wayland object=1
+gimp gtk wayland opcode=1
+gimp gtk wayland size=12
+gimp gtk wayland request=wl_display.get_registry
+gimp gui wayland blocker=
+wayland ahardwarebuffer surface hardware render=true
+surface vulkan hardware render=true
+```
+
 ## Open Questions
 
 - Can the V90 file-backed payload bridge move fully behind the v96 host-buffer path without keeping memfd payloads as mandatory fallback evidence?
