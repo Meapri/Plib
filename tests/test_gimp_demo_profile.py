@@ -97,6 +97,8 @@ def test_android_reports_materialized_gimp_version_probe():
     assert "runAlrRuntimeTrampolineGimp3ProgramProbe" in runner
     assert "runAlrRuntimeTrampolineGimp3GtkWaylandWindowPythonProbe" in runner
     assert "runAlrRuntimeTrampolineGimp3GdkSurfaceWaylandPythonProbe" in runner
+    assert "Gtk.main()" in runner
+    assert "GLib.timeout_add" in runner
     assert '"GIMP3_DIRECTORY" to "/tmp/alr-gimp3"' in runner
     assert '"GIMP3_CACHEDIR" to "/tmp/alr-gimp3-cache"' in runner
     assert "runAlrRuntimeTrampolineGimp3GtkWaylandPythonProbe" in runner
@@ -152,12 +154,19 @@ def test_android_reports_materialized_gimp_version_probe():
     assert '"wl_data_device_manager" -> when (opcode)' in text
     assert '"gtk_shell1" -> when (opcode)' in text
     assert '"zxdg_shell_v6" -> when (opcode)' in text
+    assert '"wl_shell" -> when (opcode)' in text
+    assert '"xdg_shell" -> when (opcode)' in text
     assert "MinimalWaylandGlobal(7, \"wl_data_device_manager\", 3)" in text
     assert "MinimalWaylandGlobal(8, \"gtk_shell1\", 5)" in text
     assert "MinimalWaylandGlobal(9, \"zxdg_shell_v6\", 1)" in text
+    assert "MinimalWaylandGlobal(10, \"wl_shell\", 1)" in text
+    assert "MinimalWaylandGlobal(11, \"xdg_shell\", 1)" in text
     assert "wl_seat.get_keyboard" in text
     assert "waylandKeyboardKeymap" in text
     assert "ParcelFileDescriptor.open" in text
+    assert "boundOutputIds" in text
+    assert "waylandObjectEvent(surfaceId, opcode = 0" in text
+    assert "waylandObjectEvent(dataDeviceId, opcode = 4" in text
     assert "socket.ancillaryFileDescriptors" in text
     assert "waylandFdSizeBytes" in text
     assert "gimp gtk window wayland server request trace=" in text

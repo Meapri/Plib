@@ -3889,6 +3889,7 @@ class MainActivity : Activity() {
         val requestNames = mutableListOf<String>()
         val bindInterfaces = mutableListOf<String>()
         val seatRequestNames = mutableListOf<String>()
+        val boundOutputIds = mutableListOf<Int>()
         val keyboardKeymapFile = prepareWaylandKeyboardKeymapFile()
         var requestCount = 0
         var responseBytes = 0
@@ -3947,6 +3948,7 @@ class MainActivity : Activity() {
                 payload = payload,
                 objectInterfaces = objectInterfaces,
                 globals = globals,
+                boundOutputIds = boundOutputIds,
                 nextSerial = { serial++ },
                 keyboardKeymapFile = keyboardKeymapFile,
             )
@@ -3975,7 +3977,12 @@ class MainActivity : Activity() {
             it == "xdg_wm_base.get_xdg_surface" ||
                 it == "xdg_surface.get_toplevel" ||
                 it == "zxdg_shell_v6.get_xdg_surface" ||
-                it == "zxdg_surface_v6.get_toplevel"
+                it == "zxdg_surface_v6.get_toplevel" ||
+                it == "wl_shell.get_shell_surface" ||
+                it == "wl_shell_surface.set_toplevel" ||
+                it == "xdg_shell.get_xdg_surface" ||
+                it == "xdg_surface_v5.set_title" ||
+                it == "xdg_surface_v5.set_app_id"
         }
         return WaylandServerStats(
             requestCount = requestCount,
@@ -4016,6 +4023,8 @@ class MainActivity : Activity() {
             MinimalWaylandGlobal(7, "wl_data_device_manager", 3),
             MinimalWaylandGlobal(8, "gtk_shell1", 5),
             MinimalWaylandGlobal(9, "zxdg_shell_v6", 1),
+            MinimalWaylandGlobal(10, "wl_shell", 1),
+            MinimalWaylandGlobal(11, "xdg_shell", 1),
         )
 
     private fun minimalWaylandGlobalNames(): List<String> =
@@ -4040,6 +4049,23 @@ class MainActivity : Activity() {
                 0 -> "wl_compositor.create_surface"
                 1 -> "wl_compositor.create_region"
                 else -> "wl_compositor.op$opcode"
+            }
+            "wl_shell" -> when (opcode) {
+                0 -> "wl_shell.get_shell_surface"
+                else -> "wl_shell.op$opcode"
+            }
+            "wl_shell_surface" -> when (opcode) {
+                0 -> "wl_shell_surface.pong"
+                1 -> "wl_shell_surface.move"
+                2 -> "wl_shell_surface.resize"
+                3 -> "wl_shell_surface.set_toplevel"
+                4 -> "wl_shell_surface.set_transient"
+                5 -> "wl_shell_surface.set_fullscreen"
+                6 -> "wl_shell_surface.set_popup"
+                7 -> "wl_shell_surface.set_maximized"
+                8 -> "wl_shell_surface.set_title"
+                9 -> "wl_shell_surface.set_class"
+                else -> "wl_shell_surface.op$opcode"
             }
             "wl_subcompositor" -> when (opcode) {
                 0 -> "wl_subcompositor.destroy"
@@ -4155,6 +4181,14 @@ class MainActivity : Activity() {
                 3 -> "zxdg_shell_v6.pong"
                 else -> "zxdg_shell_v6.op$opcode"
             }
+            "xdg_shell" -> when (opcode) {
+                0 -> "xdg_shell.destroy"
+                1 -> "xdg_shell.use_unstable_version"
+                2 -> "xdg_shell.get_xdg_surface"
+                3 -> "xdg_shell.get_xdg_popup"
+                4 -> "xdg_shell.pong"
+                else -> "xdg_shell.op$opcode"
+            }
             "xdg_surface" -> when (opcode) {
                 0 -> "xdg_surface.destroy"
                 1 -> "xdg_surface.get_toplevel"
@@ -4205,6 +4239,23 @@ class MainActivity : Activity() {
                 13 -> "zxdg_toplevel_v6.set_minimized"
                 else -> "zxdg_toplevel_v6.op$opcode"
             }
+            "xdg_surface_v5" -> when (opcode) {
+                0 -> "xdg_surface_v5.destroy"
+                1 -> "xdg_surface_v5.set_parent"
+                2 -> "xdg_surface_v5.set_title"
+                3 -> "xdg_surface_v5.set_app_id"
+                4 -> "xdg_surface_v5.show_window_menu"
+                5 -> "xdg_surface_v5.move"
+                6 -> "xdg_surface_v5.resize"
+                7 -> "xdg_surface_v5.ack_configure"
+                8 -> "xdg_surface_v5.set_window_geometry"
+                9 -> "xdg_surface_v5.set_maximized"
+                10 -> "xdg_surface_v5.unset_maximized"
+                11 -> "xdg_surface_v5.set_fullscreen"
+                12 -> "xdg_surface_v5.unset_fullscreen"
+                13 -> "xdg_surface_v5.set_minimized"
+                else -> "xdg_surface_v5.op$opcode"
+            }
             else -> "$interfaceName.op$opcode"
         }
 
@@ -4217,6 +4268,7 @@ class MainActivity : Activity() {
         payload: ByteArray,
         objectInterfaces: MutableMap<Int, String>,
         globals: List<MinimalWaylandGlobal>,
+        boundOutputIds: MutableList<Int>,
         nextSerial: () -> Int,
         keyboardKeymapFile: File,
     ): List<WaylandServerResponse> {
@@ -4242,17 +4294,27 @@ class MainActivity : Activity() {
             val newIdOffset = boundInterface.nextOffset + 4
             val newId = if (payload.size >= newIdOffset + 4) readLe32(payload, newIdOffset) else 0
             if (newId > 0) objectInterfaces[newId] = boundInterface.value
+            if (boundInterface.value == "wl_output" && newId > 0 && !boundOutputIds.contains(newId)) {
+                boundOutputIds += newId
+            }
             return initialWaylandBindEvents(newId, boundInterface.value, version.coerceAtLeast(1), globalName, nextSerial)
                 .map { it.asWaylandResponse() }
         }
         if (interfaceName == "wl_compositor" && opcode == 0 && payload.size >= 4) {
             val surfaceId = readLe32(payload, 0)
             objectInterfaces[surfaceId] = "wl_surface"
-            return emptyList()
+            return boundOutputIds.firstOrNull()
+                ?.let { outputId -> listOf(waylandObjectEvent(surfaceId, opcode = 0, eventObjectId = outputId).asWaylandResponse()) }
+                ?: emptyList()
         }
         if (interfaceName == "wl_compositor" && opcode == 1 && payload.size >= 4) {
             val regionId = readLe32(payload, 0)
             objectInterfaces[regionId] = "wl_region"
+            return emptyList()
+        }
+        if (interfaceName == "wl_shell" && opcode == 0 && payload.size >= 8) {
+            val shellSurfaceId = readLe32(payload, 0)
+            objectInterfaces[shellSurfaceId] = "wl_shell_surface"
             return emptyList()
         }
         if (interfaceName == "wl_subcompositor" && opcode == 1 && payload.size >= 12) {
@@ -4293,7 +4355,7 @@ class MainActivity : Activity() {
         if (interfaceName == "wl_data_device_manager" && opcode == 1 && payload.size >= 4) {
             val dataDeviceId = readLe32(payload, 0)
             objectInterfaces[dataDeviceId] = "wl_data_device"
-            return emptyList()
+            return listOf(waylandObjectEvent(dataDeviceId, opcode = 4, eventObjectId = 0).asWaylandResponse())
         }
         if (interfaceName == "gtk_shell1" && opcode == 0 && payload.size >= 8) {
             val gtkSurfaceId = readLe32(payload, 0)
@@ -4324,6 +4386,11 @@ class MainActivity : Activity() {
             val xdgSurfaceId = readLe32(payload, 0)
             objectInterfaces[xdgSurfaceId] = "zxdg_surface_v6"
             return emptyList()
+        }
+        if (interfaceName == "xdg_shell" && opcode == 2 && payload.size >= 8) {
+            val xdgSurfaceId = readLe32(payload, 0)
+            objectInterfaces[xdgSurfaceId] = "xdg_surface_v5"
+            return listOf(waylandXdgV5SurfaceConfigure(xdgSurfaceId, nextSerial()).asWaylandResponse())
         }
         if (interfaceName == "xdg_surface" && opcode == 1 && payload.size >= 4) {
             val toplevelId = readLe32(payload, 0)
@@ -4368,6 +4435,7 @@ class MainActivity : Activity() {
             }
             "xdg_wm_base" -> listOf(waylandFixedU32Event(objectId, opcode = 0, value = nextSerial()))
             "zxdg_shell_v6" -> listOf(waylandFixedU32Event(objectId, opcode = 0, value = nextSerial()))
+            "xdg_shell" -> listOf(waylandFixedU32Event(objectId, opcode = 0, value = nextSerial()))
             else -> emptyList()
         }
 
@@ -4436,6 +4504,11 @@ class MainActivity : Activity() {
             writeLe32(value)
         }
 
+    private fun waylandObjectEvent(objectId: Int, opcode: Int, eventObjectId: Int): ByteArray =
+        waylandMessage(objectId, opcode = opcode) {
+            writeLe32(eventObjectId)
+        }
+
     private fun waylandEmptyEvent(objectId: Int, opcode: Int): ByteArray =
         waylandMessage(objectId, opcode = opcode) {}
 
@@ -4473,6 +4546,14 @@ class MainActivity : Activity() {
 
     private fun waylandXdgSurfaceConfigure(objectId: Int, serial: Int): ByteArray =
         waylandMessage(objectId, opcode = 0) {
+            writeLe32(serial)
+        }
+
+    private fun waylandXdgV5SurfaceConfigure(objectId: Int, serial: Int): ByteArray =
+        waylandMessage(objectId, opcode = 0) {
+            writeLe32(640)
+            writeLe32(480)
+            writeLe32(0)
             writeLe32(serial)
         }
 
