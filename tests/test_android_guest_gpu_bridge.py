@@ -349,6 +349,11 @@ def test_v104_adb_verifier_checks_gimp3_wayland_evidence():
     assert "gimp gtk wayland server requests=" in script
     assert "gimp gtk wayland server response bytes=" in script
     assert f"gimp gtk wayland server globals={expanded_gdk_globals}" in script
+    assert "gimp gtk wayland server surfaces created=2" in script
+    assert "gimp gtk wayland server data devices=1" in script
+    assert "gimp gtk wayland server shell roles=0" in script
+    assert "gimp gtk window wayland server surfaces created=2" in script
+    assert "gimp gdk surface wayland server surfaces created=2" in script
     assert "gimp gtk wayland handoff=ALR STATIC ENTRY HANDOFF: PASS" in script
     assert "gimp gtk wayland stdout=ALR_GIMP3_GTK_WAYLAND_PROBE ok" in script
     assert "gimp gui quit wayland connected=" in script

@@ -140,6 +140,9 @@ def test_android_reports_materialized_gimp_version_probe():
     assert "gimp gtk wayland server bind trace=" in text
     assert "gimp gtk wayland server fd count=" in text
     assert "gimp gtk wayland server shm pool buffers=" in text
+    assert "gimp gtk wayland server surfaces created=" in text
+    assert "gimp gtk wayland server data devices=" in text
+    assert "gimp gtk wayland server shell roles=" in text
     assert "gimp gtk wayland server surface commits=" in text
     assert "gimp gtk wayland server keyboard keymaps=" in text
     assert "minimalWaylandGlobals" in text
@@ -161,6 +164,9 @@ def test_android_reports_materialized_gimp_version_probe():
     assert "gimp gtk window wayland server bind trace=" in text
     assert "gimp gtk window wayland server fd count=" in text
     assert "gimp gtk window wayland server shm pool buffers=" in text
+    assert "gimp gtk window wayland server surfaces created=" in text
+    assert "gimp gtk window wayland server data devices=" in text
+    assert "gimp gtk window wayland server shell roles=" in text
     assert "gimp gtk window wayland server surface commits=" in text
     assert "gimp gtk window wayland server seat trace=" in text
     assert "gimp gtk window wayland server keyboard keymaps=" in text
@@ -169,6 +175,9 @@ def test_android_reports_materialized_gimp_version_probe():
     assert "gimp gdk surface wayland server bind trace=" in text
     assert "gimp gdk surface wayland server fd count=" in text
     assert "gimp gdk surface wayland server shm pool buffers=" in text
+    assert "gimp gdk surface wayland server surfaces created=" in text
+    assert "gimp gdk surface wayland server data devices=" in text
+    assert "gimp gdk surface wayland server shell roles=" in text
     assert "gimp gdk surface wayland server surface attaches=" in text
     assert "gimp gdk surface wayland server surface commits=" in text
     assert "gimp gdk surface wayland handoff=" in text
@@ -178,6 +187,9 @@ def test_android_reports_materialized_gimp_version_probe():
     assert "gimp gui quit wayland server bind trace=" in text
     assert "gimp gui quit wayland server fd count=" in text
     assert "gimp gui quit wayland server shm pool buffers=" in text
+    assert "gimp gui quit wayland server surfaces created=" in text
+    assert "gimp gui quit wayland server data devices=" in text
+    assert "gimp gui quit wayland server shell roles=" in text
     assert "gimp gui quit wayland server surface commits=" in text
     assert "gimp gui quit wayland server keyboard keymaps=" in text
     assert "gimp gui wayland request=" in text

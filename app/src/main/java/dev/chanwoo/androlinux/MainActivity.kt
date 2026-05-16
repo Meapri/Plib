@@ -2389,6 +2389,9 @@ class MainActivity : Activity() {
             "gimp gtk wayland server shm create pools=${gimpGtkWaylandProbeResult.waylandShmCreatePoolCount}",
             "gimp gtk wayland server shm pool resizes=${gimpGtkWaylandProbeResult.waylandShmPoolResizeCount}",
             "gimp gtk wayland server shm pool buffers=${gimpGtkWaylandProbeResult.waylandShmPoolCreateBufferCount}",
+            "gimp gtk wayland server surfaces created=${gimpGtkWaylandProbeResult.waylandSurfaceCreateCount}",
+            "gimp gtk wayland server data devices=${gimpGtkWaylandProbeResult.waylandDataDeviceRequestCount}",
+            "gimp gtk wayland server shell roles=${gimpGtkWaylandProbeResult.waylandShellRoleRequestCount}",
             "gimp gtk wayland server surface attaches=${gimpGtkWaylandProbeResult.waylandSurfaceAttachCount}",
             "gimp gtk wayland server surface commits=${gimpGtkWaylandProbeResult.waylandSurfaceCommitCount}",
             "gimp gtk wayland server seat trace=${gimpGtkWaylandProbeResult.waylandSeatRequestNames.joinToString(",")}",
@@ -2417,6 +2420,9 @@ class MainActivity : Activity() {
             "gimp gtk window wayland server shm create pools=${gimpGtkWindowWaylandProbeResult.waylandShmCreatePoolCount}",
             "gimp gtk window wayland server shm pool resizes=${gimpGtkWindowWaylandProbeResult.waylandShmPoolResizeCount}",
             "gimp gtk window wayland server shm pool buffers=${gimpGtkWindowWaylandProbeResult.waylandShmPoolCreateBufferCount}",
+            "gimp gtk window wayland server surfaces created=${gimpGtkWindowWaylandProbeResult.waylandSurfaceCreateCount}",
+            "gimp gtk window wayland server data devices=${gimpGtkWindowWaylandProbeResult.waylandDataDeviceRequestCount}",
+            "gimp gtk window wayland server shell roles=${gimpGtkWindowWaylandProbeResult.waylandShellRoleRequestCount}",
             "gimp gtk window wayland server surface attaches=${gimpGtkWindowWaylandProbeResult.waylandSurfaceAttachCount}",
             "gimp gtk window wayland server surface commits=${gimpGtkWindowWaylandProbeResult.waylandSurfaceCommitCount}",
             "gimp gtk window wayland server seat trace=${gimpGtkWindowWaylandProbeResult.waylandSeatRequestNames.joinToString(",")}",
@@ -2445,6 +2451,9 @@ class MainActivity : Activity() {
             "gimp gdk surface wayland server shm create pools=${gimpGdkSurfaceWaylandProbeResult.waylandShmCreatePoolCount}",
             "gimp gdk surface wayland server shm pool resizes=${gimpGdkSurfaceWaylandProbeResult.waylandShmPoolResizeCount}",
             "gimp gdk surface wayland server shm pool buffers=${gimpGdkSurfaceWaylandProbeResult.waylandShmPoolCreateBufferCount}",
+            "gimp gdk surface wayland server surfaces created=${gimpGdkSurfaceWaylandProbeResult.waylandSurfaceCreateCount}",
+            "gimp gdk surface wayland server data devices=${gimpGdkSurfaceWaylandProbeResult.waylandDataDeviceRequestCount}",
+            "gimp gdk surface wayland server shell roles=${gimpGdkSurfaceWaylandProbeResult.waylandShellRoleRequestCount}",
             "gimp gdk surface wayland server surface attaches=${gimpGdkSurfaceWaylandProbeResult.waylandSurfaceAttachCount}",
             "gimp gdk surface wayland server surface commits=${gimpGdkSurfaceWaylandProbeResult.waylandSurfaceCommitCount}",
             "gimp gdk surface wayland server seat trace=${gimpGdkSurfaceWaylandProbeResult.waylandSeatRequestNames.joinToString(",")}",
@@ -2473,6 +2482,9 @@ class MainActivity : Activity() {
             "gimp gui quit wayland server shm create pools=${gimpGuiQuitWaylandProbeResult.waylandShmCreatePoolCount}",
             "gimp gui quit wayland server shm pool resizes=${gimpGuiQuitWaylandProbeResult.waylandShmPoolResizeCount}",
             "gimp gui quit wayland server shm pool buffers=${gimpGuiQuitWaylandProbeResult.waylandShmPoolCreateBufferCount}",
+            "gimp gui quit wayland server surfaces created=${gimpGuiQuitWaylandProbeResult.waylandSurfaceCreateCount}",
+            "gimp gui quit wayland server data devices=${gimpGuiQuitWaylandProbeResult.waylandDataDeviceRequestCount}",
+            "gimp gui quit wayland server shell roles=${gimpGuiQuitWaylandProbeResult.waylandShellRoleRequestCount}",
             "gimp gui quit wayland server surface attaches=${gimpGuiQuitWaylandProbeResult.waylandSurfaceAttachCount}",
             "gimp gui quit wayland server surface commits=${gimpGuiQuitWaylandProbeResult.waylandSurfaceCommitCount}",
             "gimp gui quit wayland server seat trace=${gimpGuiQuitWaylandProbeResult.waylandSeatRequestNames.joinToString(",")}",
@@ -2501,6 +2513,9 @@ class MainActivity : Activity() {
             "gimp gui wayland server shm create pools=${gimpGuiWaylandProbeResult.waylandShmCreatePoolCount}",
             "gimp gui wayland server shm pool resizes=${gimpGuiWaylandProbeResult.waylandShmPoolResizeCount}",
             "gimp gui wayland server shm pool buffers=${gimpGuiWaylandProbeResult.waylandShmPoolCreateBufferCount}",
+            "gimp gui wayland server surfaces created=${gimpGuiWaylandProbeResult.waylandSurfaceCreateCount}",
+            "gimp gui wayland server data devices=${gimpGuiWaylandProbeResult.waylandDataDeviceRequestCount}",
+            "gimp gui wayland server shell roles=${gimpGuiWaylandProbeResult.waylandShellRoleRequestCount}",
             "gimp gui wayland server surface attaches=${gimpGuiWaylandProbeResult.waylandSurfaceAttachCount}",
             "gimp gui wayland server surface commits=${gimpGuiWaylandProbeResult.waylandSurfaceCommitCount}",
             "gimp gui wayland server seat trace=${gimpGuiWaylandProbeResult.waylandSeatRequestNames.joinToString(",")}",
@@ -2656,8 +2671,11 @@ class MainActivity : Activity() {
         val waylandShmCreatePoolCount: Int = 0,
         val waylandShmPoolResizeCount: Int = 0,
         val waylandShmPoolCreateBufferCount: Int = 0,
+        val waylandSurfaceCreateCount: Int = 0,
         val waylandSurfaceAttachCount: Int = 0,
         val waylandSurfaceCommitCount: Int = 0,
+        val waylandDataDeviceRequestCount: Int = 0,
+        val waylandShellRoleRequestCount: Int = 0,
         val waylandSeatRequestNames: List<String> = emptyList(),
         val waylandKeyboardKeymapSentCount: Int = 0,
     )
@@ -3639,6 +3657,7 @@ class MainActivity : Activity() {
             rootfsDir = rootfsDir,
             socketLeaf = "alr-gimp-gtk-0",
             threadName = "alr-gimp-gtk-wayland-probe",
+            socketReadTimeoutMs = 5000,
             runClient = { nativeCommandRunner.runAlrRuntimeTrampolineGimp3GtkWaylandPythonProbe(rootfsDir) },
         )
     }
@@ -3652,6 +3671,7 @@ class MainActivity : Activity() {
             socketLeaf = "alr-gimp-gtk-window-0",
             threadName = "alr-gimp-gtk-window-wayland-probe",
             acceptJoinTimeoutMs = 25000,
+            socketReadTimeoutMs = 9000,
             runClient = { nativeCommandRunner.runAlrRuntimeTrampolineGimp3GtkWaylandWindowPythonProbe(rootfsDir) },
         )
     }
@@ -3665,6 +3685,7 @@ class MainActivity : Activity() {
             socketLeaf = "alr-gimp-gdk-surface-0",
             threadName = "alr-gimp-gdk-surface-wayland-probe",
             acceptJoinTimeoutMs = 28000,
+            socketReadTimeoutMs = 9000,
             runClient = { nativeCommandRunner.runAlrRuntimeTrampolineGimp3GdkSurfaceWaylandPythonProbe(rootfsDir) },
         )
     }
@@ -3678,6 +3699,7 @@ class MainActivity : Activity() {
             socketLeaf = "alr-gimp-quit-0",
             threadName = "alr-gimp-gui-quit-wayland-probe",
             acceptJoinTimeoutMs = 25000,
+            socketReadTimeoutMs = 9000,
             runClient = { nativeCommandRunner.runAlrRuntimeTrampolineGimp3GuiQuitWaylandProbe(rootfsDir) },
         )
     }
@@ -3687,6 +3709,7 @@ class MainActivity : Activity() {
         socketLeaf: String,
         threadName: String,
         acceptJoinTimeoutMs: Long = 95000,
+        socketReadTimeoutMs: Int = 2500,
         runClient: () -> NativeCommandResult,
     ): GimpWaylandProbeResult {
         val runtimeDir = File(rootfsDir, "tmp").apply { mkdirs() }
@@ -3707,8 +3730,11 @@ class MainActivity : Activity() {
         var waylandShmCreatePoolCount = 0
         var waylandShmPoolResizeCount = 0
         var waylandShmPoolCreateBufferCount = 0
+        var waylandSurfaceCreateCount = 0
         var waylandSurfaceAttachCount = 0
         var waylandSurfaceCommitCount = 0
+        var waylandDataDeviceRequestCount = 0
+        var waylandShellRoleRequestCount = 0
         var waylandSeatRequestNames = emptyList<String>()
         var waylandKeyboardKeymapSentCount = 0
         var server: LocalServerSocket? = null
@@ -3730,7 +3756,7 @@ class MainActivity : Activity() {
                         val accepted = srv.accept()
                         accepted.use { socket ->
                             connected = true
-                            socket.setSoTimeout(2500)
+                            socket.setSoTimeout(socketReadTimeoutMs)
                             val stats = serveMinimalWaylandClient(socket, rawBytes)
                             waylandRequestCount = stats.requestCount
                             waylandResponseBytes = stats.responseBytes
@@ -3743,8 +3769,11 @@ class MainActivity : Activity() {
                             waylandShmCreatePoolCount = stats.shmCreatePoolCount
                             waylandShmPoolResizeCount = stats.shmPoolResizeCount
                             waylandShmPoolCreateBufferCount = stats.shmPoolCreateBufferCount
+                            waylandSurfaceCreateCount = stats.surfaceCreateCount
                             waylandSurfaceAttachCount = stats.surfaceAttachCount
                             waylandSurfaceCommitCount = stats.surfaceCommitCount
+                            waylandDataDeviceRequestCount = stats.dataDeviceRequestCount
+                            waylandShellRoleRequestCount = stats.shellRoleRequestCount
                             waylandSeatRequestNames = stats.seatRequestNames
                             waylandKeyboardKeymapSentCount = stats.keyboardKeymapSentCount
                         }
@@ -3807,8 +3836,11 @@ class MainActivity : Activity() {
             waylandShmCreatePoolCount = waylandShmCreatePoolCount,
             waylandShmPoolResizeCount = waylandShmPoolResizeCount,
             waylandShmPoolCreateBufferCount = waylandShmPoolCreateBufferCount,
+            waylandSurfaceCreateCount = waylandSurfaceCreateCount,
             waylandSurfaceAttachCount = waylandSurfaceAttachCount,
             waylandSurfaceCommitCount = waylandSurfaceCommitCount,
+            waylandDataDeviceRequestCount = waylandDataDeviceRequestCount,
+            waylandShellRoleRequestCount = waylandShellRoleRequestCount,
             waylandSeatRequestNames = waylandSeatRequestNames,
             waylandKeyboardKeymapSentCount = waylandKeyboardKeymapSentCount,
         )
@@ -3826,8 +3858,11 @@ class MainActivity : Activity() {
         val shmCreatePoolCount: Int,
         val shmPoolResizeCount: Int,
         val shmPoolCreateBufferCount: Int,
+        val surfaceCreateCount: Int,
         val surfaceAttachCount: Int,
         val surfaceCommitCount: Int,
+        val dataDeviceRequestCount: Int,
+        val shellRoleRequestCount: Int,
         val seatRequestNames: List<String>,
         val keyboardKeymapSentCount: Int,
     )
@@ -3932,8 +3967,16 @@ class MainActivity : Activity() {
         val shmCreatePoolCount = requestNames.count { it == "wl_shm.create_pool" }
         val shmPoolResizeCount = requestNames.count { it == "wl_shm_pool.resize" }
         val shmPoolCreateBufferCount = requestNames.count { it == "wl_shm_pool.create_buffer" }
+        val surfaceCreateCount = requestNames.count { it == "wl_compositor.create_surface" }
         val surfaceAttachCount = requestNames.count { it == "wl_surface.attach" }
         val surfaceCommitCount = requestNames.count { it == "wl_surface.commit" }
+        val dataDeviceRequestCount = requestNames.count { it == "wl_data_device_manager.get_data_device" }
+        val shellRoleRequestCount = requestNames.count {
+            it == "xdg_wm_base.get_xdg_surface" ||
+                it == "xdg_surface.get_toplevel" ||
+                it == "zxdg_shell_v6.get_xdg_surface" ||
+                it == "zxdg_surface_v6.get_toplevel"
+        }
         return WaylandServerStats(
             requestCount = requestCount,
             responseBytes = responseBytes,
@@ -3946,8 +3989,11 @@ class MainActivity : Activity() {
             shmCreatePoolCount = shmCreatePoolCount,
             shmPoolResizeCount = shmPoolResizeCount,
             shmPoolCreateBufferCount = shmPoolCreateBufferCount,
+            surfaceCreateCount = surfaceCreateCount,
             surfaceAttachCount = surfaceAttachCount,
             surfaceCommitCount = surfaceCommitCount,
+            dataDeviceRequestCount = dataDeviceRequestCount,
+            shellRoleRequestCount = shellRoleRequestCount,
             seatRequestNames = seatRequestNames,
             keyboardKeymapSentCount = keyboardKeymapSentCount,
         )
