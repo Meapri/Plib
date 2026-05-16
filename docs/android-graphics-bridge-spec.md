@@ -1034,10 +1034,33 @@ wayland ahardwarebuffer surface presented frames=8
 wayland ahardwarebuffer surface hardware render=true
 ```
 
+Build `0.4.101-simple-gui-demo` adds a named dynamically linked glibc GUI demo
+binary, `alr-simple-gui-demo`, beside the V100 static display fixture. Android
+launches it through the guest `/lib/ld-linux-aarch64.so.1`, verifies the same
+30-message Wayland binary subset, and uses its eight guest commits as the
+preferred AHardwareBuffer/Surface source. This is the staging target for the
+GIMP demo: it proves the launch, glibc loader, Wayland transport, memfd payload,
+and Android-native Surface path before the rootfs grows to a full GTK/GIMP
+bundle.
+
+Expected V101 simple GUI demo evidence:
+
+```text
+SIMPLE GUI DEMO EXECUTION: PASS
+SIMPLE GUI DEMO GLIBC DYNAMIC EXECUTION: PASS
+simple gui demo glibc dynamic=true
+simple gui demo display commits=8/8
+simple gui demo binary messages=30
+simple gui demo continuous stream ready=true
+simple gui demo android surface candidate=true
+ALR_SIMPLE_GUI_DEMO ok
+```
+
 ## Open Questions
 
 - Can the V90 file-backed payload bridge move fully behind the v96 host-buffer path without keeping memfd payloads as mandatory fallback evidence?
 - Which target devices return sync FDs for this AHardwareBuffer lock/unlock path, and where do we need EGL fence objects instead?
 - Which next Wayland subset should be decoded after the v99 registry/compositor/shm/surface binary request path?
+- What is the smallest GIMP-rootfs bundle that preserves GTK/font/theme/module behavior while still fitting an APK/device smoke workflow?
 - Should X11 support begin with image transport, GLX proxy research, or Xvfb/VNC comparison?
 - Which Vulkan subset is small enough to be credible but useful enough to guide the ICD design?

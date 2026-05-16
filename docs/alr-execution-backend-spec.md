@@ -1626,6 +1626,32 @@ wayland ahardwarebuffer surface presented frames=8
 wayland ahardwarebuffer surface hardware render=true
 ```
 
+Build `0.4.101-simple-gui-demo` promotes that fixture into a named glibc app
+launch track:
+
+```text
+build: 0.4.101-simple-gui-demo
+versionCode=101
+versionName=0.4.101-simple-gui-demo
+rootfs_version=bookworm-slim-2026-05-simple-gui-demo-v101
+rootfs_sha256=3ccd54fd7df06e703c8328306f592e3af058935314a13a96063f82a02c98e7e6
+rootfs_size=35348480
+SIMPLE GUI DEMO EXECUTION: PASS
+SIMPLE GUI DEMO GLIBC DYNAMIC EXECUTION: PASS
+simple gui demo glibc dynamic=true
+simple gui demo display commits=8/8
+simple gui demo android surface candidate=true
+```
+
+The V101 demo is still a controlled raw-Wayland subset rather than GIMP. Its
+purpose is to lock down the same Android process constraints GIMP will need:
+dynamic glibc launch through the rootfs loader, no root, abstract Unix display
+socket, SCM_RIGHTS memfd buffer passing, and Android-native AHardwareBuffer /
+EGLImage / Surface presentation. The user-facing V118 demo target is now GIMP,
+so subsequent backend work should grow rootfs packaging, GTK/GIO/font/module
+coverage, and Wayland protocol coverage toward `gimp --new-instance` rather than
+inventing another tiny final fixture.
+
 Report:
 
 ```text

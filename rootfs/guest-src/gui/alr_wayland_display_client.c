@@ -20,6 +20,20 @@
 #define MFD_CLOEXEC 0x0001U
 #endif
 
+#ifdef ALR_SIMPLE_GUI_DEMO
+#define ALR_WL_CLIENT_NAME "alr-simple-gui-demo"
+#define ALR_WL_STREAM_MODE "simple-gui-demo"
+#define ALR_WL_STREAM_TARGET "v101-glibc-simple-gui-demo"
+#define ALR_WL_APP_KIND "simple-linux-glibc-gui-demo"
+#define ALR_WL_GLIBC_DYNAMIC "true"
+#else
+#define ALR_WL_CLIENT_NAME "alr-wayland-display-client"
+#define ALR_WL_STREAM_MODE "continuous-demo"
+#define ALR_WL_STREAM_TARGET "v118-simple-gui-demo"
+#define ALR_WL_APP_KIND "wayland-display-continuous-demo"
+#define ALR_WL_GLIBC_DYNAMIC "false"
+#endif
+
 static const char* env_or_default(const char* name, const char* fallback) {
     const char* value = getenv(name);
     return (value != 0 && value[0] != 0) ? value : fallback;
@@ -416,7 +430,30 @@ int main(void) {
 
     char line[512];
     if (!emit_wayland_binary_subset(fd, frame_count)) return 24;
-    snprintf(line, sizeof(line), "ALR_WL_APP_STREAM_BEGIN frames=%d mode=continuous-demo pacing=guest-driven target=v118-simple-gui-demo\n", frame_count);
+#ifdef ALR_SIMPLE_GUI_DEMO
+    snprintf(
+        line,
+        sizeof(line),
+        "ALR_SIMPLE_GUI_DEMO_BEGIN app=%s kind=%s glibc_dynamic=%s frames=%d toolkit=raw-wayland-subset transport=scm-rights-memfd target=%s\n",
+        ALR_WL_CLIENT_NAME,
+        ALR_WL_APP_KIND,
+        ALR_WL_GLIBC_DYNAMIC,
+        frame_count,
+        ALR_WL_STREAM_TARGET
+    );
+    if (!write_all(fd, line)) return 27;
+#endif
+    snprintf(
+        line,
+        sizeof(line),
+        "ALR_WL_APP_STREAM_BEGIN frames=%d mode=%s pacing=guest-driven target=%s app=%s kind=%s glibc_dynamic=%s\n",
+        frame_count,
+        ALR_WL_STREAM_MODE,
+        ALR_WL_STREAM_TARGET,
+        ALR_WL_CLIENT_NAME,
+        ALR_WL_APP_KIND,
+        ALR_WL_GLIBC_DYNAMIC
+    );
     if (!write_all(fd, line)) return 25;
     snprintf(line, sizeof(line), "ALR_WL_CONNECT display=%s runtime=%s transport=unix-abstract-wayland\n", display, runtime_dir);
     if (!write_all(fd, line)) return 3;
@@ -519,7 +556,16 @@ int main(void) {
         );
         if (!write_all(fd, line)) return 16;
     }
-    snprintf(line, sizeof(line), "ALR_WL_APP_STREAM_END frames=%d commits=%d mode=continuous-demo\n", frame_count, frame_count);
+    snprintf(
+        line,
+        sizeof(line),
+        "ALR_WL_APP_STREAM_END frames=%d commits=%d mode=%s app=%s glibc_dynamic=%s\n",
+        frame_count,
+        frame_count,
+        ALR_WL_STREAM_MODE,
+        ALR_WL_CLIENT_NAME,
+        ALR_WL_GLIBC_DYNAMIC
+    );
     if (!write_all(fd, line)) return 26;
     shutdown(fd, SHUT_WR);
 
@@ -531,7 +577,10 @@ int main(void) {
     }
     ack[strcspn(ack, "\r\n")] = 0;
     close(fd);
-    printf("alr-wayland-display-client ok\n");
-    printf("ALR_WL_DISPLAY_CLIENT ok display=%s commits=%d ack=%s\n", display, frame_count, ack);
+    printf("%s ok\n", ALR_WL_CLIENT_NAME);
+#ifdef ALR_SIMPLE_GUI_DEMO
+    printf("ALR_SIMPLE_GUI_DEMO ok display=%s commits=%d glibc_dynamic=%s ack=%s\n", display, frame_count, ALR_WL_GLIBC_DYNAMIC, ack);
+#endif
+    printf("ALR_WL_DISPLAY_CLIENT ok display=%s commits=%d app=%s mode=%s glibc_dynamic=%s ack=%s\n", display, frame_count, ALR_WL_CLIENT_NAME, ALR_WL_STREAM_MODE, ALR_WL_GLIBC_DYNAMIC, ack);
     return 0;
 }

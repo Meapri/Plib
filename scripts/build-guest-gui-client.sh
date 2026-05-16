@@ -31,7 +31,13 @@ done
   -static \
   -o "$OUT_DIR/alr-wayland-display-client"
 
+"$ZIG_BIN" cc -target aarch64-linux-gnu -O2 -s \
+  -DALR_SIMPLE_GUI_DEMO=1 \
+  "$SRC_DIR/alr_wayland_display_client.c" \
+  -o "$OUT_DIR/alr-simple-gui-demo"
+
 file \
   "$OUT_DIR/alr-wayland-gpu-client" \
   "$OUT_DIR/alr-x11-gpu-client" \
-  "$OUT_DIR/alr-wayland-display-client"
+  "$OUT_DIR/alr-wayland-display-client" \
+  "$OUT_DIR/alr-simple-gui-demo"

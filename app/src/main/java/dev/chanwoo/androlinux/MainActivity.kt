@@ -37,12 +37,12 @@ class MainActivity : Activity() {
 
         val rootfsManifest = RootfsManifest(
             name = "debian-arm64",
-            version = "bookworm-slim-2026-05-wayland-continuous-v100",
+            version = "bookworm-slim-2026-05-simple-gui-demo-v101",
             assets = listOf(
                 RootfsAsset(
                     path = "tiny-rootfs.tar",
-                    sha256 = "84713c829832154e004e40090d40e632f439118848be3baa78c64a5d7c8d292e",
-                    sizeBytes = 35307520,
+                    sha256 = "3ccd54fd7df06e703c8328306f592e3af058935314a13a96063f82a02c98e7e6",
+                    sizeBytes = 35348480,
                 ),
             ),
         )
@@ -250,13 +250,20 @@ class MainActivity : Activity() {
         val alrInstalledPackageWaylandGuiUnixBridgeResult = runGuestGuiBridgeUnix(nativeCommandRunner, rootfsStatus.rootfsDir, "WAYLAND", useInstalledPackage = true)
         val alrInstalledPackageX11GuiUnixBridgeResult = runGuestGuiBridgeUnix(nativeCommandRunner, rootfsStatus.rootfsDir, "X11", useInstalledPackage = true)
         val alrInstalledPackageWaylandDisplayBridgeResult = runInstalledPackageWaylandDisplayBridge(nativeCommandRunner, rootfsStatus.rootfsDir)
+        val alrInstalledPackageSimpleGuiDemoBridgeResult = runInstalledPackageSimpleGuiDemoBridge(nativeCommandRunner, rootfsStatus.rootfsDir)
         val alrInstalledPackageVulkanDiscoveryBridgeResult = runInstalledPackageVulkanDiscoveryBridge(nativeCommandRunner, rootfsStatus.rootfsDir)
         val alrInstalledPackageVulkanProxyBridgeResult = runInstalledPackageVulkanProxyBridge(nativeCommandRunner, rootfsStatus.rootfsDir)
         val alrInstalledPackageVulkanIcdBridgeResult = runInstalledPackageVulkanIcdBridge(nativeCommandRunner, rootfsStatus.rootfsDir)
         val alrInstalledPackageVulkanLoaderInfoBridgeResult = runInstalledPackageVulkanLoaderInfoBridge(nativeCommandRunner, rootfsStatus.rootfsDir)
         val alrInstalledPackageVulkanUnixLoaderInfoBridgeResult = runInstalledPackageVulkanUnixLoaderInfoBridge(nativeCommandRunner, rootfsStatus.rootfsDir)
         val nativeGlesBaselineCommands = buildNativeGlesBaselineCommands(glesShimBenchmarkFrameCount)
-        val guestGuiSurfaceCommands = alrInstalledPackageWaylandDisplayBridgeResult.commands +
+        val waylandSurfaceSourceCommands = if (alrInstalledPackageSimpleGuiDemoBridgeResult.commands.isNotEmpty()) {
+            alrInstalledPackageSimpleGuiDemoBridgeResult.commands
+        } else {
+            alrInstalledPackageWaylandDisplayBridgeResult.commands
+        }
+        val guestGuiSurfaceCommands = alrInstalledPackageSimpleGuiDemoBridgeResult.commands +
+            alrInstalledPackageWaylandDisplayBridgeResult.commands +
             alrInstalledPackageWaylandGuiUnixBridgeResult.commands + alrInstalledPackageX11GuiUnixBridgeResult.commands +
             alrInstalledPackageWaylandGuiBridgeResult.commands + alrInstalledPackageX11GuiBridgeResult.commands +
             alrGuestWaylandGuiBridgeResult.commands + alrGuestX11GuiBridgeResult.commands +
@@ -291,7 +298,7 @@ class MainActivity : Activity() {
         val hostGpuProbe = nativeHostGpuProbe()
         val hostHardwareBufferProbe = nativeHostHardwareBufferProbe()
         val waylandHardwareBufferBridgeProbe = nativeWaylandHardwareBufferBridge(
-            encodeSurfaceFrames(alrInstalledPackageWaylandDisplayBridgeResult.commands),
+            encodeSurfaceFrames(waylandSurfaceSourceCommands),
         )
         val hostVulkanProbe = alrInstalledPackageVulkanDiscoveryBridgeResult.hostProbe
         val requestedPermissions = requestedPermissionNames()
@@ -341,6 +348,7 @@ class MainActivity : Activity() {
         val rootfsInstalledWaylandGuiClientFile = File(rootfsStatus.rootfsDir, "usr/local/bin/alr-package-wayland-gpu-client")
         val rootfsInstalledX11GuiClientFile = File(rootfsStatus.rootfsDir, "usr/local/bin/alr-package-x11-gpu-client")
         val rootfsInstalledWaylandDisplayClientFile = File(rootfsStatus.rootfsDir, "usr/local/bin/alr-package-wayland-display-client")
+        val rootfsInstalledSimpleGuiDemoFile = File(rootfsStatus.rootfsDir, "usr/local/bin/alr-package-simple-gui-demo")
         val rootfsInstalledVulkanDiscoveryClientFile = File(rootfsStatus.rootfsDir, "usr/local/bin/alr-package-vulkan-discovery-client")
         val rootfsInstalledVulkanProxySmokeFile = File(rootfsStatus.rootfsDir, "usr/local/bin/alr-package-vulkan-proxy-smoke")
         val rootfsInstalledVulkanIcdSmokeFile = File(rootfsStatus.rootfsDir, "usr/local/bin/alr-package-vulkan-icd-manifest-smoke")
@@ -370,6 +378,7 @@ class MainActivity : Activity() {
         val rootfsWaylandGuiClientFile = File(rootfsStatus.rootfsDir, "usr/bin/alr-wayland-gpu-client")
         val rootfsX11GuiClientFile = File(rootfsStatus.rootfsDir, "usr/bin/alr-x11-gpu-client")
         val rootfsWaylandDisplayClientFile = File(rootfsStatus.rootfsDir, "usr/bin/alr-wayland-display-client")
+        val rootfsSimpleGuiDemoFile = File(rootfsStatus.rootfsDir, "usr/bin/alr-simple-gui-demo")
         val rootfsExecutionPassed = prootHelloResult.exitCode == 0 &&
             prootHelloResult.stdout.contains("hello from static arm64 rootfs")
         val shellScriptExecutionPassed = prootScriptResult.exitCode == 0 &&
@@ -753,6 +762,35 @@ class MainActivity : Activity() {
                 alrInstalledPackageWaylandDisplayBridgeResult.ackLines.first().contains("dirty_bytes=$WAYLAND_DIRTY_BYTES") &&
                 alrInstalledPackageWaylandDisplayBridgeResult.ackLines.first().contains("ahb_state_ready=true") &&
                 alrInstalledPackageWaylandDisplayBridgeResult.error == null
+        val alrInstalledPackageSimpleGuiDemoPassed =
+            alrInstalledPackageSimpleGuiDemoBridgeResult.clientResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+                rootfsInstalledSimpleGuiDemoFile.isFile &&
+                rootfsInstalledSimpleGuiDemoFile.canExecute() &&
+                rootfsSimpleGuiDemoFile.isFile &&
+                rootfsSimpleGuiDemoFile.canExecute() &&
+                alrInstalledPackageSimpleGuiDemoBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("ALR_SIMPLE_GUI_DEMO ok") &&
+                alrInstalledPackageSimpleGuiDemoBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("glibc_dynamic=true") &&
+                alrInstalledPackageSimpleGuiDemoBridgeResult.rawLines.any { it.startsWith("ALR_SIMPLE_GUI_DEMO_BEGIN ") && it.contains("glibc_dynamic=true") } &&
+                alrInstalledPackageSimpleGuiDemoBridgeResult.rawLines.any { it.startsWith("ALR_WL_CONNECT ") && it.contains("display=alr-simple-gui-demo-0") } &&
+                alrInstalledPackageSimpleGuiDemoBridgeResult.rawLines.any { it.startsWith("ALR_WL_APP_STREAM_BEGIN ") && it.contains("frames=$WAYLAND_DISPLAY_FRAMES") && it.contains("mode=simple-gui-demo") && it.contains("glibc_dynamic=true") } &&
+                alrInstalledPackageSimpleGuiDemoBridgeResult.rawLines.any { it.startsWith("ALR_WL_APP_STREAM_END ") && it.contains("commits=$WAYLAND_DISPLAY_FRAMES") && it.contains("mode=simple-gui-demo") } &&
+                alrInstalledPackageSimpleGuiDemoBridgeResult.rawLines.count { it.startsWith("ALR_WL_WIRE ") } == WAYLAND_WIRE_MESSAGES &&
+                alrInstalledPackageSimpleGuiDemoBridgeResult.rawLines.count { it.startsWith("ALR_WL_BINARY_MESSAGE ") } == WAYLAND_WIRE_MESSAGES &&
+                alrInstalledPackageSimpleGuiDemoBridgeResult.commands.size == WAYLAND_DISPLAY_FRAMES &&
+                alrInstalledPackageSimpleGuiDemoBridgeResult.commands.all { it.payloadVerified && it.fdPayloadVerified } &&
+                alrInstalledPackageSimpleGuiDemoBridgeResult.commands.all { it.backing == "host-ahardwarebuffer" && it.partialUpdate } &&
+                alrInstalledPackageSimpleGuiDemoBridgeResult.commands.sumOf { it.dirtyBytes } == WAYLAND_DIRTY_BYTES &&
+                alrInstalledPackageSimpleGuiDemoBridgeResult.commands.sumOf { it.payloadBytes } == WAYLAND_FULL_PAYLOAD_BYTES &&
+                alrInstalledPackageSimpleGuiDemoBridgeResult.commands.sumOf { it.fdPayloadBytes } == WAYLAND_FULL_PAYLOAD_BYTES &&
+                alrInstalledPackageSimpleGuiDemoBridgeResult.ackLines.size == 1 &&
+                alrInstalledPackageSimpleGuiDemoBridgeResult.ackLines.first().contains("payload_verified=true") &&
+                alrInstalledPackageSimpleGuiDemoBridgeResult.ackLines.first().contains("fd_payload_verified=true") &&
+                alrInstalledPackageSimpleGuiDemoBridgeResult.ackLines.first().contains("wire_messages=$WAYLAND_WIRE_MESSAGES") &&
+                alrInstalledPackageSimpleGuiDemoBridgeResult.ackLines.first().contains("binary_messages=$WAYLAND_WIRE_MESSAGES") &&
+                alrInstalledPackageSimpleGuiDemoBridgeResult.ackLines.first().contains("binary_subset_ready=true") &&
+                alrInstalledPackageSimpleGuiDemoBridgeResult.ackLines.first().contains("continuous_stream_ready=true") &&
+                alrInstalledPackageSimpleGuiDemoBridgeResult.ackLines.first().contains("ahb_state_ready=true") &&
+                alrInstalledPackageSimpleGuiDemoBridgeResult.error == null
         val hostGpuHardwareCandidate = hostGpuProbe.lineStartingWith("host gpu hardware candidate=") == "host gpu hardware candidate=true"
         val hostHardwareBufferPassed =
             hostHardwareBufferProbe.lineStartingWith("ahardwarebuffer execution=") == "ahardwarebuffer execution=PASS" &&
@@ -767,12 +805,12 @@ class MainActivity : Activity() {
                 waylandHardwareBufferBridgeProbe.lineStartingWith("ahardwarebuffer wayland display backing=") ==
                 "ahardwarebuffer wayland display backing=true" &&
                 waylandHardwareBufferBridgeProbe.lineStartingWith("ahardwarebuffer visible payload bytes=") ==
-                "ahardwarebuffer visible payload bytes=${alrInstalledPackageWaylandDisplayBridgeResult.commands.sumOf { it.dirtyBytes }}" &&
+                "ahardwarebuffer visible payload bytes=${waylandSurfaceSourceCommands.sumOf { it.dirtyBytes }}" &&
                 waylandHardwareBufferBridgeProbe.lineStartingWith("ahardwarebuffer wayland state machine backing=") ==
                 "ahardwarebuffer wayland state machine backing=true" &&
                 waylandHardwareBufferBridgeProbe.lineStartingWith("ahardwarebuffer dirty rect bytes=") ==
-                "ahardwarebuffer dirty rect bytes=${alrInstalledPackageWaylandDisplayBridgeResult.commands.sumOf { it.dirtyBytes }}" &&
-                alrInstalledPackageWaylandDisplayBridgeResult.commands.size == WAYLAND_DISPLAY_FRAMES
+                "ahardwarebuffer dirty rect bytes=${waylandSurfaceSourceCommands.sumOf { it.dirtyBytes }}" &&
+                waylandSurfaceSourceCommands.size == WAYLAND_DISPLAY_FRAMES
         val hostVulkanHardwareCandidate = hostVulkanProbe.lineStartingWith("host vulkan hardware candidate=") == "host vulkan hardware candidate=true"
         val hostVulkanDiscoveryPassed = hostVulkanHardwareCandidate &&
             hostVulkanProbe.lineStartingWith("vulkan create device=") == "vulkan create device=ok"
@@ -879,13 +917,14 @@ class MainActivity : Activity() {
                 "wayland-unix:${if (alrInstalledPackageWaylandGuiUnixBridgePassed) "PASS" else "FAIL"}," +
                 "x11-unix:${if (alrInstalledPackageX11GuiUnixBridgePassed) "PASS" else "FAIL"}," +
                 "wayland-display:${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}," +
+                "simple-gui-demo:${if (alrInstalledPackageSimpleGuiDemoPassed) "PASS" else "FAIL"}," +
                 "vulkan-discovery:${if (alrInstalledPackageVulkanDiscoveryPassed) "PASS" else "FAIL"}," +
                 "vulkan-proxy:${if (alrInstalledPackageVulkanProxyPassed) "PASS" else "FAIL"}," +
                 "vulkan-icd:${if (alrInstalledPackageVulkanIcdPassed) "PASS" else "FAIL"}," +
                 "vulkan-loader:${if (alrInstalledPackageVulkanLoaderInfoPassed) "PASS" else "FAIL"}," +
                 "vulkan-loader-unix:${if (alrInstalledPackageVulkanUnixLoaderInfoPassed) "PASS" else "FAIL"}"
 
-        val executionSummary = "build: 0.4.100-wayland-continuous-gui" +
+        val executionSummary = "build: 0.4.101-simple-gui-demo" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -975,6 +1014,8 @@ class MainActivity : Activity() {
             "\nGUI BRIDGE UNIX TRANSPORT EXECUTION: ${if (alrInstalledPackageWaylandGuiUnixBridgePassed && alrInstalledPackageX11GuiUnixBridgePassed) "PASS" else "FAIL"}" +
             "\nWAYLAND DISPLAY SOCKET AVAILABLE: ${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}" +
             "\nWAYLAND DISPLAY COMMIT SURFACE EXECUTION: ${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}" +
+            "\nSIMPLE GUI DEMO EXECUTION: ${if (alrInstalledPackageSimpleGuiDemoPassed) "PASS" else "FAIL"}" +
+            "\nSIMPLE GUI DEMO GLIBC DYNAMIC EXECUTION: ${if (alrInstalledPackageSimpleGuiDemoPassed) "PASS" else "FAIL"}" +
             "\nANDROID HOST AHARDWAREBUFFER EXECUTION: ${if (hostHardwareBufferPassed) "PASS" else "FAIL"}" +
             "\nANDROID HOST AHARDWAREBUFFER EGL IMPORT EXECUTION: ${if (hostHardwareBufferPassed) "PASS" else "FAIL"}" +
             "\nWAYLAND DISPLAY AHARDWAREBUFFER BACKING EXECUTION: ${if (waylandHardwareBufferBridgePassed) "PASS" else "FAIL"}" +
@@ -1032,6 +1073,7 @@ class MainActivity : Activity() {
             "\nrootfs installed alr wayland gui client exists=${rootfsInstalledWaylandGuiClientFile.isFile} executable=${rootfsInstalledWaylandGuiClientFile.canExecute()} bytes=${rootfsInstalledWaylandGuiClientFile.length()}" +
             "\nrootfs installed alr x11 gui client exists=${rootfsInstalledX11GuiClientFile.isFile} executable=${rootfsInstalledX11GuiClientFile.canExecute()} bytes=${rootfsInstalledX11GuiClientFile.length()}" +
             "\nrootfs installed alr wayland display client exists=${rootfsInstalledWaylandDisplayClientFile.isFile} executable=${rootfsInstalledWaylandDisplayClientFile.canExecute()} bytes=${rootfsInstalledWaylandDisplayClientFile.length()}" +
+            "\nrootfs installed alr simple gui demo exists=${rootfsInstalledSimpleGuiDemoFile.isFile} executable=${rootfsInstalledSimpleGuiDemoFile.canExecute()} bytes=${rootfsInstalledSimpleGuiDemoFile.length()}" +
             "\nrootfs installed alr vulkan discovery client exists=${rootfsInstalledVulkanDiscoveryClientFile.isFile} executable=${rootfsInstalledVulkanDiscoveryClientFile.canExecute()} bytes=${rootfsInstalledVulkanDiscoveryClientFile.length()}" +
             "\nrootfs installed alr vulkan proxy smoke exists=${rootfsInstalledVulkanProxySmokeFile.isFile} executable=${rootfsInstalledVulkanProxySmokeFile.canExecute()} bytes=${rootfsInstalledVulkanProxySmokeFile.length()}" +
             "\nrootfs installed alr vulkan icd smoke exists=${rootfsInstalledVulkanIcdSmokeFile.isFile} executable=${rootfsInstalledVulkanIcdSmokeFile.canExecute()} bytes=${rootfsInstalledVulkanIcdSmokeFile.length()}" +
@@ -1062,6 +1104,7 @@ class MainActivity : Activity() {
             "\nrootfs /usr/bin/alr-wayland-gpu-client exists=${rootfsWaylandGuiClientFile.isFile} executable=${rootfsWaylandGuiClientFile.canExecute()} bytes=${rootfsWaylandGuiClientFile.length()}" +
             "\nrootfs /usr/bin/alr-x11-gpu-client exists=${rootfsX11GuiClientFile.isFile} executable=${rootfsX11GuiClientFile.canExecute()} bytes=${rootfsX11GuiClientFile.length()}" +
             "\nrootfs /usr/bin/alr-wayland-display-client exists=${rootfsWaylandDisplayClientFile.isFile} executable=${rootfsWaylandDisplayClientFile.canExecute()} bytes=${rootfsWaylandDisplayClientFile.length()}" +
+            "\nrootfs /usr/bin/alr-simple-gui-demo exists=${rootfsSimpleGuiDemoFile.isFile} executable=${rootfsSimpleGuiDemoFile.canExecute()} bytes=${rootfsSimpleGuiDemoFile.length()}" +
             "\nproot guest gpu client exit=${prootGuestGpuClientResult.exitCode}" +
             "\nproot guest gpu client stdout=${prootGuestGpuClientResult.stdout}" +
             "\nproot guest gpu client stderr=${prootGuestGpuClientResult.stderr}" +
@@ -1743,6 +1786,7 @@ class MainActivity : Activity() {
             resultBlock("alr installed package wayland gui unix ipc client", alrInstalledPackageWaylandGuiUnixBridgeResult.clientResult) +
             resultBlock("alr installed package x11 gui unix ipc client", alrInstalledPackageX11GuiUnixBridgeResult.clientResult) +
             resultBlock("alr installed package wayland display ipc client", alrInstalledPackageWaylandDisplayBridgeResult.clientResult) +
+            resultBlock("alr installed package simple gui demo", alrInstalledPackageSimpleGuiDemoBridgeResult.clientResult) +
             resultBlock("alr installed package vulkan discovery client", alrInstalledPackageVulkanDiscoveryBridgeResult.clientResult) +
             resultBlock("alr installed package vulkan proxy smoke", alrInstalledPackageVulkanProxyBridgeResult.clientResult) +
             resultBlock("alr installed package vulkan icd manifest smoke", alrInstalledPackageVulkanIcdBridgeResult.clientResult) +
@@ -1754,9 +1798,11 @@ class MainActivity : Activity() {
         Log.i(
             "ALR_DEVICE_EVIDENCE",
             listOf(
-                "build: 0.4.100-wayland-continuous-gui",
+                "build: 0.4.101-simple-gui-demo",
                 "WAYLAND DISPLAY SOCKET AVAILABLE: ${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}",
                 "WAYLAND DISPLAY COMMIT SURFACE EXECUTION: ${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}",
+                "SIMPLE GUI DEMO EXECUTION: ${if (alrInstalledPackageSimpleGuiDemoPassed) "PASS" else "FAIL"}",
+                "SIMPLE GUI DEMO GLIBC DYNAMIC EXECUTION: ${if (alrInstalledPackageSimpleGuiDemoPassed) "PASS" else "FAIL"}",
                 "ANDROID HOST AHARDWAREBUFFER EXECUTION: ${if (hostHardwareBufferPassed) "PASS" else "FAIL"}",
                 "WAYLAND DISPLAY AHARDWAREBUFFER BACKING EXECUTION: ${if (waylandHardwareBufferBridgePassed) "PASS" else "FAIL"}",
                 hostHardwareBufferProbe.lineStartingWith("ahardwarebuffer allocated buffers="),
@@ -1773,6 +1819,14 @@ class MainActivity : Activity() {
                 waylandHardwareBufferBridgeProbe.lineStartingWith("ahardwarebuffer visible payload bytes="),
                 "rootfs installed alr wayland display client exists=${rootfsInstalledWaylandDisplayClientFile.isFile} executable=${rootfsInstalledWaylandDisplayClientFile.canExecute()} bytes=${rootfsInstalledWaylandDisplayClientFile.length()}",
                 "rootfs /usr/bin/alr-wayland-display-client exists=${rootfsWaylandDisplayClientFile.isFile} executable=${rootfsWaylandDisplayClientFile.canExecute()} bytes=${rootfsWaylandDisplayClientFile.length()}",
+                "rootfs installed alr simple gui demo exists=${rootfsInstalledSimpleGuiDemoFile.isFile} executable=${rootfsInstalledSimpleGuiDemoFile.canExecute()} bytes=${rootfsInstalledSimpleGuiDemoFile.length()}",
+                "rootfs /usr/bin/alr-simple-gui-demo exists=${rootfsSimpleGuiDemoFile.isFile} executable=${rootfsSimpleGuiDemoFile.canExecute()} bytes=${rootfsSimpleGuiDemoFile.length()}",
+                "simple gui demo glibc dynamic=${alrInstalledPackageSimpleGuiDemoBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("glibc_dynamic=true")}",
+                "simple gui demo display commits=${alrInstalledPackageSimpleGuiDemoBridgeResult.commands.size}/${alrInstalledPackageSimpleGuiDemoBridgeResult.expectedFrames}",
+                "simple gui demo binary messages=${alrInstalledPackageSimpleGuiDemoBridgeResult.rawLines.count { it.startsWith("ALR_WL_BINARY_MESSAGE ") }}",
+                "simple gui demo continuous stream ready=${alrInstalledPackageSimpleGuiDemoBridgeResult.ackLines.firstOrNull()?.contains("continuous_stream_ready=true") == true}",
+                "simple gui demo android surface candidate=${alrInstalledPackageSimpleGuiDemoPassed && waylandHardwareBufferBridgePassed}",
+                "simple gui demo stdout=${alrInstalledPackageSimpleGuiDemoBridgeResult.clientResult.stdout.alrHandoffStdoutText()}",
                 "alr installed package wayland display ipc received frames=${alrInstalledPackageWaylandDisplayBridgeResult.commands.size}/${alrInstalledPackageWaylandDisplayBridgeResult.expectedFrames}",
                 "wayland display shared payload frames=${alrInstalledPackageWaylandDisplayBridgeResult.commands.count { it.payloadVerified }}/${alrInstalledPackageWaylandDisplayBridgeResult.expectedFrames}",
                 "wayland display shared payload bytes=${alrInstalledPackageWaylandDisplayBridgeResult.commands.sumOf { it.payloadBytes }}",
@@ -1816,7 +1870,7 @@ class MainActivity : Activity() {
                     val surfaceReport = nativeRenderGpuSurfaceFrames(holder.surface, encodedFrames)
                     val waylandHardwareBufferSurfaceReport = nativeRenderWaylandHardwareBufferSurface(
                         holder.surface,
-                        encodeSurfaceFrames(alrInstalledPackageWaylandDisplayBridgeResult.commands),
+                        encodeSurfaceFrames(waylandSurfaceSourceCommands),
                     )
                     val vulkanSurfaceReport = nativeRenderVulkanSurfaceClear(
                         holder.surface,
@@ -1867,9 +1921,11 @@ class MainActivity : Activity() {
                     Log.i(
                         "ALR_SURFACE_EVIDENCE",
                         listOf(
-                            "build: 0.4.100-wayland-continuous-gui",
+                            "build: 0.4.101-simple-gui-demo",
                             "WAYLAND DISPLAY SOCKET AVAILABLE: ${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}",
                             "WAYLAND DISPLAY COMMIT SURFACE EXECUTION: ${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}",
+                            "SIMPLE GUI DEMO EXECUTION: ${if (alrInstalledPackageSimpleGuiDemoPassed) "PASS" else "FAIL"}",
+                            "SIMPLE GUI DEMO GLIBC DYNAMIC EXECUTION: ${if (alrInstalledPackageSimpleGuiDemoPassed) "PASS" else "FAIL"}",
                             "ANDROID HOST AHARDWAREBUFFER EXECUTION: ${if (hostHardwareBufferPassed) "PASS" else "FAIL"}",
                             "WAYLAND DISPLAY AHARDWAREBUFFER BACKING EXECUTION: ${if (waylandHardwareBufferBridgePassed) "PASS" else "FAIL"}",
                             waylandHardwareBufferSurfaceUpdate.lineStartingWith("WAYLAND AHARDWAREBUFFER SURFACE COMPOSITOR EXECUTION:"),
@@ -1920,6 +1976,11 @@ class MainActivity : Activity() {
                             "wayland display binary subset ready=${alrInstalledPackageWaylandDisplayBridgeResult.ackLines.firstOrNull()?.contains("binary_subset_ready=true") == true}",
                             "wayland display dirty rect bytes=${alrInstalledPackageWaylandDisplayBridgeResult.commands.sumOf { it.dirtyBytes }}",
                             "wayland display partial upload ratio pct=${partialUploadRatioPct(alrInstalledPackageWaylandDisplayBridgeResult.commands)}",
+                            "simple gui demo glibc dynamic=${alrInstalledPackageSimpleGuiDemoBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("glibc_dynamic=true")}",
+                            "simple gui demo display commits=${alrInstalledPackageSimpleGuiDemoBridgeResult.commands.size}/${alrInstalledPackageSimpleGuiDemoBridgeResult.expectedFrames}",
+                            "simple gui demo binary messages=${alrInstalledPackageSimpleGuiDemoBridgeResult.rawLines.count { it.startsWith("ALR_WL_BINARY_MESSAGE ") }}",
+                            "simple gui demo continuous stream ready=${alrInstalledPackageSimpleGuiDemoBridgeResult.ackLines.firstOrNull()?.contains("continuous_stream_ready=true") == true}",
+                            "simple gui demo android surface candidate=${alrInstalledPackageSimpleGuiDemoPassed && waylandHardwareBufferSurfaceReport.lineStartingWith("wayland ahardwarebuffer surface hardware render=") == "wayland ahardwarebuffer surface hardware render=true"}",
                             surfaceReport.lineStartingWith("surface wayland frames rendered="),
                             surfaceReport.lineStartingWith("surface x11 frames rendered="),
                             vulkanSurfaceReport.lineStartingWith("surface vulkan present="),
@@ -2948,8 +3009,16 @@ class MainActivity : Activity() {
     private fun runInstalledPackageWaylandDisplayBridge(
         nativeCommandRunner: NativeCommandRunner,
         rootfsDir: File,
+        displayName: String = "alr-wayland-0",
+        streamMode: String = "continuous-demo",
+        runClient: (socketName: String, displayName: String) -> NativeCommandResult = { socketName, activeDisplayName ->
+            nativeCommandRunner.runAlrRuntimeTrampolineInstalledPackageWaylandDisplayClientUnix(
+                rootfsDir,
+                socketName,
+                activeDisplayName,
+            )
+        },
     ): GuestGpuIpcBridgeResult {
-        val displayName = "alr-wayland-0"
         val socketName = "alr-wayland-display-${System.nanoTime()}"
         val server = LocalServerSocket(socketName)
         val rawLines = mutableListOf("ALR_WAYLAND_DISPLAY_SOCKET display=$displayName name=@$socketName")
@@ -3059,11 +3128,11 @@ class MainActivity : Activity() {
                         val continuousStreamReady = rawLines.any {
                             it.startsWith("ALR_WL_APP_STREAM_BEGIN ") &&
                                 tokenValue(it, "frames")?.toIntOrNull() == WAYLAND_DISPLAY_FRAMES &&
-                                tokenValue(it, "mode") == "continuous-demo"
+                                tokenValue(it, "mode") == streamMode
                         } && rawLines.any {
                             it.startsWith("ALR_WL_APP_STREAM_END ") &&
                                 tokenValue(it, "commits")?.toIntOrNull() == WAYLAND_DISPLAY_FRAMES &&
-                                tokenValue(it, "mode") == "continuous-demo"
+                                tokenValue(it, "mode") == streamMode
                         }
                         val payloadBytes = rawLines
                             .asSequence()
@@ -3113,11 +3182,7 @@ class MainActivity : Activity() {
                 errors += error.javaClass.simpleName + ": " + (error.message ?: "unknown")
             }
         }
-        val clientResult = nativeCommandRunner.runAlrRuntimeTrampolineInstalledPackageWaylandDisplayClientUnix(
-            rootfsDir,
-            socketName,
-            displayName,
-        )
+        val clientResult = runClient(socketName, displayName)
         acceptThread.join(3500)
         if (acceptThread.isAlive) {
             errors += "wayland display accept thread still alive after join"
@@ -3135,6 +3200,23 @@ class MainActivity : Activity() {
             ackLines = ackLines.toList(),
         )
     }
+
+    private fun runInstalledPackageSimpleGuiDemoBridge(
+        nativeCommandRunner: NativeCommandRunner,
+        rootfsDir: File,
+    ): GuestGpuIpcBridgeResult =
+        runInstalledPackageWaylandDisplayBridge(
+            nativeCommandRunner,
+            rootfsDir,
+            displayName = "alr-simple-gui-demo-0",
+            streamMode = "simple-gui-demo",
+        ) { socketName, displayName ->
+            nativeCommandRunner.runAlrRuntimeTrampolineInstalledPackageSimpleGuiDemoUnix(
+                rootfsDir,
+                socketName,
+                displayName,
+            )
+        }
 
     private fun parseGuestGpuCommands(text: String): List<GuestGpuCommand> =
         text.lineSequence()

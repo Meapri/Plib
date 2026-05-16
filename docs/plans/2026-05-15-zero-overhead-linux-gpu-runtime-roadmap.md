@@ -1781,8 +1781,20 @@ Implementation compression window:
 
 Next implementation batch:
 
-1. Turn the V100 continuous fixture into a named simple Linux/glibc GUI demo binary with explicit launch UX in the Android app.
-2. Replace the loader-info smoke with the real Khronos Vulkan loader or a stricter ABI-compatible loader subset.
-3. Add a small real toolkit fixture target, likely a tiny GTK/Qt-independent Wayland protocol smoke before pulling in a larger GUI stack.
-4. Start measuring compositor-path CPU/GPU cost against proroot/VNC or proroot image-transport baselines and the existing Vulkan Surface clear path.
-5. Keep growing adb verification around visual present, fence state, package-version evidence, and the V118 GUI demo gate so device regressions stay cheap while implementation is moving quickly.
+1. V101: ship the V100 continuous fixture as a named dynamically linked glibc
+   `alr-simple-gui-demo` path, with explicit Android evidence that the demo
+   launches through `/lib/ld-linux-aarch64.so.1` and presents through the
+   Wayland/AHardwareBuffer/Surface path.
+2. V102-V105: grow the rootfs from a tiny smoke archive into a GIMP-capable
+   Debian GUI bundle: GTK stack, GIO modules, fontconfig, shared MIME data,
+   icons/themes, GEGL/Babl, image-codec libraries, and a deterministic
+   `gimp --new-instance` launcher profile.
+3. V106-V110: extend the Wayland/graphics bridge from the controlled subset to
+   the protocol and buffer behavior GIMP/GTK needs, while keeping Android-native
+   Surface/EGL/Vulkan as the presentation target instead of VNC.
+4. V111-V114: replace the loader-info smoke with the real Khronos Vulkan loader
+   or a stricter ABI-compatible loader subset, then route OpenGL-over-Zink and
+   native Vulkan probes through the same host backend plan.
+5. V115-V118: run the GIMP launch demo on the connected Android device, capture
+   visual present/fence/package evidence, and compare CPU/GPU path overhead
+   against PRoot/proroot-class baselines and VNC-style GUI paths.

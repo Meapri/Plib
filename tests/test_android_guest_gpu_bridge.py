@@ -28,6 +28,7 @@ def test_rootfs_contains_guest_gpu_ipc_client_and_gles_shim():
             "./usr/bin/alr-wayland-gpu-client",
             "./usr/bin/alr-x11-gpu-client",
             "./usr/bin/alr-wayland-display-client",
+            "./usr/bin/alr-simple-gui-demo",
         ]:
             assert name in names
             assert archive.getmember(name).mode & 0o111
@@ -72,6 +73,12 @@ def test_rootfs_contains_guest_gpu_ipc_client_and_gles_shim():
         assert b"layout=triple-buffer" in wayland_display
         assert b"ALR_WL_BINARY_STREAM" in wayland_display
         assert b"wayland-binary-v1" in wayland_display
+        simple_demo = archive.extractfile("./usr/bin/alr-simple-gui-demo").read()
+        assert simple_demo.startswith(b"\x7fELF")
+        assert b"/lib/ld-linux-aarch64.so.1" in simple_demo
+        assert b"ALR_SIMPLE_GUI_DEMO_BEGIN" in simple_demo
+        assert b"ALR_SIMPLE_GUI_DEMO ok" in simple_demo
+        assert b"simple-gui-demo" in simple_demo
 
 
 def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
@@ -170,6 +177,7 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "runAlrRuntimeTrampolineInstalledPackageGuiClientIpc" in runner
     assert "runAlrRuntimeTrampolineInstalledPackageVulkanDiscovery" in runner
     assert "runAlrRuntimeTrampolineInstalledPackageWaylandDisplayClientUnix" in runner
+    assert "runAlrRuntimeTrampolineInstalledPackageSimpleGuiDemoUnix" in runner
     assert "ALR_WAYLAND_DISPLAY_SOCKET" in runner
     assert "WAYLAND_DISPLAY" in runner
     assert "XDG_RUNTIME_DIR" in runner
@@ -186,6 +194,13 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "ALR_WL_DISPLAY_ACK" in text
     assert "alr installed package wayland display ipc ack raw" in text
     assert "wayland-display:${if (alrInstalledPackageWaylandDisplayBridgePassed)" in text
+    assert "simple-gui-demo:${if (alrInstalledPackageSimpleGuiDemoPassed)" in text
+    assert "SIMPLE GUI DEMO EXECUTION:" in text
+    assert "SIMPLE GUI DEMO GLIBC DYNAMIC EXECUTION:" in text
+    assert "simple gui demo glibc dynamic=" in text
+    assert "simple gui demo android surface candidate=" in text
+    assert "rootfs installed alr simple gui demo exists=" in text
+    assert "rootfs /usr/bin/alr-simple-gui-demo exists=" in text
     assert "wayland display surface commits=" in text
     assert "wayland display shared payload frames=" in text
     assert "wayland display shared payload bytes=" in text
@@ -246,8 +261,8 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "alr installed package vulkan proxy stdout" in text
 
 
-def test_v100_adb_verifier_checks_wayland_continuous_gui_evidence():
-    script = (ROOT / "scripts/verify-android-v100-wayland-continuous-gui.sh").read_text()
+def test_v101_adb_verifier_checks_simple_gui_demo_evidence():
+    script = (ROOT / "scripts/verify-android-v101-simple-gui-demo.sh").read_text()
     text = MAIN.read_text()
     runner = RUNNER.read_text()
     display_source = (ROOT / "rootfs/guest-src/gui/alr_wayland_display_client.c").read_text()
@@ -271,10 +286,15 @@ def test_v100_adb_verifier_checks_wayland_continuous_gui_evidence():
     assert "wayland ahardwarebuffer surface fence pacing mode=reuse-slot-fence-handoff" in script
     assert "wayland ahardwarebuffer surface sync fence accounting=ok" in script
     assert "surface vulkan hardware render=true" in script
-    assert "versionName=0.4.100-wayland-continuous-gui" in script
+    assert "SIMPLE GUI DEMO EXECUTION: PASS" in script
+    assert "SIMPLE GUI DEMO GLIBC DYNAMIC EXECUTION: PASS" in script
+    assert "simple gui demo glibc dynamic=true" in script
+    assert "simple gui demo android surface candidate=true" in script
+    assert "versionName=0.4.101-simple-gui-demo" in script
     assert "ALR_WL_BINARY_STREAM bytes=%zu messages=%d checksum=%08x wire=wayland-binary-v1 endian=little" in display_source
-    assert "ALR_WL_APP_STREAM_BEGIN frames=%d mode=continuous-demo" in display_source
-    assert "ALR_WL_APP_STREAM_END frames=%d commits=%d mode=continuous-demo" in display_source
+    assert "ALR_WL_APP_STREAM_BEGIN frames=%d mode=%s" in display_source
+    assert "ALR_WL_APP_STREAM_END frames=%d commits=%d mode=%s" in display_source
+    assert "ALR_SIMPLE_GUI_DEMO_BEGIN app=%s" in display_source
     assert "emit_wayland_binary_subset" in display_source
     assert "append_wayland_binary_request" in display_source
     assert "put_u32_le" in display_source
@@ -656,7 +676,9 @@ def test_guest_gui_client_sources_support_unix_socket_transport():
     assert "fnv1a32" in display_source
     assert "write_rgba_payload" in display_source
     assert "ALR_WL_SURFACE_COMMIT surface=10 buffer=20 seq=%d" in display_source
-    assert "ALR_WL_DISPLAY_CLIENT ok display=%s commits=%d ack=%s" in display_source
+    assert "ALR_WL_DISPLAY_CLIENT ok display=%s commits=%d app=%s mode=%s glibc_dynamic=%s ack=%s" in display_source
     assert "alr-wayland-gpu-client" in build_script
     assert "alr-x11-gpu-client" in build_script
     assert "alr-wayland-display-client" in build_script
+    assert "alr-simple-gui-demo" in build_script
+    assert "aarch64-linux-gnu" in build_script

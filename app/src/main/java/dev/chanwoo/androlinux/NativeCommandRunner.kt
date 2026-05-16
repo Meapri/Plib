@@ -274,6 +274,37 @@ class NativeCommandRunner(
             pathRewriteIdleSyscallLimit = 256,
         )
 
+    fun runAlrRuntimeTrampolineInstalledPackageSimpleGuiDemoUnix(
+        rootfsDir: File,
+        socketName: String,
+        displayName: String,
+    ): NativeCommandResult {
+        val program = "/usr/local/bin/alr-package-simple-gui-demo"
+        return runAlrRuntimeTrampoline(
+            rootfsDir,
+            "/lib/ld-linux-aarch64.so.1",
+            executeEntry = true,
+            extraArgs = listOf(
+                "--argv0",
+                program,
+                "--library-path",
+                glibcLibraryPath(rootfsDir),
+                translateGuestPath(rootfsDir, program),
+            ),
+            timeoutMs = 3000,
+            extraGuestEnvironment = mapOf(
+                "ALR_WAYLAND_DISPLAY_SOCKET" to "@$socketName",
+                "WAYLAND_DISPLAY" to displayName,
+                "XDG_RUNTIME_DIR" to "/usr/share/alr-smoke/alr-wayland-runtime",
+                "ALR_WAYLAND_PAYLOAD_DIR" to "/usr/share/alr-smoke/alr-wayland-runtime",
+                "ALR_GPU_BRIDGE_TRANSPORT" to "unix-abstract-wayland-simple-gui",
+            ),
+            pathRewrite = true,
+            pathRewriteLimit = 128,
+            pathRewriteIdleSyscallLimit = 256,
+        )
+    }
+
     fun runAlrRuntimeTrampolineInstalledPackageVulkanDiscovery(rootfsDir: File, port: Int): NativeCommandResult =
         runAlrRuntimeTrampolineGlibcRootfsProgram(
             rootfsDir,
