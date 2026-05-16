@@ -1056,29 +1056,37 @@ simple gui demo android surface candidate=true
 ALR_SIMPLE_GUI_DEMO ok
 ```
 
-Build `0.4.102-gimp-demo-profile` makes GIMP the named GUI application target
-for the remaining V118 path. The Android app still renders the V101 simple demo
-frames, but the rootfs now also contains:
+Build `0.4.103-gimp-materialized` makes GIMP the named GUI application target
+and places the real Debian bookworm arm64 GIMP payload in the Android rootfs.
+The Android app still renders the V101 simple demo frames through the
+Wayland/AHardwareBuffer path, but the rootfs now also contains:
 
 - `/usr/share/androlinux/gimp-demo-bundle.lock.json`, a Debian bookworm arm64
   strict dependency lock for `gimp`.
-- `/usr/share/androlinux/gimp-demo-profile.json`, the intended Wayland launch
-  environment.
+- `/usr/share/androlinux/gimp-demo-profile.json`, the intended X11/Wayland
+  launch environment for the GIMP milestone.
+- `/usr/share/androlinux/gimp-demo-materialized.txt`, a marker that the lock
+  has been materialized into the rootfs.
 - `/usr/local/bin/alr-package-gimp-demo`, an installed package launcher that
-  reports profile readiness and either execs `/usr/bin/gimp` or reports the
-  bundle as not installed.
+  reports profile readiness and runs `gimp --version` by default.
+- `/usr/bin/gimp`, `/usr/bin/gimp-2.10`, GTK2/X11 libraries, GIMP data, and
+  GIMP plug-ins extracted from the locked Debian packages.
 
-Expected V102 GIMP profile evidence:
+Expected V103 GIMP materialized evidence:
 
 ```text
 GIMP DEMO PROFILE EXECUTION: PASS
 GIMP DEMO BUNDLE LOCK: PASS
 ALR_GIMP_DEMO_PROFILE_READY target=gimp
 ALR_GIMP_DEMO_PROFILE_PROGRAM path=/usr/bin/gimp
-ALR_GIMP_DEMO_PROFILE_ENV GDK_BACKEND=wayland WAYLAND_DISPLAY=alr-gimp-0
+ALR_GIMP_DEMO_PROFILE_ENV GDK_BACKEND=x11 DISPLAY=:0 WAYLAND_DISPLAY=alr-gimp-0
 ALR_GIMP_DEMO_BUNDLE_LOCK present=true package_count=246
-ALR_GIMP_DEMO_BINARY present=false path=/usr/bin/gimp
-ALR_GIMP_DEMO_NEXT_STEP install_debian_arm64_bundle_from_lock
+ALR_GIMP_DEMO_MATERIALIZED present=true package_count=246
+ALR_GIMP_DEMO_BINARY present=true path=/usr/bin/gimp
+ALR_GIMP_DEMO_LAUNCH_MODE version-probe
+ALR_GIMP_DEMO_VERSION_EXIT 0
+ALR_GIMP_DEMO_VERSION_STDOUT GNU Image Manipulation Program version
+ALR_GIMP_DEMO_EXEC_READY true mode=version-probe
 ```
 
 ## Open Questions

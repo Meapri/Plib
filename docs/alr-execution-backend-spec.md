@@ -1652,33 +1652,38 @@ so subsequent backend work should grow rootfs packaging, GTK/GIO/font/module
 coverage, and Wayland protocol coverage toward `gimp --new-instance` rather than
 inventing another tiny final fixture.
 
-Build `0.4.102-gimp-demo-profile` adds the first concrete GIMP staging
-artifact. It does not claim GIMP is installed or rendered yet. Instead, it
-locks the Debian bookworm arm64 strict dependency closure for `gimp`, embeds the
-launch profile and bundle lock in the rootfs, and runs an installed package
-launcher that reports the exact next install step when `/usr/bin/gimp` is not
-present.
+Build `0.4.103-gimp-materialized` promotes the GIMP path from a lock/profile
+artifact into a real Debian arm64 rootfs payload. The materializer downloads and
+SHA-256 verifies the 246-package strict dependency closure, extracts it into the
+Android rootfs, overlays the Plib launcher/profile/lock artifacts, and records a
+minimal installed-package status snapshot. It still does not claim a rendered
+GIMP window, but it does prove that the Android app can see `/usr/bin/gimp` and
+run a glibc `gimp --version` probe through the ALR trampoline.
 
 ```text
-build: 0.4.102-gimp-demo-profile
-versionCode=102
-versionName=0.4.102-gimp-demo-profile
-rootfs_version=bookworm-slim-2026-05-gimp-profile-v102
-rootfs_sha256=79bb73d7abcf28dbd32e33497e67f3f53db6b0a1f54dcd57a7583be215f2ecca
-rootfs_size=35481600
+build: 0.4.103-gimp-materialized
+versionCode=103
+versionName=0.4.103-gimp-materialized
+rootfs_version=bookworm-slim-2026-05-gimp-materialized-v103
+rootfs_sha256=41a737724a1f67c2c9ad0aa31598c770163edc3ab3b0c9d99380ae9ff3e332fd
+rootfs_size=473436160
 GIMP DEMO PROFILE EXECUTION: PASS
 GIMP DEMO BUNDLE LOCK: PASS
 ALR_GIMP_DEMO_PROFILE_READY target=gimp
 ALR_GIMP_DEMO_BUNDLE_LOCK present=true package_count=246 download_size_mib=122.27
-ALR_GIMP_DEMO_BINARY present=false path=/usr/bin/gimp
-ALR_GIMP_DEMO_NEXT_STEP install_debian_arm64_bundle_from_lock
+ALR_GIMP_DEMO_MATERIALIZED present=true package_count=246
+ALR_GIMP_DEMO_BINARY present=true path=/usr/bin/gimp
+ALR_GIMP_DEMO_LAUNCH_MODE version-probe
+ALR_GIMP_DEMO_VERSION_EXIT 0
+ALR_GIMP_DEMO_VERSION_STDOUT GNU Image Manipulation Program version
+ALR_GIMP_DEMO_EXEC_READY true mode=version-probe
 ```
 
 The bundle lock is generated from the official Debian `bookworm/main` arm64
 `Packages.xz` index by `tools/gimp_bundle_resolver.py`. The default profile is
 strict `Pre-Depends` + `Depends` only, currently 246 packages and 122.27 MiB of
-`.deb` downloads, because APK/device iteration needs a minimal GIMP launch set
-before optional recommends are added.
+`.deb` downloads. `tools/gimp_bundle_materializer.py` is the reproducible host
+step that turns that lock into the larger V103 rootfs tar.
 
 Report:
 

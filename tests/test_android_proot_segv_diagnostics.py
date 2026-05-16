@@ -9,7 +9,8 @@ CPP_REPORT = ROOT / "app/src/main/cpp/runtime_report.cpp"
 def test_runner_has_timeout_for_crash_or_hang_probes():
     text = RUNNER.read_text()
     assert "COMMAND_TIMEOUT_SECONDS" in text
-    assert "waitFor(COMMAND_TIMEOUT_SECONDS" in text
+    assert "waitFor(commandTimeoutSeconds" in text
+    assert "commandTimeoutSeconds = ((timeoutMs + 999) / 1000 + 15)" in text
     assert "destroyForcibly" in text
 
 
@@ -24,7 +25,7 @@ def test_runner_probes_proot_with_multiple_entrypoints():
 
 def test_activity_reports_success_summary_without_default_direct_crash_probes():
     text = MAIN.read_text()
-    assert "build: 0.4.102-gimp-demo-profile" in text
+    assert "build: 0.4.103-gimp-materialized" in text
     assert "ROOTFS EXECUTION:" in text
     assert "probe dlopen talloc" in text
     assert "linker64 proot --version exit" in text

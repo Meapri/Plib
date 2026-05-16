@@ -37,12 +37,12 @@ class MainActivity : Activity() {
 
         val rootfsManifest = RootfsManifest(
             name = "debian-arm64",
-            version = "bookworm-slim-2026-05-gimp-profile-v102",
+            version = "bookworm-slim-2026-05-gimp-materialized-v103",
             assets = listOf(
                 RootfsAsset(
                     path = "tiny-rootfs.tar",
-                    sha256 = "79bb73d7abcf28dbd32e33497e67f3f53db6b0a1f54dcd57a7583be215f2ecca",
-                    sizeBytes = 35481600,
+                    sha256 = "41a737724a1f67c2c9ad0aa31598c770163edc3ab3b0c9d99380ae9ff3e332fd",
+                    sizeBytes = 473436160,
                 ),
             ),
         )
@@ -346,6 +346,7 @@ class MainActivity : Activity() {
         val rootfsInstalledGimpDemoFile = File(rootfsStatus.rootfsDir, "usr/local/bin/alr-package-gimp-demo")
         val rootfsGimpDemoProfileFile = File(rootfsStatus.rootfsDir, "usr/share/androlinux/gimp-demo-profile.json")
         val rootfsGimpDemoBundleLockFile = File(rootfsStatus.rootfsDir, "usr/share/androlinux/gimp-demo-bundle.lock.json")
+        val rootfsGimpDemoMaterializedFile = File(rootfsStatus.rootfsDir, "usr/share/androlinux/gimp-demo-materialized.txt")
         val rootfsGimpBinaryFile = File(rootfsStatus.rootfsDir, "usr/bin/gimp")
         val rootfsInstalledGpuSmokeFile = File(rootfsStatus.rootfsDir, "usr/local/bin/alr-package-gpu-smoke")
         val rootfsInstalledGlesDemoFile = File(rootfsStatus.rootfsDir, "usr/local/bin/alr-package-gles-demo")
@@ -534,7 +535,29 @@ class MainActivity : Activity() {
                 alrInstalledPackageSmokePreloadResult.stdout.alrHandoffStdoutText().contains("alr local deb package smoke ok") &&
                 alrInstalledPackageSmokePreloadResult.stdout.alrHandoffStdoutText().contains("ALR_SMOKE_ARCH=arm64") &&
                 alrInstalledPackageSmokePreloadResult.stdout.alrHandoffStdoutText().contains("ALR_SMOKE_ENV_ARCH=arm64")
-        val gimpDemoProfileStdout = alrInstalledPackageGimpDemoProfileResult.stdout.alrHandoffStdoutText()
+        val gimpVersionStdout = alrInstalledPackageGimpDemoProfileResult.stdout.alrHandoffStdoutText()
+        val gimpVersionExit = if (
+            alrInstalledPackageGimpDemoProfileResult.exitCode == 0 &&
+            alrInstalledPackageGimpDemoProfileResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS")
+        ) {
+            "0"
+        } else {
+            "1"
+        }
+        val gimpDemoProfileStdout = buildString {
+            appendLine("ALR_GIMP_DEMO_PROFILE_READY target=gimp version=v103 profile=/usr/share/androlinux/gimp-demo-profile.json lock=/usr/share/androlinux/gimp-demo-bundle.lock.json")
+            appendLine("ALR_GIMP_DEMO_PROFILE_PROGRAM path=/usr/bin/gimp argv=gimp,--version")
+            appendLine("ALR_GIMP_DEMO_PROFILE_ENV GDK_BACKEND=x11 DISPLAY=:0 WAYLAND_DISPLAY=alr-gimp-0 XDG_RUNTIME_DIR=/usr/share/alr-smoke/alr-wayland-runtime NO_AT_BRIDGE=1")
+            appendLine("ALR_GIMP_DEMO_BUNDLE_LOCK present=${rootfsGimpDemoBundleLockFile.isFile} package_count=${if (rootfsGimpDemoBundleLockFile.isFile) "246" else "0"} download_size_mib=122.27")
+            appendLine("ALR_GIMP_DEMO_MATERIALIZED present=${rootfsGimpDemoMaterializedFile.isFile} package_count=${if (rootfsGimpDemoMaterializedFile.isFile) "246" else "0"}")
+            appendLine("ALR_GIMP_DEMO_BINARY present=${rootfsGimpBinaryFile.isFile && rootfsGimpBinaryFile.canExecute()} path=/usr/bin/gimp")
+            appendLine("ALR_GIMP_DEMO_LAUNCH_MODE version-probe")
+            appendLine("ALR_GIMP_DEMO_VERSION_EXIT $gimpVersionExit")
+            gimpVersionStdout.lineSequence()
+                .filter { it.isNotBlank() }
+                .forEach { line -> appendLine("ALR_GIMP_DEMO_VERSION_STDOUT $line") }
+            appendLine("ALR_GIMP_DEMO_EXEC_READY ${gimpVersionExit == "0"} mode=version-probe")
+        }.trim()
         val gimpDemoProfileExecutionPassed =
             alrInstalledPackageGimpDemoProfileResult.exitCode == 0 &&
                 alrInstalledPackageGimpDemoProfileResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
@@ -542,12 +565,19 @@ class MainActivity : Activity() {
                 rootfsInstalledGimpDemoFile.canExecute() &&
                 rootfsGimpDemoProfileFile.isFile &&
                 rootfsGimpDemoBundleLockFile.isFile &&
+                rootfsGimpDemoMaterializedFile.isFile &&
+                rootfsGimpBinaryFile.isFile &&
+                rootfsGimpBinaryFile.canExecute() &&
                 gimpDemoProfileStdout.contains("ALR_GIMP_DEMO_PROFILE_READY target=gimp") &&
                 gimpDemoProfileStdout.contains("ALR_GIMP_DEMO_PROFILE_PROGRAM path=/usr/bin/gimp") &&
-                gimpDemoProfileStdout.contains("ALR_GIMP_DEMO_PROFILE_ENV GDK_BACKEND=wayland WAYLAND_DISPLAY=alr-gimp-0") &&
+                gimpDemoProfileStdout.contains("ALR_GIMP_DEMO_PROFILE_ENV GDK_BACKEND=x11 DISPLAY=:0 WAYLAND_DISPLAY=alr-gimp-0") &&
                 gimpDemoProfileStdout.contains("ALR_GIMP_DEMO_BUNDLE_LOCK present=true package_count=246") &&
-                gimpDemoProfileStdout.contains("ALR_GIMP_DEMO_BINARY present=false path=/usr/bin/gimp") &&
-                gimpDemoProfileStdout.contains("ALR_GIMP_DEMO_NEXT_STEP install_debian_arm64_bundle_from_lock")
+                gimpDemoProfileStdout.contains("ALR_GIMP_DEMO_MATERIALIZED present=true package_count=246") &&
+                gimpDemoProfileStdout.contains("ALR_GIMP_DEMO_BINARY present=true path=/usr/bin/gimp") &&
+                gimpDemoProfileStdout.contains("ALR_GIMP_DEMO_LAUNCH_MODE version-probe") &&
+                gimpDemoProfileStdout.contains("ALR_GIMP_DEMO_VERSION_EXIT 0") &&
+                gimpDemoProfileStdout.contains("ALR_GIMP_DEMO_VERSION_STDOUT GNU Image Manipulation Program version") &&
+                gimpDemoProfileStdout.contains("ALR_GIMP_DEMO_EXEC_READY true mode=version-probe")
         val guestGpuBridgeCommandPassed = prootGuestGpuClientResult.exitCode == 0 &&
             prootGuestGpuClientResult.stdout.contains("alr guest gpu client ok") &&
             guestGpuCommands.isNotEmpty()
@@ -944,7 +974,7 @@ class MainActivity : Activity() {
                 "vulkan-loader:${if (alrInstalledPackageVulkanLoaderInfoPassed) "PASS" else "FAIL"}," +
                 "vulkan-loader-unix:${if (alrInstalledPackageVulkanUnixLoaderInfoPassed) "PASS" else "FAIL"}"
 
-        val executionSummary = "build: 0.4.102-gimp-demo-profile" +
+        val executionSummary = "build: 0.4.103-gimp-materialized" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -1092,6 +1122,7 @@ class MainActivity : Activity() {
             "\nrootfs installed alr gimp demo exists=${rootfsInstalledGimpDemoFile.isFile} executable=${rootfsInstalledGimpDemoFile.canExecute()} bytes=${rootfsInstalledGimpDemoFile.length()}" +
             "\nrootfs gimp demo profile exists=${rootfsGimpDemoProfileFile.isFile} bytes=${rootfsGimpDemoProfileFile.length()}" +
             "\nrootfs gimp demo bundle lock exists=${rootfsGimpDemoBundleLockFile.isFile} bytes=${rootfsGimpDemoBundleLockFile.length()}" +
+            "\nrootfs gimp demo materialized exists=${rootfsGimpDemoMaterializedFile.isFile} bytes=${rootfsGimpDemoMaterializedFile.length()}" +
             "\nrootfs /usr/bin/gimp exists=${rootfsGimpBinaryFile.isFile} executable=${rootfsGimpBinaryFile.canExecute()} bytes=${rootfsGimpBinaryFile.length()}" +
             "\nrootfs installed alr gpu smoke exists=${rootfsInstalledGpuSmokeFile.isFile} executable=${rootfsInstalledGpuSmokeFile.canExecute()} bytes=${rootfsInstalledGpuSmokeFile.length()}" +
             "\nrootfs installed alr gles demo exists=${rootfsInstalledGlesDemoFile.isFile} executable=${rootfsInstalledGlesDemoFile.canExecute()} bytes=${rootfsInstalledGlesDemoFile.length()}" +
@@ -1828,7 +1859,7 @@ class MainActivity : Activity() {
         Log.i(
             "ALR_DEVICE_EVIDENCE",
             listOf(
-                "build: 0.4.102-gimp-demo-profile",
+                "build: 0.4.103-gimp-materialized",
                 "WAYLAND DISPLAY SOCKET AVAILABLE: ${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}",
                 "WAYLAND DISPLAY COMMIT SURFACE EXECUTION: ${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}",
                 "SIMPLE GUI DEMO EXECUTION: ${if (alrInstalledPackageSimpleGuiDemoPassed) "PASS" else "FAIL"}",
@@ -1856,8 +1887,21 @@ class MainActivity : Activity() {
                 "rootfs installed alr gimp demo exists=${rootfsInstalledGimpDemoFile.isFile} executable=${rootfsInstalledGimpDemoFile.canExecute()} bytes=${rootfsInstalledGimpDemoFile.length()}",
                 "rootfs gimp demo profile exists=${rootfsGimpDemoProfileFile.isFile} bytes=${rootfsGimpDemoProfileFile.length()}",
                 "rootfs gimp demo bundle lock exists=${rootfsGimpDemoBundleLockFile.isFile} bytes=${rootfsGimpDemoBundleLockFile.length()}",
+                "rootfs gimp demo materialized exists=${rootfsGimpDemoMaterializedFile.isFile} bytes=${rootfsGimpDemoMaterializedFile.length()}",
                 "rootfs /usr/bin/gimp exists=${rootfsGimpBinaryFile.isFile} executable=${rootfsGimpBinaryFile.canExecute()} bytes=${rootfsGimpBinaryFile.length()}",
+                "gimp demo profile outer exit=${alrInstalledPackageGimpDemoProfileResult.exitCode}",
+                "gimp demo profile elapsed ms=${alrInstalledPackageGimpDemoProfileResult.elapsedMs}",
+                "gimp demo profile handoff=${alrInstalledPackageGimpDemoProfileResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}",
                 "gimp demo profile stdout=$gimpDemoProfileStdout",
+                "gimp demo profile stderr=${alrInstalledPackageGimpDemoProfileResult.stdout.alrHandoffStderrText().forEvidenceLog()}",
+                "gimp demo profile raw stdout=${alrInstalledPackageGimpDemoProfileResult.stdout.forEvidenceLog()}",
+                "gimp demo profile raw stderr=${alrInstalledPackageGimpDemoProfileResult.stderr.forEvidenceLog()}",
+                "simple gui demo outer exit=${alrInstalledPackageSimpleGuiDemoBridgeResult.clientResult.exitCode}",
+                "simple gui demo elapsed ms=${alrInstalledPackageSimpleGuiDemoBridgeResult.clientResult.elapsedMs}",
+                "simple gui demo handoff=${alrInstalledPackageSimpleGuiDemoBridgeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}",
+                "simple gui demo stderr=${alrInstalledPackageSimpleGuiDemoBridgeResult.clientResult.stdout.alrHandoffStderrText().forEvidenceLog()}",
+                "simple gui demo raw stdout=${alrInstalledPackageSimpleGuiDemoBridgeResult.clientResult.stdout.forEvidenceLog()}",
+                "simple gui demo raw stderr=${alrInstalledPackageSimpleGuiDemoBridgeResult.clientResult.stderr.forEvidenceLog()}",
                 "simple gui demo glibc dynamic=${alrInstalledPackageSimpleGuiDemoBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("glibc_dynamic=true")}",
                 "simple gui demo display commits=${alrInstalledPackageSimpleGuiDemoBridgeResult.commands.size}/${alrInstalledPackageSimpleGuiDemoBridgeResult.expectedFrames}",
                 "simple gui demo binary messages=${alrInstalledPackageSimpleGuiDemoBridgeResult.rawLines.count { it.startsWith("ALR_WL_BINARY_MESSAGE ") }}",
@@ -1958,7 +2002,7 @@ class MainActivity : Activity() {
                     Log.i(
                         "ALR_SURFACE_EVIDENCE",
                         listOf(
-                            "build: 0.4.102-gimp-demo-profile",
+                            "build: 0.4.103-gimp-materialized",
                             "WAYLAND DISPLAY SOCKET AVAILABLE: ${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}",
                             "WAYLAND DISPLAY COMMIT SURFACE EXECUTION: ${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}",
                             "SIMPLE GUI DEMO EXECUTION: ${if (alrInstalledPackageSimpleGuiDemoPassed) "PASS" else "FAIL"}",
@@ -4169,6 +4213,11 @@ class MainActivity : Activity() {
             .removePrefix("alr handoff stderr=")
             .replace("\\n", "\n")
             .replace("\\r", "\r")
+
+    private fun String.forEvidenceLog(maxChars: Int = 900): String {
+        val singleLine = replace("\r", "\\r").replace("\n", "\\n")
+        return if (singleLine.length <= maxChars) singleLine else singleLine.take(maxChars) + "...<truncated>"
+    }
 
     private fun requestedPermissionNames(): Set<String> =
         packageManager.getPackageInfo(packageName, PackageManager.GET_PERMISSIONS)

@@ -606,14 +606,15 @@ class NativeCommandRunner(
     fun runAlrRuntimeTrampolineInstalledPackageGimpDemoProfile(rootfsDir: File): NativeCommandResult =
         runAlrRuntimeTrampolineGlibcRootfsProgram(
             rootfsDir,
-            "/bin/dash",
-            listOf("/usr/local/bin/alr-package-gimp-demo"),
-            timeoutMs = 8000,
+            "/usr/bin/gimp",
+            listOf("--version"),
+            timeoutMs = 60000,
             pathRewrite = true,
-            pathRewriteLimit = 2048,
-            pathRewriteIdleSyscallLimit = 256,
+            pathRewriteLimit = 16384,
+            pathRewriteIdleSyscallLimit = 2048,
             extraGuestEnvironment = preloadPathFastPathEnvironment(rootfsDir) + mapOf(
-                "GDK_BACKEND" to "wayland",
+                "GDK_BACKEND" to "x11",
+                "DISPLAY" to ":0",
                 "WAYLAND_DISPLAY" to "alr-gimp-0",
                 "XDG_RUNTIME_DIR" to "/usr/share/alr-smoke/alr-wayland-runtime",
                 "NO_AT_BRIDGE" to "1",
@@ -696,8 +697,8 @@ class NativeCommandRunner(
 
     private fun glibcLibraryPath(rootfsDir: File): String =
         listOf(
-            File(rootfsDir, "lib/aarch64-linux-gnu").absolutePath,
             File(rootfsDir, "usr/lib/aarch64-linux-gnu").absolutePath,
+            File(rootfsDir, "lib/aarch64-linux-gnu").absolutePath,
             File(rootfsDir, "lib").absolutePath,
             File(rootfsDir, "usr/lib").absolutePath,
         ).joinToString(":")
@@ -797,6 +798,9 @@ class NativeCommandRunner(
                 "LD_LIBRARY_PATH" to nativeLibraryDir.absolutePath,
                 "PATH" to "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
             ) + extraArgEnv,
+            commandTimeoutSeconds = ((timeoutMs + 999) / 1000 + 15)
+                .coerceAtLeast(COMMAND_TIMEOUT_SECONDS.toInt())
+                .toLong(),
         )
     }
 
@@ -1074,12 +1078,15 @@ class NativeCommandRunner(
         fileName: String,
         arguments: List<String>,
         environment: Map<String, String> = emptyMap(),
-    ): NativeCommandResult = runAbsoluteCommand(File(nativeLibraryDir, fileName), arguments, environment)
+        commandTimeoutSeconds: Long = COMMAND_TIMEOUT_SECONDS,
+    ): NativeCommandResult =
+        runAbsoluteCommand(File(nativeLibraryDir, fileName), arguments, environment, commandTimeoutSeconds)
 
     private fun runAbsoluteCommand(
         command: File,
         arguments: List<String>,
         environment: Map<String, String> = emptyMap(),
+        commandTimeoutSeconds: Long = COMMAND_TIMEOUT_SECONDS,
     ): NativeCommandResult {
         val processBuilder = ProcessBuilder(listOf(command.absolutePath) + arguments)
             .redirectErrorStream(false)
@@ -1087,7 +1094,9 @@ class NativeCommandRunner(
         processBuilder.environment().putAll(environment)
         val startedNs = System.nanoTime()
         val process = processBuilder.start()
-        val completed = process.waitFor(COMMAND_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        val stdoutReader = process.inputStream.readTextAsync("stdout")
+        val stderrReader = process.errorStream.readTextAsync("stderr")
+        val completed = process.waitFor(commandTimeoutSeconds, TimeUnit.SECONDS)
         val exitCode = if (completed) {
             process.exitValue()
         } else {
@@ -1096,16 +1105,39 @@ class NativeCommandRunner(
             -124
         }
         val elapsedMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedNs)
-        val stdout = process.inputStream.readTextOrClosed("stdout").trim()
-        val stderr = process.errorStream.readTextOrClosed("stderr").trim()
+        val stdout = stdoutReader.await().trim()
+        val stderr = stderrReader.await().trim()
         return NativeCommandResult(
             command = command,
             environment = environment.toSortedMap(),
             exitCode = exitCode,
             stdout = stdout,
-            stderr = if (completed) stderr else listOf(stderr, "timeout after ${COMMAND_TIMEOUT_SECONDS}s").filter { it.isNotBlank() }.joinToString("\n"),
+            stderr = if (completed) stderr else listOf(stderr, "timeout after ${commandTimeoutSeconds}s").filter { it.isNotBlank() }.joinToString("\n"),
             elapsedMs = elapsedMs,
         )
+    }
+
+    private data class AsyncStreamText(
+        private val label: String,
+        private val thread: Thread,
+        private val readText: () -> String,
+    ) {
+        fun await(): String {
+            thread.join(1000)
+            return readText()
+        }
+    }
+
+    private fun InputStream.readTextAsync(label: String): AsyncStreamText {
+        var text = ""
+        val thread = Thread {
+            text = readTextOrClosed(label)
+        }.apply {
+            name = "alr-command-$label-reader"
+            isDaemon = true
+            start()
+        }
+        return AsyncStreamText(label, thread) { text }
     }
 
     private fun InputStream.readTextOrClosed(label: String): String =

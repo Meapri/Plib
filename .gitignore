@@ -1,6 +1,7 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.cache/
 .gradle/
 .kotlin/
 build/
@@ -8,3 +9,4 @@ app/build/
 app/.cxx/
 local.properties
 .DS_Store
+*.hprof

@@ -10,6 +10,7 @@ PAYLOAD = ROOT / "app/src/main/assets/rootfs/payloads/tiny-rootfs.tar"
 RUNNER = ROOT / "app/src/main/java/dev/chanwoo/androlinux/NativeCommandRunner.kt"
 MAIN = ROOT / "app/src/main/java/dev/chanwoo/androlinux/MainActivity.kt"
 RESOLVER = ROOT / "tools/gimp_bundle_resolver.py"
+MATERIALIZER = ROOT / "tools/gimp_bundle_materializer.py"
 
 
 def test_gimp_bundle_lock_resolves_debian_arm64_gimp_depends_closure():
@@ -28,13 +29,14 @@ def test_gimp_bundle_lock_resolves_debian_arm64_gimp_depends_closure():
     assert any(package["package"] == "libgtk2.0-0" for package in lock["packages"])
 
 
-def test_gimp_profile_targets_wayland_android_surface_launch():
+def test_gimp_profile_targets_x11_android_surface_launch():
     profile = json.loads(PROFILE.read_text())
 
     assert profile["target_app"] == "gimp"
     assert profile["program"] == "/usr/bin/gimp"
     assert profile["argv"] == ["gimp", "--new-instance", "--no-data", "--no-fonts"]
-    assert profile["env"]["GDK_BACKEND"] == "wayland"
+    assert profile["env"]["GDK_BACKEND"] == "x11"
+    assert profile["env"]["DISPLAY"] == ":0"
     assert profile["env"]["WAYLAND_DISPLAY"] == "alr-gimp-0"
     assert "Android Surface" in profile["presentation"]
 
@@ -46,25 +48,47 @@ def test_rootfs_contains_gimp_demo_launcher_profile_and_lock():
         assert archive.getmember("./usr/local/bin/alr-package-gimp-demo").mode & 0o111
         assert "./usr/share/androlinux/gimp-demo-profile.json" in names
         assert "./usr/share/androlinux/gimp-demo-bundle.lock.json" in names
+        assert "./usr/share/androlinux/gimp-demo-materialized.txt" in names
+        assert "./usr/bin/gimp" in names
+        assert "./usr/bin/gimp-2.10" in names
+        assert "./usr/lib/aarch64-linux-gnu/libgtk-x11-2.0.so.0" in names
         launcher = archive.extractfile("./usr/local/bin/alr-package-gimp-demo").read()
         lock = archive.extractfile("./usr/share/androlinux/gimp-demo-bundle.lock.json").read()
+        materialized = archive.extractfile("./usr/share/androlinux/gimp-demo-materialized.txt").read()
 
     assert b"ALR_GIMP_DEMO_PROFILE_READY target=gimp" in launcher
-    assert b"ALR_GIMP_DEMO_NEXT_STEP install_debian_arm64_bundle_from_lock" in launcher
+    assert b"ALR_GIMP_DEMO_MATERIALIZED present=true package_count=246" in launcher
+    assert b"ALR_GIMP_DEMO_LAUNCH_MODE version-probe" in launcher
+    assert b"ALR_GIMP_DEMO_VERSION_EXIT" in launcher
     assert b'"package_count": 246' in lock
+    assert b"ALR_GIMP_DEMO_MATERIALIZED=true" in materialized
 
 
-def test_android_reports_gimp_demo_profile_without_claiming_gimp_execution():
+def test_materialized_gimp_rootfs_has_no_unsafe_symlinks_for_safe_android_extract():
+    with tarfile.open(PAYLOAD) as archive:
+        unsafe_links = [
+            (member.name, member.linkname)
+            for member in archive.getmembers()
+            if member.issym() and (member.linkname.startswith("/") or ".." in Path(member.linkname).parts)
+        ]
+
+    assert unsafe_links == []
+
+
+def test_android_reports_materialized_gimp_version_probe():
     text = MAIN.read_text()
     runner = RUNNER.read_text()
 
     assert "runAlrRuntimeTrampolineInstalledPackageGimpDemoProfile" in runner
-    assert "GDK_BACKEND" in runner
+    assert '"GDK_BACKEND" to "x11"' in runner
+    assert '"DISPLAY" to ":0"' in runner
     assert "WAYLAND_DISPLAY" in runner
     assert "GIMP DEMO PROFILE EXECUTION:" in text
     assert "GIMP DEMO BUNDLE LOCK:" in text
     assert "rootfs /usr/bin/gimp exists=" in text
-    assert "ALR_GIMP_DEMO_BINARY present=false" in text
+    assert "rootfs gimp demo materialized exists=" in text
+    assert "ALR_GIMP_DEMO_BINARY present=true" in text
+    assert "ALR_GIMP_DEMO_VERSION_EXIT 0" in text
 
 
 def test_gimp_bundle_resolver_defaults_to_minimal_depends_profile():
@@ -75,3 +99,15 @@ def test_gimp_bundle_resolver_defaults_to_minimal_depends_profile():
     assert "DEFAULT_TARGETS = [\"gimp\"]" in text
     assert "--include-recommends" in text
     assert "include_fields = [\"Pre-Depends\", \"Depends\"]" in text
+
+
+def test_gimp_bundle_materializer_downloads_verifies_and_overlays_rootfs_artifacts():
+    text = MATERIALIZER.read_text()
+
+    assert "download_package" in text
+    assert "sha256_file" in text
+    assert "extract_deb" in text
+    assert "write_minimal_dpkg_status" in text
+    assert "overlay_plib_gimp_artifacts" in text
+    assert "materialize_unsafe_symlinks" in text
+    assert "gimp-demo-materialized.txt" in text

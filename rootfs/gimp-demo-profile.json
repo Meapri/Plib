@@ -1,16 +1,17 @@
 {
   "name": "plib-gimp-demo-profile",
-  "version": "v102",
+  "version": "v103",
   "target_app": "gimp",
   "bundle_lock": "/usr/share/androlinux/gimp-demo-bundle.lock.json",
   "program": "/usr/bin/gimp",
   "argv": ["gimp", "--new-instance", "--no-data", "--no-fonts"],
   "env": {
-    "GDK_BACKEND": "wayland",
+    "GDK_BACKEND": "x11",
+    "DISPLAY": ":0",
     "WAYLAND_DISPLAY": "alr-gimp-0",
     "XDG_RUNTIME_DIR": "/usr/share/alr-smoke/alr-wayland-runtime",
     "NO_AT_BRIDGE": "1"
   },
-  "presentation": "Android Surface via Plib Wayland/AHardwareBuffer bridge",
-  "status": "bundle-lock-ready"
+  "presentation": "Android Surface via Plib X11/Wayland/AHardwareBuffer bridge path",
+  "status": "bundle-materialized-version-probe-ready"
 }

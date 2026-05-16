@@ -261,8 +261,8 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "alr installed package vulkan proxy stdout" in text
 
 
-def test_v102_adb_verifier_checks_gimp_demo_profile_evidence():
-    script = (ROOT / "scripts/verify-android-v102-gimp-demo-profile.sh").read_text()
+def test_v103_adb_verifier_checks_gimp_materialized_evidence():
+    script = (ROOT / "scripts/verify-android-v103-gimp-materialized.sh").read_text()
     text = MAIN.read_text()
     runner = RUNNER.read_text()
     display_source = (ROOT / "rootfs/guest-src/gui/alr_wayland_display_client.c").read_text()
@@ -293,8 +293,10 @@ def test_v102_adb_verifier_checks_gimp_demo_profile_evidence():
     assert "GIMP DEMO PROFILE EXECUTION: PASS" in script
     assert "ALR_GIMP_DEMO_PROFILE_READY target=gimp" in script
     assert "ALR_GIMP_DEMO_BUNDLE_LOCK present=true package_count=246" in script
-    assert "ALR_GIMP_DEMO_BINARY present=false path=/usr/bin/gimp" in script
-    assert "versionName=0.4.102-gimp-demo-profile" in script
+    assert "ALR_GIMP_DEMO_MATERIALIZED present=true package_count=246" in script
+    assert "ALR_GIMP_DEMO_BINARY present=true path=/usr/bin/gimp" in script
+    assert "ALR_GIMP_DEMO_VERSION_EXIT 0" in script
+    assert "versionName=0.4.103-gimp-materialized" in script
     assert "ALR_WL_BINARY_STREAM bytes=%zu messages=%d checksum=%08x wire=wayland-binary-v1 endian=little" in display_source
     assert "ALR_WL_APP_STREAM_BEGIN frames=%d mode=%s" in display_source
     assert "ALR_WL_APP_STREAM_END frames=%d commits=%d mode=%s" in display_source
