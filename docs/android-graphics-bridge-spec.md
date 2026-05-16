@@ -912,10 +912,34 @@ ahardwarebuffer partial upload ratio pct=25
 ahardwarebuffer visible payload bytes=172800
 ```
 
+Build `0.4.96-wayland-ahb-surface` moves the v95 backing proof from a standalone
+native probe into the visible Surface compositor path. For every parsed Wayland
+commit, native code allocates a host `AHardwareBuffer`, writes only the dirty
+rectangle, imports the native buffer with `eglGetNativeClientBufferANDROID` and
+`eglCreateImageKHR`, binds it with `glEGLImageTargetTexture2DOES`, then samples
+that texture into an EGL window surface backed by Android `SurfaceView`.
+
+Expected V96 compositor evidence:
+
+```text
+WAYLAND AHARDWAREBUFFER SURFACE COMPOSITOR EXECUTION: PASS
+wayland ahardwarebuffer surface compositor=egl-image-texture-to-android-surface
+wayland ahardwarebuffer surface allocated buffers=3
+wayland ahardwarebuffer surface imported textures=3
+wayland ahardwarebuffer surface sampled frames=3
+wayland ahardwarebuffer surface presented frames=3
+wayland ahardwarebuffer surface host-backed frames=3/3
+wayland ahardwarebuffer surface dirty rect frames=3/3
+wayland ahardwarebuffer surface dirty rect bytes=172800
+wayland ahardwarebuffer surface partial upload ratio pct=25
+wayland ahardwarebuffer surface sync fence accounting=ok
+wayland ahardwarebuffer surface hardware render=true
+```
+
 ## Open Questions
 
-- Can the V90 file-backed payload bridge move to ashmem/memfd FD passing without relying on privileged APIs?
-- Can `AHardwareBuffer` provide a practical cross-boundary buffer path for guest-generated or host-managed Wayland buffers?
+- Can the V90 file-backed payload bridge move fully behind the v96 host-buffer path without keeping memfd payloads as mandatory fallback evidence?
+- Can `AHardwareBuffer` fence FDs be promoted from accounting evidence to real cross-frame pacing for guest display commits?
 - How much Wayland protocol is worth implementing before using an existing compositor/proxy component?
 - Should X11 support begin with image transport, GLX proxy research, or Xvfb/VNC comparison?
 - Which Vulkan subset is small enough to be credible but useful enough to guide the ICD design?

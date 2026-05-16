@@ -1469,6 +1469,37 @@ surface vulkan present=ok
 surface vulkan hardware render=true
 ```
 
+### V96 Wayland AHardwareBuffer Surface Compositor
+
+Build `0.4.96-wayland-ahb-surface` connects the v95 host-backed Wayland dirty
+state to the visible Android Surface path. Android still owns allocation and
+presentation: each parsed `backing=host-ahardwarebuffer` commit allocates an
+`AHardwareBuffer`, locks only the `ALR_WL_DAMAGE` rectangle for CPU population,
+imports the buffer as an `EGLImage`, samples it as a GLES texture, and swaps the
+result through the app Surface. This keeps the clean-room boundary explicit:
+the Linux-side display stream describes surface state and dirty regions, while
+Android native EGL/GLES remains the renderer and presentation owner.
+
+```text
+build: 0.4.96-wayland-ahb-surface
+versionCode=96
+versionName=0.4.96-wayland-ahb-surface
+WAYLAND DISPLAY SOCKET AVAILABLE: PASS
+WAYLAND DISPLAY COMMIT SURFACE EXECUTION: PASS
+WAYLAND DISPLAY AHARDWAREBUFFER BACKING EXECUTION: PASS
+WAYLAND AHARDWAREBUFFER SURFACE COMPOSITOR EXECUTION: PASS
+wayland ahardwarebuffer surface compositor=egl-image-texture-to-android-surface
+wayland ahardwarebuffer surface imported textures=3
+wayland ahardwarebuffer surface sampled frames=3
+wayland ahardwarebuffer surface presented frames=3
+wayland ahardwarebuffer surface host-backed frames=3/3
+wayland ahardwarebuffer surface dirty rect bytes=172800
+wayland ahardwarebuffer surface partial upload ratio pct=25
+wayland ahardwarebuffer surface sync fence accounting=ok
+wayland ahardwarebuffer surface hardware render=true
+surface vulkan hardware render=true
+```
+
 Report:
 
 ```text

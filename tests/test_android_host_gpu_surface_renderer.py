@@ -49,8 +49,15 @@ def test_native_ahardwarebuffer_probe_builds_host_managed_buffer_path():
     assert "ahardwarebuffer dirty rect frames=" in text
     assert "ahardwarebuffer dirty rect bytes=" in text
     assert "ahardwarebuffer partial upload ratio pct=" in text
+    assert "ahardwarebuffer cpu write dirty rect locks=" in text
+    assert "ahardwarebuffer cpu write fence count=" in text
+    assert "ahardwarebuffer cpu read fence count=" in text
+    assert "ahardwarebuffer sync fence accounting=ok" in text
     assert "ahardwarebuffer execution=" in text
     assert "wayland-display-commits" in text
+    assert "render_wayland_hardware_buffers_to_android_surface" in text
+    assert "wayland ahardwarebuffer surface compositor=egl-image-texture-to-android-surface" in text
+    assert "wayland ahardwarebuffer surface execution=" in text
 
 
 def test_main_activity_owns_surface_view_and_appends_native_surface_report():
@@ -84,10 +91,16 @@ def test_main_activity_owns_surface_view_and_appends_native_surface_report():
     assert "ANDROID HOST AHARDWAREBUFFER EXECUTION:" in text
     assert "ANDROID HOST AHARDWAREBUFFER EGL IMPORT EXECUTION:" in text
     assert "WAYLAND DISPLAY AHARDWAREBUFFER BACKING EXECUTION:" in text
+    assert "WAYLAND AHARDWAREBUFFER SURFACE COMPOSITOR EXECUTION:" in text
     assert 'hostHardwareBufferProbe.lineStartingWith("ahardwarebuffer execution=")' in text
     assert 'hostHardwareBufferProbe.lineStartingWith("ahardwarebuffer egl image import=")' in text
     assert 'waylandHardwareBufferBridgeProbe.lineStartingWith("ahardwarebuffer wayland display backing=")' in text
     assert 'waylandHardwareBufferBridgeProbe.lineStartingWith("ahardwarebuffer dirty rect bytes=")' in text
+    assert 'waylandHardwareBufferSurfaceReport.lineStartingWith("wayland ahardwarebuffer surface hardware render=")' in text
+    assert 'waylandHardwareBufferSurfaceReport.lineStartingWith("wayland ahardwarebuffer surface presented frames=")' in text
+    assert 'waylandHardwareBufferSurfaceReport.lineStartingWith("wayland ahardwarebuffer surface sync fence accounting=")' in text
+    assert "nativeRenderWaylandHardwareBufferSurface" in text
+    assert "Wayland AHardwareBuffer Surface compositor" in text
     assert "partialUploadRatioPct" in text
     assert "Android host AHardwareBuffer bridge probe" in text
     assert "Wayland display AHardwareBuffer backing probe" in text

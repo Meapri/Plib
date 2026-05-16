@@ -1588,11 +1588,38 @@ Android validates that state before ACK, and the native host buffer path updates
 only the 25% dirty area while keeping the full v92 memfd payload stream as a
 fallback verifier.
 
+Latest V96 Wayland AHardwareBuffer Surface compositor evidence:
+
+```text
+build: 0.4.96-wayland-ahb-surface
+versionCode=96
+versionName=0.4.96-wayland-ahb-surface
+WAYLAND DISPLAY SOCKET AVAILABLE: PASS
+WAYLAND DISPLAY COMMIT SURFACE EXECUTION: PASS
+WAYLAND DISPLAY AHARDWAREBUFFER BACKING EXECUTION: PASS
+WAYLAND AHARDWAREBUFFER SURFACE COMPOSITOR EXECUTION: PASS
+wayland ahardwarebuffer surface compositor=egl-image-texture-to-android-surface
+wayland ahardwarebuffer surface imported textures=3
+wayland ahardwarebuffer surface sampled frames=3
+wayland ahardwarebuffer surface presented frames=3
+wayland ahardwarebuffer surface dirty rect bytes=172800
+wayland ahardwarebuffer surface partial upload ratio pct=25
+wayland ahardwarebuffer surface sync fence accounting=ok
+wayland ahardwarebuffer surface hardware render=true
+surface vulkan hardware render=true
+```
+
+V96 collapses three follow-up tasks into one implementation batch: the
+AHardwareBuffer dirty state is sampled through an EGLImage texture into the real
+Android Surface, AHardwareBuffer lock/unlock fence accounting is logged beside
+the dirty-region counters, and the first adb verifier script captures the
+minimum device evidence for the GUI/GPU path.
+
 Next implementation batch:
 
 1. Expand the minimal Wayland bridge from ALR_WL text records to a stricter subset of real Wayland wire opcodes for registry, compositor, shm, surface, and buffer lifetimes.
-2. Replace the AHardwareBuffer CPU-fill probe with an EGL-rendered compositor pass that samples/imports the host-owned buffers and presents them through the visible Android Surface path.
-3. Add fence/sync FD accounting around AHardwareBuffer lock/unlock and EGL import so dirty updates can be paced without implicit CPU waits.
-4. Replace the loader-info smoke with the real Khronos Vulkan loader or a stricter ABI-compatible loader subset.
-5. Add a small real toolkit fixture target, likely a tiny GTK/Qt-independent Wayland protocol smoke before pulling in a larger GUI stack.
-6. Turn the current evidence logs into a reusable adb verification script so device regressions are cheaper to catch while implementation is moving quickly.
+2. Promote the v96 fence accounting into real sync-FD pacing and buffer reuse instead of allocating a fresh AHardwareBuffer per frame.
+3. Replace the loader-info smoke with the real Khronos Vulkan loader or a stricter ABI-compatible loader subset.
+4. Add a small real toolkit fixture target, likely a tiny GTK/Qt-independent Wayland protocol smoke before pulling in a larger GUI stack.
+5. Start measuring compositor-path CPU/GPU cost against PRoot image transport and the existing Vulkan Surface clear path.
+6. Keep growing adb verification around visual present, fence state, and package-version evidence so device regressions stay cheap while implementation is moving quickly.

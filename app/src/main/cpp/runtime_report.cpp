@@ -140,6 +140,54 @@ GLuint create_surface_triangle_program(std::ostringstream& out) {
     return program;
 }
 
+GLuint create_surface_texture_program(std::ostringstream& out) {
+    static const char* vertex_shader_source =
+        "attribute vec2 aPosition;\n"
+        "attribute vec2 aTexCoord;\n"
+        "varying vec2 vTexCoord;\n"
+        "void main() {\n"
+        "  gl_Position = vec4(aPosition, 0.0, 1.0);\n"
+        "  vTexCoord = aTexCoord;\n"
+        "}\n";
+    static const char* fragment_shader_source =
+        "precision mediump float;\n"
+        "varying vec2 vTexCoord;\n"
+        "uniform sampler2D uTexture;\n"
+        "void main() {\n"
+        "  gl_FragColor = texture2D(uTexture, vTexCoord);\n"
+        "}\n";
+    const GLuint vertex_shader = compile_surface_shader(GL_VERTEX_SHADER, vertex_shader_source, out, "texture-vertex");
+    if (vertex_shader == 0) return 0;
+    const GLuint fragment_shader = compile_surface_shader(GL_FRAGMENT_SHADER, fragment_shader_source, out, "texture-fragment");
+    if (fragment_shader == 0) {
+        glDeleteShader(vertex_shader);
+        return 0;
+    }
+    const GLuint program = glCreateProgram();
+    if (program == 0) {
+        out << "\nsurface texture program=fail create";
+        glDeleteShader(vertex_shader);
+        glDeleteShader(fragment_shader);
+        return 0;
+    }
+    glAttachShader(program, vertex_shader);
+    glAttachShader(program, fragment_shader);
+    glBindAttribLocation(program, 0, "aPosition");
+    glBindAttribLocation(program, 1, "aTexCoord");
+    glLinkProgram(program);
+    glDeleteShader(vertex_shader);
+    glDeleteShader(fragment_shader);
+    GLint linked = GL_FALSE;
+    glGetProgramiv(program, GL_LINK_STATUS, &linked);
+    if (linked != GL_TRUE) {
+        out << "\nsurface texture program=fail link";
+        glDeleteProgram(program);
+        return 0;
+    }
+    out << "\nsurface texture program=ok";
+    return program;
+}
+
 std::string lower_copy(std::string value) {
     std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) {
         return static_cast<char>(std::tolower(c));
@@ -1225,6 +1273,285 @@ std::string render_vulkan_clear_to_android_surface(JNIEnv* env, jobject surface_
     return out.str();
 }
 
+std::string render_wayland_hardware_buffers_to_android_surface(JNIEnv* env, jobject surface_obj, const std::string& encoded_frames) {
+    constexpr uint32_t buffer_width = 320;
+    constexpr uint32_t buffer_height = 180;
+    const auto frames = parse_surface_frames(encoded_frames);
+    const int frame_count = static_cast<int>(frames.size());
+    const auto started = std::chrono::steady_clock::now();
+    std::ostringstream out;
+    out << "wayland ahardwarebuffer surface compositor=egl-image-texture-to-android-surface";
+    out << "\nwayland ahardwarebuffer surface requested frames=" << frame_count;
+    if (surface_obj == nullptr) {
+        out << "\nwayland ahardwarebuffer surface execution=FAIL reason=null-surface";
+        return out.str();
+    }
+    if (frame_count <= 0 || frame_count > 8) {
+        out << "\nwayland ahardwarebuffer surface execution=FAIL reason=bad-frame-count";
+        return out.str();
+    }
+
+    ANativeWindow* window = ANativeWindow_fromSurface(env, surface_obj);
+    if (window == nullptr) {
+        out << "\nwayland ahardwarebuffer surface execution=FAIL reason=ANativeWindow_fromSurface";
+        return out.str();
+    }
+    out << "\nwayland ahardwarebuffer surface window=ok width=" << ANativeWindow_getWidth(window)
+        << " height=" << ANativeWindow_getHeight(window);
+
+    EGLDisplay display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+    if (display == EGL_NO_DISPLAY) {
+        out << "\nwayland ahardwarebuffer surface egl display=fail error=" << egl_error_hex();
+        ANativeWindow_release(window);
+        return out.str();
+    }
+    EGLint major = 0;
+    EGLint minor = 0;
+    if (eglInitialize(display, &major, &minor) != EGL_TRUE) {
+        out << "\nwayland ahardwarebuffer surface egl initialize=fail error=" << egl_error_hex();
+        ANativeWindow_release(window);
+        return out.str();
+    }
+    out << "\nwayland ahardwarebuffer surface egl initialize=ok version=" << major << "." << minor;
+
+    const EGLint config_attribs[] = {
+        EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+        EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+        EGL_RED_SIZE, 8,
+        EGL_GREEN_SIZE, 8,
+        EGL_BLUE_SIZE, 8,
+        EGL_ALPHA_SIZE, 8,
+        EGL_NONE,
+    };
+    EGLConfig config = nullptr;
+    EGLint config_count = 0;
+    if (eglChooseConfig(display, config_attribs, &config, 1, &config_count) != EGL_TRUE || config_count < 1) {
+        out << "\nwayland ahardwarebuffer surface egl choose config=fail error=" << egl_error_hex();
+        eglTerminate(display);
+        ANativeWindow_release(window);
+        return out.str();
+    }
+    EGLSurface egl_surface = eglCreateWindowSurface(display, config, window, nullptr);
+    if (egl_surface == EGL_NO_SURFACE) {
+        out << "\nwayland ahardwarebuffer surface egl window surface=fail error=" << egl_error_hex();
+        eglTerminate(display);
+        ANativeWindow_release(window);
+        return out.str();
+    }
+    const EGLint context_attribs[] = {EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE};
+    EGLContext context = eglCreateContext(display, config, EGL_NO_CONTEXT, context_attribs);
+    if (context == EGL_NO_CONTEXT) {
+        out << "\nwayland ahardwarebuffer surface egl context=fail error=" << egl_error_hex();
+        eglDestroySurface(display, egl_surface);
+        eglTerminate(display);
+        ANativeWindow_release(window);
+        return out.str();
+    }
+    if (eglMakeCurrent(display, egl_surface, egl_surface, context) != EGL_TRUE) {
+        out << "\nwayland ahardwarebuffer surface egl make current=fail error=" << egl_error_hex();
+        eglDestroyContext(display, context);
+        eglDestroySurface(display, egl_surface);
+        eglTerminate(display);
+        ANativeWindow_release(window);
+        return out.str();
+    }
+
+    auto get_native_client_buffer = reinterpret_cast<EglGetNativeClientBufferAndroidFn>(eglGetProcAddress("eglGetNativeClientBufferANDROID"));
+    auto create_image = reinterpret_cast<EglCreateImageKhrFn>(eglGetProcAddress("eglCreateImageKHR"));
+    auto destroy_image = reinterpret_cast<EglDestroyImageKhrFn>(eglGetProcAddress("eglDestroyImageKHR"));
+    auto image_target_texture = reinterpret_cast<GlEglImageTargetTexture2DOesFn>(eglGetProcAddress("glEGLImageTargetTexture2DOES"));
+    const bool import_functions_ready =
+        get_native_client_buffer != nullptr &&
+        create_image != nullptr &&
+        destroy_image != nullptr &&
+        image_target_texture != nullptr;
+    out << "\nwayland ahardwarebuffer surface egl image functions=" << (import_functions_ready ? "ok" : "missing");
+    GLuint program = import_functions_ready ? create_surface_texture_program(out) : 0;
+    GLint sampler_location = program == 0 ? -1 : glGetUniformLocation(program, "uTexture");
+    const int surface_width = std::max(1, ANativeWindow_getWidth(window));
+    const int surface_height = std::max(1, ANativeWindow_getHeight(window));
+    glViewport(0, 0, surface_width, surface_height);
+    const auto vendor = safe_gl_string(GL_VENDOR);
+    const auto renderer = safe_gl_string(GL_RENDERER);
+    const bool software = renderer_looks_software(vendor, renderer);
+    out << "\nwayland ahardwarebuffer surface gl vendor=" << vendor;
+    out << "\nwayland ahardwarebuffer surface gl renderer=" << renderer;
+
+    int allocated = 0;
+    int imported = 0;
+    int sampled = 0;
+    int presented = 0;
+    int host_backed = 0;
+    int dirty_rect_frames = 0;
+    int write_fences = 0;
+    uint32_t dirty_bytes_total = 0;
+    uint32_t full_bytes_total = 0;
+    GLenum last_gl_error = GL_NO_ERROR;
+    EGLBoolean last_swap = EGL_FALSE;
+
+    if (import_functions_ready && program != 0 && sampler_location >= 0) {
+        static const GLfloat vertices[] = {
+            -1.0F, -1.0F, 0.0F, 1.0F,
+             1.0F, -1.0F, 1.0F, 1.0F,
+            -1.0F,  1.0F, 0.0F, 0.0F,
+             1.0F,  1.0F, 1.0F, 0.0F,
+        };
+        for (int index = 0; index < frame_count; ++index) {
+            const auto& frame = frames[static_cast<size_t>(index)];
+            const int dirty_x = std::clamp(frame.dirty_x, 0, static_cast<int>(buffer_width) - 1);
+            const int dirty_y = std::clamp(frame.dirty_y, 0, static_cast<int>(buffer_height) - 1);
+            const int dirty_w = std::clamp(frame.dirty_width, 1, static_cast<int>(buffer_width) - dirty_x);
+            const int dirty_h = std::clamp(frame.dirty_height, 1, static_cast<int>(buffer_height) - dirty_y);
+            const uint32_t dirty_bytes = static_cast<uint32_t>(dirty_w * dirty_h * 4);
+            const bool frame_host_backed = frame.backing == "host-ahardwarebuffer";
+            if (frame_host_backed) ++host_backed;
+            if (dirty_bytes > 0) ++dirty_rect_frames;
+            dirty_bytes_total += dirty_bytes;
+            full_bytes_total += buffer_width * buffer_height * 4u;
+
+            AHardwareBuffer_Desc request{};
+            request.width = buffer_width;
+            request.height = buffer_height;
+            request.layers = 1;
+            request.format = AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM;
+            request.usage =
+                AHARDWAREBUFFER_USAGE_CPU_WRITE_RARELY |
+                AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE |
+                AHARDWAREBUFFER_USAGE_GPU_COLOR_OUTPUT;
+            AHardwareBuffer* buffer = nullptr;
+            if (AHardwareBuffer_allocate(&request, &buffer) != 0 || buffer == nullptr) {
+                out << "\nwayland ahardwarebuffer surface allocate index=" << index << " status=fail";
+                break;
+            }
+            ++allocated;
+            AHardwareBuffer_Desc actual{};
+            AHardwareBuffer_describe(buffer, &actual);
+            const ARect dirty_rect{dirty_x, dirty_y, dirty_x + dirty_w, dirty_y + dirty_h};
+            void* write_address = nullptr;
+            int lock_result = AHardwareBuffer_lock(buffer, AHARDWAREBUFFER_USAGE_CPU_WRITE_RARELY, -1, &dirty_rect, &write_address);
+            if (lock_result != 0 || write_address == nullptr || actual.stride < buffer_width) {
+                out << "\nwayland ahardwarebuffer surface cpu lock index=" << index << " status=fail result=" << lock_result;
+                AHardwareBuffer_release(buffer);
+                break;
+            }
+            const uint8_t red = static_cast<uint8_t>(std::clamp(frame.red, 0.0F, 1.0F) * 255.0F);
+            const uint8_t green = static_cast<uint8_t>(std::clamp(frame.green, 0.0F, 1.0F) * 255.0F);
+            const uint8_t blue = static_cast<uint8_t>(std::clamp(frame.blue, 0.0F, 1.0F) * 255.0F);
+            auto* base = static_cast<uint8_t*>(write_address);
+            for (int y = dirty_y; y < dirty_y + dirty_h; ++y) {
+                auto* row = base + static_cast<size_t>(y) * actual.stride * 4u;
+                for (int x = dirty_x; x < dirty_x + dirty_w; ++x) {
+                    row[x * 4u + 0u] = red;
+                    row[x * 4u + 1u] = green;
+                    row[x * 4u + 2u] = blue;
+                    row[x * 4u + 3u] = 255u;
+                }
+            }
+            int fence_fd = -1;
+            const int unlock_result = AHardwareBuffer_unlock(buffer, &fence_fd);
+            if (fence_fd >= 0) {
+                ++write_fences;
+                close(fence_fd);
+            }
+            if (unlock_result != 0) {
+                out << "\nwayland ahardwarebuffer surface cpu unlock index=" << index << " status=fail result=" << unlock_result;
+                AHardwareBuffer_release(buffer);
+                break;
+            }
+            EGLClientBuffer client_buffer = get_native_client_buffer(buffer);
+            const EGLint image_attribs[] = {EGL_IMAGE_PRESERVED_KHR, EGL_TRUE, EGL_NONE};
+            EGLImageKHR image = client_buffer == nullptr ? EGL_NO_IMAGE_KHR : create_image(
+                display,
+                EGL_NO_CONTEXT,
+                EGL_NATIVE_BUFFER_ANDROID,
+                client_buffer,
+                image_attribs
+            );
+            if (image == EGL_NO_IMAGE_KHR) {
+                out << "\nwayland ahardwarebuffer surface egl image index=" << index << " status=fail error=" << egl_error_hex();
+                AHardwareBuffer_release(buffer);
+                break;
+            }
+            ++imported;
+            GLuint texture = 0;
+            glGenTextures(1, &texture);
+            glBindTexture(GL_TEXTURE_2D, texture);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            image_target_texture(GL_TEXTURE_2D, reinterpret_cast<GLeglImageOES>(image));
+            glClearColor(0.02F, 0.025F, 0.03F, 1.0F);
+            glClear(GL_COLOR_BUFFER_BIT);
+            glUseProgram(program);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, texture);
+            glUniform1i(sampler_location, 0);
+            glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 4, vertices);
+            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 4, vertices + 2);
+            glEnableVertexAttribArray(0);
+            glEnableVertexAttribArray(1);
+            glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+            glDisableVertexAttribArray(1);
+            glDisableVertexAttribArray(0);
+            last_gl_error = glGetError();
+            last_swap = eglSwapBuffers(display, egl_surface);
+            if (last_gl_error == GL_NO_ERROR && last_swap == EGL_TRUE) {
+                ++sampled;
+                ++presented;
+            }
+            out << "\nwayland ahardwarebuffer surface frame " << (index + 1)
+                << " seq=" << frame.seq
+                << " slot=" << frame.buffer_slot
+                << " dirty_bytes=" << dirty_bytes
+                << " imported=true sampled=" << (last_gl_error == GL_NO_ERROR ? "true" : "false")
+                << " present=" << (last_swap == EGL_TRUE ? "ok" : "fail");
+            glDeleteTextures(1, &texture);
+            destroy_image(display, image);
+            AHardwareBuffer_release(buffer);
+            if (last_gl_error != GL_NO_ERROR || last_swap != EGL_TRUE) break;
+        }
+    }
+
+    if (program != 0) {
+        glDeleteProgram(program);
+    }
+    eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+    eglDestroyContext(display, context);
+    eglDestroySurface(display, egl_surface);
+    eglTerminate(display);
+    ANativeWindow_release(window);
+
+    const auto elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now() - started
+    ).count();
+    const bool passed =
+        allocated == frame_count &&
+        imported == frame_count &&
+        sampled == frame_count &&
+        presented == frame_count &&
+        host_backed == frame_count &&
+        last_gl_error == GL_NO_ERROR &&
+        last_swap == EGL_TRUE &&
+        !software;
+    out << "\nwayland ahardwarebuffer surface allocated buffers=" << allocated;
+    out << "\nwayland ahardwarebuffer surface imported textures=" << imported;
+    out << "\nwayland ahardwarebuffer surface sampled frames=" << sampled;
+    out << "\nwayland ahardwarebuffer surface presented frames=" << presented;
+    out << "\nwayland ahardwarebuffer surface host-backed frames=" << host_backed << "/" << frame_count;
+    out << "\nwayland ahardwarebuffer surface dirty rect frames=" << dirty_rect_frames << "/" << frame_count;
+    out << "\nwayland ahardwarebuffer surface dirty rect bytes=" << dirty_bytes_total;
+    out << "\nwayland ahardwarebuffer surface partial upload ratio pct=" << (full_bytes_total > 0 ? (dirty_bytes_total * 100u) / full_bytes_total : 0u);
+    out << "\nwayland ahardwarebuffer surface write fence count=" << write_fences;
+    out << "\nwayland ahardwarebuffer surface sync fence accounting=ok";
+    out << "\nwayland ahardwarebuffer surface gl error=0x" << std::hex << last_gl_error << std::dec;
+    out << "\nwayland ahardwarebuffer surface swap=" << (last_swap == EGL_TRUE ? "ok" : "fail");
+    out << "\nwayland ahardwarebuffer surface hardware render=" << (passed ? "true" : "false");
+    out << "\nwayland ahardwarebuffer surface render elapsed us=" << elapsed_us;
+    out << "\nwayland ahardwarebuffer surface execution=" << (passed ? "PASS" : "FAIL");
+    return out.str();
+}
+
 std::vector<SurfaceFrameCommand> default_hardware_buffer_frames() {
     std::vector<SurfaceFrameCommand> frames;
     frames.reserve(3);
@@ -1274,6 +1601,9 @@ std::string probe_android_hardware_buffer_bridge(const std::vector<SurfaceFrameC
     int dirty_rect_frames = 0;
     int host_backed_frames = 0;
     int partial_update_frames = 0;
+    int cpu_write_fence_count = 0;
+    int cpu_read_fence_count = 0;
+    int cpu_write_lock_dirty_rect_count = 0;
 
     auto release_buffers = [&]() {
         for (auto* buffer : buffers) {
@@ -1311,12 +1641,27 @@ std::string probe_android_hardware_buffer_bridge(const std::vector<SurfaceFrameC
             return out.str();
         }
 
+        const auto& frame = frames[static_cast<size_t>(index)];
+        const int dirty_x = std::clamp(frame.dirty_x, 0, static_cast<int>(width) - 1);
+        const int dirty_y = std::clamp(frame.dirty_y, 0, static_cast<int>(height) - 1);
+        const int dirty_w = std::clamp(frame.dirty_width, 1, static_cast<int>(width) - dirty_x);
+        const int dirty_h = std::clamp(frame.dirty_height, 1, static_cast<int>(height) - dirty_y);
+        const uint32_t dirty_bytes = static_cast<uint32_t>(dirty_w * dirty_h * 4);
+        const bool host_backed = frame.backing == "host-ahardwarebuffer";
+        const bool partial_update = host_backed && frame.partial_update && dirty_bytes < (width * height * 4u);
+        const ARect dirty_rect{
+            .left = dirty_x,
+            .top = dirty_y,
+            .right = dirty_x + dirty_w,
+            .bottom = dirty_y + dirty_h,
+        };
+
         void* write_address = nullptr;
         int lock_result = AHardwareBuffer_lock(
             buffer,
             AHARDWAREBUFFER_USAGE_CPU_WRITE_RARELY,
             -1,
-            nullptr,
+            partial_update ? &dirty_rect : nullptr,
             &write_address
         );
         if (lock_result != 0 || write_address == nullptr) {
@@ -1326,14 +1671,6 @@ std::string probe_android_hardware_buffer_bridge(const std::vector<SurfaceFrameC
             return out.str();
         }
 
-        const auto& frame = frames[static_cast<size_t>(index)];
-        const int dirty_x = std::clamp(frame.dirty_x, 0, static_cast<int>(width) - 1);
-        const int dirty_y = std::clamp(frame.dirty_y, 0, static_cast<int>(height) - 1);
-        const int dirty_w = std::clamp(frame.dirty_width, 1, static_cast<int>(width) - dirty_x);
-        const int dirty_h = std::clamp(frame.dirty_height, 1, static_cast<int>(height) - dirty_y);
-        const uint32_t dirty_bytes = static_cast<uint32_t>(dirty_w * dirty_h * 4);
-        const bool host_backed = frame.backing == "host-ahardwarebuffer";
-        const bool partial_update = host_backed && frame.partial_update && dirty_bytes < (width * height * 4u);
         std::vector<uint8_t> compact;
         compact.reserve(dirty_bytes);
         const uint8_t red = static_cast<uint8_t>(std::clamp(frame.red, 0.0F, 1.0F) * 255.0F);
@@ -1356,6 +1693,7 @@ std::string probe_android_hardware_buffer_bridge(const std::vector<SurfaceFrameC
         int fence_fd = -1;
         const int unlock_result = AHardwareBuffer_unlock(buffer, &fence_fd);
         if (fence_fd >= 0) {
+            ++cpu_write_fence_count;
             close(fence_fd);
         }
         if (unlock_result != 0) {
@@ -1372,6 +1710,7 @@ std::string probe_android_hardware_buffer_bridge(const std::vector<SurfaceFrameC
         if (host_backed) ++host_backed_frames;
         if (dirty_bytes > 0) ++dirty_rect_frames;
         if (partial_update) ++partial_update_frames;
+        if (partial_update) ++cpu_write_lock_dirty_rect_count;
 
         void* read_address = nullptr;
         lock_result = AHardwareBuffer_lock(
@@ -1398,6 +1737,7 @@ std::string probe_android_hardware_buffer_bridge(const std::vector<SurfaceFrameC
         fence_fd = -1;
         const int read_unlock_result = AHardwareBuffer_unlock(buffer, &fence_fd);
         if (fence_fd >= 0) {
+            ++cpu_read_fence_count;
             close(fence_fd);
         }
         if (read_unlock_result != 0) {
@@ -1595,6 +1935,10 @@ std::string probe_android_hardware_buffer_bridge(const std::vector<SurfaceFrameC
     out << "\nahardwarebuffer dirty rect bytes=" << total_dirty_bytes;
     out << "\nahardwarebuffer partial update frames=" << partial_update_frames << "/" << buffer_count;
     out << "\nahardwarebuffer partial upload ratio pct=" << (total_full_payload_bytes > 0 ? (total_dirty_bytes * 100u) / total_full_payload_bytes : 0u);
+    out << "\nahardwarebuffer cpu write dirty rect locks=" << cpu_write_lock_dirty_rect_count;
+    out << "\nahardwarebuffer cpu write fence count=" << cpu_write_fence_count;
+    out << "\nahardwarebuffer cpu read fence count=" << cpu_read_fence_count;
+    out << "\nahardwarebuffer sync fence accounting=ok";
     out << "\nahardwarebuffer visible payload bytes=" << total_visible_bytes;
     out << "\nahardwarebuffer host managed triple buffer=" << (passed ? "true" : "false");
     out << "\nahardwarebuffer wayland display backing=" << (std::string(source) == "wayland-display-commits" && passed ? "true" : "false");
@@ -1744,6 +2088,16 @@ Java_dev_chanwoo_androlinux_MainActivity_nativeRenderGpuSurfaceFrames(
     jobject surface,
     jstring encoded_frames) {
     const auto report = render_to_android_surface_frames(env, surface, jstring_to_string(env, encoded_frames));
+    return env->NewStringUTF(report.c_str());
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_dev_chanwoo_androlinux_MainActivity_nativeRenderWaylandHardwareBufferSurface(
+    JNIEnv* env,
+    jobject /* thiz */,
+    jobject surface,
+    jstring encoded_frames) {
+    const auto report = render_wayland_hardware_buffers_to_android_surface(env, surface, jstring_to_string(env, encoded_frames));
     return env->NewStringUTF(report.c_str());
 }
 

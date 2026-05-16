@@ -34,8 +34,8 @@ android {
         applicationId = "dev.chanwoo.androlinux"
         minSdk = 26
         targetSdk = 35
-        versionCode = 95
-        versionName = "0.4.95-wayland-ahb-dirty-state"
+        versionCode = 96
+        versionName = "0.4.96-wayland-ahb-surface"
         ndkVersion = "27.2.12479018"
 
         externalNativeBuild {
