@@ -44,7 +44,9 @@ def test_native_ahardwarebuffer_probe_builds_host_managed_buffer_path():
     assert "eglCreateImageKHR" in text
     assert "glEGLImageTargetTexture2DOES" in text
     assert "ahardwarebuffer host managed triple buffer=" in text
+    assert "ahardwarebuffer wayland display backing=" in text
     assert "ahardwarebuffer execution=" in text
+    assert "wayland-display-commits" in text
 
 
 def test_main_activity_owns_surface_view_and_appends_native_surface_report():
@@ -74,11 +76,15 @@ def test_main_activity_owns_surface_view_and_appends_native_surface_report():
     assert "Linux guest Wayland/X11 GUI GPU surface renderer" in text
     assert "nativeRenderVulkanSurfaceClear" in text
     assert "nativeHostHardwareBufferProbe" in text
+    assert "nativeWaylandHardwareBufferBridge" in text
     assert "ANDROID HOST AHARDWAREBUFFER EXECUTION:" in text
     assert "ANDROID HOST AHARDWAREBUFFER EGL IMPORT EXECUTION:" in text
+    assert "WAYLAND DISPLAY AHARDWAREBUFFER BACKING EXECUTION:" in text
     assert 'hostHardwareBufferProbe.lineStartingWith("ahardwarebuffer execution=")' in text
     assert 'hostHardwareBufferProbe.lineStartingWith("ahardwarebuffer egl image import=")' in text
+    assert 'waylandHardwareBufferBridgeProbe.lineStartingWith("ahardwarebuffer wayland display backing=")' in text
     assert "Android host AHardwareBuffer bridge probe" in text
+    assert "Wayland display AHardwareBuffer backing probe" in text
     assert "ANDROID HOST VULKAN SURFACE EXECUTION:" in text
     assert "GUEST VULKAN SURFACE CLEAR REQUEST EXECUTION:" in text
     assert 'vulkanSurfaceReport.lineStartingWith("surface vulkan clear request source=")' in text

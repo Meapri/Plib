@@ -1402,6 +1402,35 @@ surface vulkan present=ok
 surface vulkan hardware render=true
 ```
 
+V94 wires that native-buffer capability into the Wayland display evidence path.
+Android now takes the parsed `ALR_WL_SURFACE_COMMIT` records from the installed
+package display bridge, recreates those three frames as host-owned
+`AHardwareBuffer` objects, verifies the payload bytes against the same 691200
+bytes used by the v92 FD payload path, and imports all three as EGLImages. This
+is still an evidence bridge rather than a full compositor allocator, but the
+important shape is now joined: guest commits arrive through `WAYLAND_DISPLAY`,
+guest payload descriptors are verified through `SCM_RIGHTS`, and matching
+host-owned GPU buffers are proven for those commits.
+
+```text
+build: 0.4.94-wayland-ahb-backing
+versionCode=94
+versionName=0.4.94-wayland-ahb-backing
+rootfs_version=bookworm-slim-2026-05-wayland-triple-fd-v92
+WAYLAND DISPLAY SOCKET AVAILABLE: PASS
+WAYLAND DISPLAY COMMIT SURFACE EXECUTION: PASS
+WAYLAND DISPLAY AHARDWAREBUFFER BACKING EXECUTION: PASS
+ahardwarebuffer source=wayland-display-commits
+ahardwarebuffer requested buffers=3
+ahardwarebuffer cpu verified buffers=3
+ahardwarebuffer egl imported buffers=3
+ahardwarebuffer visible payload bytes=691200
+ahardwarebuffer wayland display backing=true
+ahardwarebuffer egl image import=ok
+surface vulkan present=ok
+surface vulkan hardware render=true
+```
+
 Report:
 
 ```text

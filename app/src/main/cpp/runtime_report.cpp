@@ -1180,17 +1180,32 @@ std::string render_vulkan_clear_to_android_surface(JNIEnv* env, jobject surface_
     return out.str();
 }
 
-std::string probe_android_hardware_buffer_bridge() {
+std::vector<SurfaceFrameCommand> default_hardware_buffer_frames() {
+    std::vector<SurfaceFrameCommand> frames;
+    frames.reserve(3);
+    frames.push_back(SurfaceFrameCommand{48.0F / 255.0F, 72.0F / 255.0F, 160.0F / 255.0F, "AHB-default-0"});
+    frames.push_back(SurfaceFrameCommand{87.0F / 255.0F, 101.0F / 255.0F, 129.0F / 255.0F, "AHB-default-1"});
+    frames.push_back(SurfaceFrameCommand{126.0F / 255.0F, 130.0F / 255.0F, 98.0F / 255.0F, "AHB-default-2"});
+    return frames;
+}
+
+std::string probe_android_hardware_buffer_bridge(const std::vector<SurfaceFrameCommand>& requested_frames, const char* source) {
     constexpr uint32_t width = 320;
     constexpr uint32_t height = 180;
-    constexpr int buffer_count = 3;
+    const auto frames = requested_frames.empty() ? default_hardware_buffer_frames() : requested_frames;
+    const int buffer_count = static_cast<int>(frames.size());
     const auto started = std::chrono::steady_clock::now();
     std::ostringstream out;
     out << "host ahardwarebuffer renderer=android-native-buffer-egl-image";
+    out << "\nahardwarebuffer source=" << source;
     out << "\nahardwarebuffer requested buffers=" << buffer_count;
     out << "\nahardwarebuffer requested size=" << width << "x" << height;
     out << "\nahardwarebuffer format=R8G8B8A8_UNORM";
     out << "\nahardwarebuffer usage=cpu-read-write+gpu-sampled+gpu-color-output";
+    if (buffer_count <= 0 || buffer_count > 8) {
+        out << "\nahardwarebuffer execution=FAIL";
+        return out.str();
+    }
 
     AHardwareBuffer_Desc request{};
     request.width = width;
@@ -1203,8 +1218,8 @@ std::string probe_android_hardware_buffer_bridge() {
         AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE |
         AHARDWAREBUFFER_USAGE_GPU_COLOR_OUTPUT;
 
-    std::array<AHardwareBuffer*, buffer_count> buffers{};
-    std::array<uint32_t, buffer_count> expected_checksums{};
+    std::vector<AHardwareBuffer*> buffers(static_cast<size_t>(buffer_count), nullptr);
+    std::vector<uint32_t> expected_checksums(static_cast<size_t>(buffer_count), 0u);
     int allocated = 0;
     int cpu_written = 0;
     int cpu_verified = 0;
@@ -1227,7 +1242,7 @@ std::string probe_android_hardware_buffer_bridge() {
             out << "\nahardwarebuffer execution=FAIL";
             return out.str();
         }
-        buffers[index] = buffer;
+        buffers[static_cast<size_t>(index)] = buffer;
         ++allocated;
 
         AHardwareBuffer_Desc actual{};
@@ -1263,9 +1278,10 @@ std::string probe_android_hardware_buffer_bridge() {
 
         std::vector<uint8_t> compact;
         compact.reserve(static_cast<size_t>(width) * height * 4u);
-        const uint8_t red = static_cast<uint8_t>(48 + index * 39);
-        const uint8_t green = static_cast<uint8_t>(72 + index * 29);
-        const uint8_t blue = static_cast<uint8_t>(160 - index * 31);
+        const auto& frame = frames[static_cast<size_t>(index)];
+        const uint8_t red = static_cast<uint8_t>(std::clamp(frame.red, 0.0F, 1.0F) * 255.0F);
+        const uint8_t green = static_cast<uint8_t>(std::clamp(frame.green, 0.0F, 1.0F) * 255.0F);
+        const uint8_t blue = static_cast<uint8_t>(std::clamp(frame.blue, 0.0F, 1.0F) * 255.0F);
         auto* base = static_cast<uint8_t*>(write_address);
         for (uint32_t y = 0; y < height; ++y) {
             auto* row = base + static_cast<size_t>(y) * actual.stride * 4u;
@@ -1292,7 +1308,7 @@ std::string probe_android_hardware_buffer_bridge() {
             return out.str();
         }
         ++cpu_written;
-        expected_checksums[index] = fnv1a32_bytes(compact.data(), compact.size());
+        expected_checksums[static_cast<size_t>(index)] = fnv1a32_bytes(compact.data(), compact.size());
         total_visible_bytes += static_cast<uint32_t>(compact.size());
 
         void* read_address = nullptr;
@@ -1328,11 +1344,12 @@ std::string probe_android_hardware_buffer_bridge() {
             return out.str();
         }
         const uint32_t read_checksum = fnv1a32_bytes(readback.data(), readback.size());
-        const bool verified = read_checksum == expected_checksums[index];
+        const bool verified = read_checksum == expected_checksums[static_cast<size_t>(index)];
         if (verified) {
             ++cpu_verified;
         }
         out << "\nahardwarebuffer payload index=" << index
+            << " tag=" << frame.tag
             << " bytes=" << readback.size()
             << " checksum=" << hex_u32(read_checksum)
             << " verified=" << (verified ? "true" : "false");
@@ -1440,7 +1457,7 @@ std::string probe_android_hardware_buffer_bridge() {
     int egl_imported = 0;
     GLenum last_gl_error = GL_NO_ERROR;
     for (int index = 0; index < buffer_count; ++index) {
-        EGLClientBuffer client_buffer = get_native_client_buffer(buffers[index]);
+        EGLClientBuffer client_buffer = get_native_client_buffer(buffers[static_cast<size_t>(index)]);
         if (client_buffer == nullptr) {
             out << "\nahardwarebuffer egl client buffer index=" << index << " status=fail";
             continue;
@@ -1501,10 +1518,15 @@ std::string probe_android_hardware_buffer_bridge() {
     out << "\nahardwarebuffer egl imported buffers=" << egl_imported;
     out << "\nahardwarebuffer visible payload bytes=" << total_visible_bytes;
     out << "\nahardwarebuffer host managed triple buffer=" << (passed ? "true" : "false");
+    out << "\nahardwarebuffer wayland display backing=" << (std::string(source) == "wayland-display-commits" && passed ? "true" : "false");
     out << "\nahardwarebuffer egl image import=" << (egl_imported == buffer_count ? "ok" : "fail");
     out << "\nahardwarebuffer render elapsed us=" << elapsed_us;
     out << "\nahardwarebuffer execution=" << (passed ? "PASS" : "FAIL");
     return out.str();
+}
+
+std::string probe_android_hardware_buffer_bridge() {
+    return probe_android_hardware_buffer_bridge(default_hardware_buffer_frames(), "host-probe");
 }
 
 void append_dlopen_probe(std::ostringstream& out, const std::string& path, const std::string& label) {
@@ -1660,5 +1682,15 @@ Java_dev_chanwoo_androlinux_MainActivity_nativeHostHardwareBufferProbe(
     JNIEnv* env,
     jobject /* thiz */) {
     const auto report = probe_android_hardware_buffer_bridge();
+    return env->NewStringUTF(report.c_str());
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_dev_chanwoo_androlinux_MainActivity_nativeWaylandHardwareBufferBridge(
+    JNIEnv* env,
+    jobject /* thiz */,
+    jstring encoded_frames) {
+    const auto frames = parse_surface_frames(jstring_to_string(env, encoded_frames));
+    const auto report = probe_android_hardware_buffer_bridge(frames, "wayland-display-commits");
     return env->NewStringUTF(report.c_str());
 }

@@ -150,6 +150,9 @@ Current paths:
   byte count, and FNV-1a checksum verification.
 - V93 Android `AHardwareBuffer` host-managed triple-buffer probe with CPU
   write/read checksum verification and EGLImage/GL texture import.
+- V94 Wayland display AHardwareBuffer backing probe: Android replays the
+  verified Wayland display commits into host-owned native buffers and requires
+  the visible byte count to match the guest FD payload byte count.
 
 Candidate next path:
 
@@ -263,6 +266,27 @@ ahardwarebuffer cpu verified buffers=3
 ahardwarebuffer egl imported buffers=3
 ahardwarebuffer visible payload bytes=691200
 ahardwarebuffer host managed triple buffer=true
+ahardwarebuffer egl image import=ok
+```
+
+### Renderer v3.7: Wayland Display AHardwareBuffer Backing
+
+The host takes the parsed `ALR_WL_SURFACE_COMMIT` records from the
+`WAYLAND_DISPLAY` bridge and uses those frame colors/tags as the source for a
+second AHardwareBuffer pass. This keeps the v92 memfd path as guest evidence
+while proving the same Wayland display frames can be represented as host-owned
+GPU-importable buffers.
+
+Report:
+
+```text
+WAYLAND DISPLAY AHARDWAREBUFFER BACKING EXECUTION: PASS
+ahardwarebuffer source=wayland-display-commits
+ahardwarebuffer requested buffers=3
+ahardwarebuffer cpu verified buffers=3
+ahardwarebuffer egl imported buffers=3
+ahardwarebuffer visible payload bytes=691200
+ahardwarebuffer wayland display backing=true
 ahardwarebuffer egl image import=ok
 ```
 

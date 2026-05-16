@@ -194,7 +194,9 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "fd_received=${fdPayloads.size}" in text
     assert "layout=triple-buffer" in text
     assert "ANDROID HOST AHARDWAREBUFFER EXECUTION:" in text
+    assert "WAYLAND DISPLAY AHARDWAREBUFFER BACKING EXECUTION:" in text
     assert "ahardwarebuffer host managed triple buffer=" in text
+    assert "ahardwarebuffer wayland display backing=" in text
     assert "ahardwarebuffer egl image import=" in text
     assert "transport=unix-abstract-wayland-scm-rights" in text
     assert "gui bridge transport wayland unix vs tcp ratio pct=" in text

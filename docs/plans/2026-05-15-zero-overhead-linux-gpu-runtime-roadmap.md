@@ -1525,10 +1525,38 @@ batch. The current state now has two validated halves: guest-to-host frame
 payload descriptors via v92 memfd `SCM_RIGHTS`, and host-managed GPU-importable
 triple buffers via v93 `AHardwareBuffer` EGLImage import.
 
+Latest V94 Wayland display AHardwareBuffer backing evidence:
+
+```text
+build: 0.4.94-wayland-ahb-backing
+versionCode=94
+versionName=0.4.94-wayland-ahb-backing
+rootfs_version=bookworm-slim-2026-05-wayland-triple-fd-v92
+WAYLAND DISPLAY SOCKET AVAILABLE: PASS
+WAYLAND DISPLAY COMMIT SURFACE EXECUTION: PASS
+WAYLAND DISPLAY AHARDWAREBUFFER BACKING EXECUTION: PASS
+ahardwarebuffer source=wayland-display-commits
+ahardwarebuffer requested buffers=3
+ahardwarebuffer cpu verified buffers=3
+ahardwarebuffer egl imported buffers=3
+ahardwarebuffer visible payload bytes=691200
+ahardwarebuffer wayland display backing=true
+ahardwarebuffer egl image import=ok
+surface vulkan present=ok
+surface vulkan hardware render=true
+```
+
+V94 joins those halves for the first time. The installed package
+`WAYLAND_DISPLAY` bridge still receives and verifies guest FD payloads, but the
+same parsed Wayland display commits are now replayed into host-owned
+`AHardwareBuffer` objects and imported by EGL. The next implementation should
+make that backing mode part of the bridge state machine rather than a parallel
+verification pass.
+
 Next implementation batch:
 
-1. Wire `AHardwareBuffer` allocation/import into the Wayland display bridge as an explicit host-owned `wl_buffer` backing mode.
-2. Add dirty-rectangle metadata and host-side partial-upload accounting to compare v92 memfd copy count against v93 host-owned buffers.
+1. Move the v94 AHardwareBuffer backing pass into the Wayland bridge state machine so `ALR_WL_BUFFER_ATTACH` selects `backing=host-ahardwarebuffer` directly.
+2. Add dirty-rectangle metadata and host-side partial-upload accounting to compare v92 memfd copy count against v94 host-owned buffers.
 3. Expand the minimal Wayland bridge from ALR_WL text records to a stricter subset of real Wayland wire opcodes for registry, compositor, shm, surface, and buffer lifetimes.
 4. Replace the loader-info smoke with the real Khronos Vulkan loader or a stricter ABI-compatible loader subset.
 5. Add a small real toolkit fixture target, likely a tiny GTK/Qt-independent Wayland protocol smoke before pulling in a larger GUI stack.

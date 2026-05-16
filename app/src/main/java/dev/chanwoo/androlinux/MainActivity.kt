@@ -281,6 +281,9 @@ class MainActivity : Activity() {
         val nativeProbe = nativeLibraryProbe(applicationInfo.nativeLibraryDir)
         val hostGpuProbe = nativeHostGpuProbe()
         val hostHardwareBufferProbe = nativeHostHardwareBufferProbe()
+        val waylandHardwareBufferBridgeProbe = nativeWaylandHardwareBufferBridge(
+            encodeSurfaceFrames(alrInstalledPackageWaylandDisplayBridgeResult.commands),
+        )
         val hostVulkanProbe = alrInstalledPackageVulkanDiscoveryBridgeResult.hostProbe
         val requestedPermissions = requestedPermissionNames()
         val internetPermissionDeclared = Manifest.permission.INTERNET in requestedPermissions
@@ -724,6 +727,15 @@ class MainActivity : Activity() {
                 "ahardwarebuffer host managed triple buffer=true" &&
                 hostHardwareBufferProbe.lineStartingWith("ahardwarebuffer egl image import=") ==
                 "ahardwarebuffer egl image import=ok"
+        val waylandHardwareBufferBridgePassed =
+            waylandHardwareBufferBridgeProbe.lineStartingWith("ahardwarebuffer execution=") == "ahardwarebuffer execution=PASS" &&
+                waylandHardwareBufferBridgeProbe.lineStartingWith("ahardwarebuffer source=") ==
+                "ahardwarebuffer source=wayland-display-commits" &&
+                waylandHardwareBufferBridgeProbe.lineStartingWith("ahardwarebuffer wayland display backing=") ==
+                "ahardwarebuffer wayland display backing=true" &&
+                waylandHardwareBufferBridgeProbe.lineStartingWith("ahardwarebuffer visible payload bytes=") ==
+                "ahardwarebuffer visible payload bytes=${alrInstalledPackageWaylandDisplayBridgeResult.commands.sumOf { it.fdPayloadBytes }}" &&
+                alrInstalledPackageWaylandDisplayBridgeResult.commands.size == 3
         val hostVulkanHardwareCandidate = hostVulkanProbe.lineStartingWith("host vulkan hardware candidate=") == "host vulkan hardware candidate=true"
         val hostVulkanDiscoveryPassed = hostVulkanHardwareCandidate &&
             hostVulkanProbe.lineStartingWith("vulkan create device=") == "vulkan create device=ok"
@@ -836,7 +848,7 @@ class MainActivity : Activity() {
                 "vulkan-loader:${if (alrInstalledPackageVulkanLoaderInfoPassed) "PASS" else "FAIL"}," +
                 "vulkan-loader-unix:${if (alrInstalledPackageVulkanUnixLoaderInfoPassed) "PASS" else "FAIL"}"
 
-        val executionSummary = "build: 0.4.93-ahardwarebuffer-host" +
+        val executionSummary = "build: 0.4.94-wayland-ahb-backing" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -928,6 +940,7 @@ class MainActivity : Activity() {
             "\nWAYLAND DISPLAY COMMIT SURFACE EXECUTION: ${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}" +
             "\nANDROID HOST AHARDWAREBUFFER EXECUTION: ${if (hostHardwareBufferPassed) "PASS" else "FAIL"}" +
             "\nANDROID HOST AHARDWAREBUFFER EGL IMPORT EXECUTION: ${if (hostHardwareBufferPassed) "PASS" else "FAIL"}" +
+            "\nWAYLAND DISPLAY AHARDWAREBUFFER BACKING EXECUTION: ${if (waylandHardwareBufferBridgePassed) "PASS" else "FAIL"}" +
             "\nALR INSTALLED PACKAGE VULKAN DISCOVERY EXECUTION: ${if (alrInstalledPackageVulkanDiscoveryPassed) "PASS" else "FAIL"}" +
             "\nGUEST GUI GPU SURFACE EXECUTION: PENDING_SURFACE_CALLBACK" +
             "\nANDROID PERMISSION MODEL: ${if (internetPermissionDeclared && networkStatePermissionDeclared && !broadStoragePermissionDeclared) "PASS" else "FAIL"}" +
@@ -1551,6 +1564,9 @@ class MainActivity : Activity() {
             "\nhost ahardwarebuffer execution=${hostHardwareBufferProbe.lineStartingWith("ahardwarebuffer execution=")}" +
             "\nhost ahardwarebuffer buffers=${hostHardwareBufferProbe.lineStartingWith("ahardwarebuffer allocated buffers=")}" +
             "\nhost ahardwarebuffer egl import=${hostHardwareBufferProbe.lineStartingWith("ahardwarebuffer egl image import=")}" +
+            "\nwayland ahardwarebuffer execution=${waylandHardwareBufferBridgeProbe.lineStartingWith("ahardwarebuffer execution=")}" +
+            "\nwayland ahardwarebuffer backing=${waylandHardwareBufferBridgeProbe.lineStartingWith("ahardwarebuffer wayland display backing=")}" +
+            "\nwayland ahardwarebuffer bytes=${waylandHardwareBufferBridgeProbe.lineStartingWith("ahardwarebuffer visible payload bytes=")}" +
             "\nhost vulkan device=${hostVulkanProbe.lineStartingWith("host vulkan device=")}" +
             "\nhost vulkan hardware candidate=${hostVulkanProbe.lineStartingWith("host vulkan hardware candidate=")}" +
             "\npermission INTERNET declared=$internetPermissionDeclared" +
@@ -1591,6 +1607,8 @@ class MainActivity : Activity() {
             "\n$hostGpuProbe" +
             "\n\nAndroid host AHardwareBuffer probe:" +
             "\n$hostHardwareBufferProbe" +
+            "\n\nWayland display AHardwareBuffer backing probe:" +
+            "\n$waylandHardwareBufferBridgeProbe" +
             "\n\nAndroid host Vulkan probe:" +
             "\n$hostVulkanProbe" +
             "\n\nproot backend candidate: packaged native executable" +
@@ -1694,16 +1712,20 @@ class MainActivity : Activity() {
         Log.i(
             "ALR_DEVICE_EVIDENCE",
             listOf(
-                "build: 0.4.93-ahardwarebuffer-host",
+                "build: 0.4.94-wayland-ahb-backing",
                 "WAYLAND DISPLAY SOCKET AVAILABLE: ${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}",
                 "WAYLAND DISPLAY COMMIT SURFACE EXECUTION: ${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}",
                 "ANDROID HOST AHARDWAREBUFFER EXECUTION: ${if (hostHardwareBufferPassed) "PASS" else "FAIL"}",
+                "WAYLAND DISPLAY AHARDWAREBUFFER BACKING EXECUTION: ${if (waylandHardwareBufferBridgePassed) "PASS" else "FAIL"}",
                 hostHardwareBufferProbe.lineStartingWith("ahardwarebuffer allocated buffers="),
                 hostHardwareBufferProbe.lineStartingWith("ahardwarebuffer cpu verified buffers="),
                 hostHardwareBufferProbe.lineStartingWith("ahardwarebuffer egl imported buffers="),
                 hostHardwareBufferProbe.lineStartingWith("ahardwarebuffer visible payload bytes="),
                 hostHardwareBufferProbe.lineStartingWith("ahardwarebuffer egl image import="),
                 hostHardwareBufferProbe.lineStartingWith("ahardwarebuffer host managed triple buffer="),
+                waylandHardwareBufferBridgeProbe.lineStartingWith("ahardwarebuffer source="),
+                waylandHardwareBufferBridgeProbe.lineStartingWith("ahardwarebuffer wayland display backing="),
+                waylandHardwareBufferBridgeProbe.lineStartingWith("ahardwarebuffer visible payload bytes="),
                 "rootfs installed alr wayland display client exists=${rootfsInstalledWaylandDisplayClientFile.isFile} executable=${rootfsInstalledWaylandDisplayClientFile.canExecute()} bytes=${rootfsInstalledWaylandDisplayClientFile.length()}",
                 "rootfs /usr/bin/alr-wayland-display-client exists=${rootfsWaylandDisplayClientFile.isFile} executable=${rootfsWaylandDisplayClientFile.canExecute()} bytes=${rootfsWaylandDisplayClientFile.length()}",
                 "alr installed package wayland display ipc received frames=${alrInstalledPackageWaylandDisplayBridgeResult.commands.size}/${alrInstalledPackageWaylandDisplayBridgeResult.expectedFrames}",
@@ -1779,16 +1801,21 @@ class MainActivity : Activity() {
                         alrInstalledPackageWaylandDisplayBridgePassed,
                     )
                     val hardwareBufferUpdate = hardwareBufferExecutionUpdate(hostHardwareBufferProbe)
+                    val waylandHardwareBufferUpdate = waylandHardwareBufferBridgeUpdate(waylandHardwareBufferBridgeProbe)
                     Log.i(
                         "ALR_SURFACE_EVIDENCE",
                         listOf(
-                            "build: 0.4.93-ahardwarebuffer-host",
+                            "build: 0.4.94-wayland-ahb-backing",
                             "WAYLAND DISPLAY SOCKET AVAILABLE: ${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}",
                             "WAYLAND DISPLAY COMMIT SURFACE EXECUTION: ${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}",
                             "ANDROID HOST AHARDWAREBUFFER EXECUTION: ${if (hostHardwareBufferPassed) "PASS" else "FAIL"}",
+                            "WAYLAND DISPLAY AHARDWAREBUFFER BACKING EXECUTION: ${if (waylandHardwareBufferBridgePassed) "PASS" else "FAIL"}",
                             hostHardwareBufferProbe.lineStartingWith("ahardwarebuffer egl image import="),
                             hostHardwareBufferProbe.lineStartingWith("ahardwarebuffer visible payload bytes="),
                             hostHardwareBufferProbe.lineStartingWith("ahardwarebuffer host managed triple buffer="),
+                            waylandHardwareBufferBridgeProbe.lineStartingWith("ahardwarebuffer source="),
+                            waylandHardwareBufferBridgeProbe.lineStartingWith("ahardwarebuffer wayland display backing="),
+                            waylandHardwareBufferBridgeProbe.lineStartingWith("ahardwarebuffer visible payload bytes="),
                             "wayland display surface commits=${alrInstalledPackageWaylandDisplayBridgeResult.commands.size}/${alrInstalledPackageWaylandDisplayBridgeResult.expectedFrames}",
                             "wayland display shared payload frames=${alrInstalledPackageWaylandDisplayBridgeResult.commands.count { it.payloadVerified }}/${alrInstalledPackageWaylandDisplayBridgeResult.expectedFrames}",
                             "wayland display shared payload bytes=${alrInstalledPackageWaylandDisplayBridgeResult.commands.sumOf { it.payloadBytes }}",
@@ -1801,12 +1828,14 @@ class MainActivity : Activity() {
                         ).joinToString("\n"),
                     )
                     surfaceStatusView.text =
-                        "Linux guest GPU Surface renderer callback complete\n$executionUpdate\n$waylandDisplayUpdate\n$guiTransportUpdate\n$glesTransportUpdate\n$hardwareBufferUpdate\n$vulkanExecutionUpdate\n$vulkanTransportUpdate"
+                        "Linux guest GPU Surface renderer callback complete\n$executionUpdate\n$waylandDisplayUpdate\n$guiTransportUpdate\n$glesTransportUpdate\n$hardwareBufferUpdate\n$waylandHardwareBufferUpdate\n$vulkanExecutionUpdate\n$vulkanTransportUpdate"
                     view.append(
                         "\n\n--- Linux guest Wayland/X11 GUI GPU surface renderer ---\n" +
                             "$executionUpdate\n$waylandDisplayUpdate\n$guiTransportUpdate\n$glesTransportUpdate\n$surfaceReport" +
                             "\n\n--- Android host AHardwareBuffer bridge probe ---\n" +
                             "$hardwareBufferUpdate\n$hostHardwareBufferProbe" +
+                            "\n\n--- Wayland display AHardwareBuffer backing probe ---\n" +
+                            "$waylandHardwareBufferUpdate\n$waylandHardwareBufferBridgeProbe" +
                             "\n\n--- Android host Vulkan Surface clear renderer ---\n" +
                             "$vulkanExecutionUpdate\n$vulkanTransportUpdate\n$vulkanSurfaceReport",
                     )
@@ -3499,6 +3528,21 @@ class MainActivity : Activity() {
             "\n${hardwareBufferReport.lineStartingWith("ahardwarebuffer render elapsed us=")}"
     }
 
+    private fun waylandHardwareBufferBridgeUpdate(hardwareBufferReport: String): String {
+        val passed =
+            hardwareBufferReport.lineStartingWith("ahardwarebuffer execution=") == "ahardwarebuffer execution=PASS" &&
+                hardwareBufferReport.lineStartingWith("ahardwarebuffer wayland display backing=") ==
+                "ahardwarebuffer wayland display backing=true"
+        return "WAYLAND DISPLAY AHARDWAREBUFFER BACKING EXECUTION: ${if (passed) "PASS" else "FAIL"}" +
+            "\n${hardwareBufferReport.lineStartingWith("ahardwarebuffer source=")}" +
+            "\n${hardwareBufferReport.lineStartingWith("ahardwarebuffer requested buffers=")}" +
+            "\n${hardwareBufferReport.lineStartingWith("ahardwarebuffer cpu verified buffers=")}" +
+            "\n${hardwareBufferReport.lineStartingWith("ahardwarebuffer egl imported buffers=")}" +
+            "\n${hardwareBufferReport.lineStartingWith("ahardwarebuffer visible payload bytes=")}" +
+            "\n${hardwareBufferReport.lineStartingWith("ahardwarebuffer wayland display backing=")}" +
+            "\n${hardwareBufferReport.lineStartingWith("ahardwarebuffer egl image import=")}"
+    }
+
     private fun vulkanBridgeTransportUpdate(
         tcpLoaderInfoResult: NativeCommandResult,
         unixLoaderInfoResult: NativeCommandResult,
@@ -3647,6 +3691,8 @@ class MainActivity : Activity() {
     private external fun nativeHostGpuProbe(): String
 
     private external fun nativeHostHardwareBufferProbe(): String
+
+    private external fun nativeWaylandHardwareBufferBridge(encodedFrames: String): String
 
     private external fun nativeHostVulkanProbe(): String
 
