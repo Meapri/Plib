@@ -96,6 +96,7 @@ def test_android_reports_materialized_gimp_version_probe():
     assert "runAlrRuntimeTrampolineGimp3GuiQuitWaylandProbe" in runner
     assert "runAlrRuntimeTrampolineGimp3ProgramProbe" in runner
     assert "runAlrRuntimeTrampolineGimp3GtkWaylandWindowPythonProbe" in runner
+    assert "runAlrRuntimeTrampolineGimp3GdkSurfaceWaylandPythonProbe" in runner
     assert '"GIMP3_DIRECTORY" to "/tmp/alr-gimp3"' in runner
     assert '"GIMP3_CACHEDIR" to "/tmp/alr-gimp3-cache"' in runner
     assert "runAlrRuntimeTrampolineGimp3GtkWaylandPythonProbe" in runner
@@ -112,6 +113,7 @@ def test_android_reports_materialized_gimp_version_probe():
     assert "GIMP CONSOLE BATCH QUIT BLOCKER:" in text
     assert "GIMP GTK WAYLAND PROBE EXECUTION:" in text
     assert "GIMP GTK WINDOW WAYLAND PROBE EXECUTION:" in text
+    assert "GIMP GDK SURFACE WAYLAND PROBE EXECUTION:" in text
     assert "GIMP GUI QUIT WAYLAND PROBE EXECUTION:" in text
     assert "GIMP GUI WAYLAND PROBE EXECUTION:" in text
     assert "GIMP GUI WAYLAND BLOCKER:" in text
@@ -144,6 +146,12 @@ def test_android_reports_materialized_gimp_version_probe():
     assert "waylandRegistryGlobal" in text
     assert '"wl_shm_pool" -> when (opcode)' in text
     assert '"wl_seat" -> when (opcode)' in text
+    assert '"wl_data_device_manager" -> when (opcode)' in text
+    assert '"gtk_shell1" -> when (opcode)' in text
+    assert '"zxdg_shell_v6" -> when (opcode)' in text
+    assert "MinimalWaylandGlobal(7, \"wl_data_device_manager\", 3)" in text
+    assert "MinimalWaylandGlobal(8, \"gtk_shell1\", 5)" in text
+    assert "MinimalWaylandGlobal(9, \"zxdg_shell_v6\", 1)" in text
     assert "wl_seat.get_keyboard" in text
     assert "waylandKeyboardKeymap" in text
     assert "ParcelFileDescriptor.open" in text
@@ -157,6 +165,13 @@ def test_android_reports_materialized_gimp_version_probe():
     assert "gimp gtk window wayland server seat trace=" in text
     assert "gimp gtk window wayland server keyboard keymaps=" in text
     assert "gimp gtk window wayland handoff=" in text
+    assert "gimp gdk surface wayland server request trace=" in text
+    assert "gimp gdk surface wayland server bind trace=" in text
+    assert "gimp gdk surface wayland server fd count=" in text
+    assert "gimp gdk surface wayland server shm pool buffers=" in text
+    assert "gimp gdk surface wayland server surface attaches=" in text
+    assert "gimp gdk surface wayland server surface commits=" in text
+    assert "gimp gdk surface wayland handoff=" in text
     assert "gimp gui quit wayland request=" in text
     assert "gimp gui quit wayland server globals=" in text
     assert "gimp gui quit wayland server request trace=" in text

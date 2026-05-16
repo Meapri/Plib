@@ -2221,6 +2221,7 @@ class MainActivity : Activity() {
         val gimpConsoleBatchQuitResult = nativeCommandRunner.runAlrRuntimeTrampolineGimp3ConsoleBatchQuitProbe(rootfsStatus.rootfsDir)
         val gimpGtkWaylandProbeResult = runGimpGtkWaylandProbe(nativeCommandRunner, rootfsStatus.rootfsDir)
         val gimpGtkWindowWaylandProbeResult = runGimpGtkWindowWaylandProbe(nativeCommandRunner, rootfsStatus.rootfsDir)
+        val gimpGdkSurfaceWaylandProbeResult = runGimpGdkSurfaceWaylandProbe(nativeCommandRunner, rootfsStatus.rootfsDir)
         val gimpGuiQuitWaylandProbeResult = runGimpGuiQuitWaylandProbe(nativeCommandRunner, rootfsStatus.rootfsDir)
         val gimpGuiWaylandProbeResult = runGimpGuiWaylandProbe(
             nativeCommandRunner,
@@ -2292,6 +2293,13 @@ class MainActivity : Activity() {
         val gimpGtkWaylandProbePassed = isWaylandRegistryProbe(gimpGtkWaylandProbeResult)
         val gimpGtkWindowWaylandProbePassed = gimpGtkWindowWaylandProbeResult.connected &&
             gimpGtkWindowWaylandProbeResult.waylandRequestNames.any { it == "wl_shm.create_pool" || it == "wl_compositor.create_surface" }
+        val gimpGdkSurfaceWaylandProbePassed = gimpGdkSurfaceWaylandProbeResult.connected &&
+            gimpGdkSurfaceWaylandProbeResult.waylandRequestNames.any {
+                it == "wl_compositor.create_surface" ||
+                    it == "xdg_wm_base.get_xdg_surface" ||
+                    it == "wl_surface.commit" ||
+                    it == "wl_shm.create_pool"
+            }
         val gimpGuiQuitWaylandProbePassed = isWaylandRegistryProbe(gimpGuiQuitWaylandProbeResult)
         val gimpGuiWaylandProbePassed = isWaylandRegistryProbe(gimpGuiWaylandProbeResult)
         val gimpGuiWaylandBlocker = if (runDeepGimpProbe || gimpGuiWaylandProbeResult.connected) {
@@ -2316,6 +2324,7 @@ class MainActivity : Activity() {
             "GIMP CONSOLE BATCH QUIT BLOCKER: ${gimpConsoleBatchQuitBlocker.uppercase().replace('-', '_')}",
             "GIMP GTK WAYLAND PROBE EXECUTION: ${if (gimpGtkWaylandProbePassed) "PASS" else "FAIL"}",
             "GIMP GTK WINDOW WAYLAND PROBE EXECUTION: ${if (gimpGtkWindowWaylandProbePassed) "PASS" else "FAIL"}",
+            "GIMP GDK SURFACE WAYLAND PROBE EXECUTION: ${if (gimpGdkSurfaceWaylandProbePassed) "PASS" else "FAIL"}",
             "GIMP GUI QUIT WAYLAND PROBE EXECUTION: ${if (gimpGuiQuitWaylandProbePassed) "PASS" else "FAIL"}",
             "GIMP GUI WAYLAND PROBE EXECUTION: ${if (gimpGuiWaylandProbePassed) "PASS" else "FAIL"}",
             "GIMP GUI WAYLAND BLOCKER: ${gimpGuiWaylandBlocker.uppercase().replace('-', '_')}",
@@ -2416,6 +2425,34 @@ class MainActivity : Activity() {
             "gimp gtk window wayland handoff=${gimpGtkWindowWaylandProbeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}",
             "gimp gtk window wayland stdout=${gimpGtkWindowWaylandProbeResult.clientResult.stdout.alrHandoffStdoutText().forEvidenceLog()}",
             "gimp gtk window wayland stderr=${gimpGtkWindowWaylandProbeResult.clientResult.stdout.alrHandoffStderrText().forEvidenceLog()}",
+            "gimp gdk surface wayland socket path=${gimpGdkSurfaceWaylandProbeResult.socketPath}",
+            "gimp gdk surface wayland connected=${gimpGdkSurfaceWaylandProbeResult.connected}",
+            "gimp gdk surface wayland setup bytes=${gimpGdkSurfaceWaylandProbeResult.setupBytes}",
+            "gimp gdk surface wayland object=${gimpGdkSurfaceWaylandProbeResult.objectId}",
+            "gimp gdk surface wayland opcode=${gimpGdkSurfaceWaylandProbeResult.opcode}",
+            "gimp gdk surface wayland size=${gimpGdkSurfaceWaylandProbeResult.messageSize}",
+            "gimp gdk surface wayland request=${gimpGdkSurfaceWaylandProbeResult.requestName}",
+            "gimp gdk surface wayland raw prefix=${gimpGdkSurfaceWaylandProbeResult.rawPrefixHex}",
+            "gimp gdk surface wayland server requests=${gimpGdkSurfaceWaylandProbeResult.waylandRequestCount}",
+            "gimp gdk surface wayland server response bytes=${gimpGdkSurfaceWaylandProbeResult.waylandResponseBytes}",
+            "gimp gdk surface wayland server globals=${gimpGdkSurfaceWaylandProbeResult.waylandGlobals.joinToString(",")}",
+            "gimp gdk surface wayland server request trace=${gimpGdkSurfaceWaylandProbeResult.waylandRequestNames.joinToString(",")}",
+            "gimp gdk surface wayland server bind trace=${gimpGdkSurfaceWaylandProbeResult.waylandBindInterfaces.joinToString(",")}",
+            "gimp gdk surface wayland server last request=${gimpGdkSurfaceWaylandProbeResult.lastWaylandRequest}",
+            "gimp gdk surface wayland server fd count=${gimpGdkSurfaceWaylandProbeResult.waylandReceivedFdCount}",
+            "gimp gdk surface wayland server fd bytes=${gimpGdkSurfaceWaylandProbeResult.waylandReceivedFdBytes}",
+            "gimp gdk surface wayland server fd verified=${gimpGdkSurfaceWaylandProbeResult.waylandReceivedFdVerifiedCount}",
+            "gimp gdk surface wayland server shm create pools=${gimpGdkSurfaceWaylandProbeResult.waylandShmCreatePoolCount}",
+            "gimp gdk surface wayland server shm pool resizes=${gimpGdkSurfaceWaylandProbeResult.waylandShmPoolResizeCount}",
+            "gimp gdk surface wayland server shm pool buffers=${gimpGdkSurfaceWaylandProbeResult.waylandShmPoolCreateBufferCount}",
+            "gimp gdk surface wayland server surface attaches=${gimpGdkSurfaceWaylandProbeResult.waylandSurfaceAttachCount}",
+            "gimp gdk surface wayland server surface commits=${gimpGdkSurfaceWaylandProbeResult.waylandSurfaceCommitCount}",
+            "gimp gdk surface wayland server seat trace=${gimpGdkSurfaceWaylandProbeResult.waylandSeatRequestNames.joinToString(",")}",
+            "gimp gdk surface wayland server keyboard keymaps=${gimpGdkSurfaceWaylandProbeResult.waylandKeyboardKeymapSentCount}",
+            "gimp gdk surface wayland error=${gimpGdkSurfaceWaylandProbeResult.error ?: "none"}",
+            "gimp gdk surface wayland handoff=${gimpGdkSurfaceWaylandProbeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}",
+            "gimp gdk surface wayland stdout=${gimpGdkSurfaceWaylandProbeResult.clientResult.stdout.alrHandoffStdoutText().forEvidenceLog()}",
+            "gimp gdk surface wayland stderr=${gimpGdkSurfaceWaylandProbeResult.clientResult.stdout.alrHandoffStderrText().forEvidenceLog()}",
             "gimp gui quit wayland socket path=${gimpGuiQuitWaylandProbeResult.socketPath}",
             "gimp gui quit wayland connected=${gimpGuiQuitWaylandProbeResult.connected}",
             "gimp gui quit wayland setup bytes=${gimpGuiQuitWaylandProbeResult.setupBytes}",
@@ -3619,6 +3656,19 @@ class MainActivity : Activity() {
         )
     }
 
+    private fun runGimpGdkSurfaceWaylandProbe(
+        nativeCommandRunner: NativeCommandRunner,
+        rootfsDir: File,
+    ): GimpWaylandProbeResult {
+        return runGimpWaylandSocketProbe(
+            rootfsDir = rootfsDir,
+            socketLeaf = "alr-gimp-gdk-surface-0",
+            threadName = "alr-gimp-gdk-surface-wayland-probe",
+            acceptJoinTimeoutMs = 28000,
+            runClient = { nativeCommandRunner.runAlrRuntimeTrampolineGimp3GdkSurfaceWaylandPythonProbe(rootfsDir) },
+        )
+    }
+
     private fun runGimpGuiQuitWaylandProbe(
         nativeCommandRunner: NativeCommandRunner,
         rootfsDir: File,
@@ -3913,9 +3963,13 @@ class MainActivity : Activity() {
         listOf(
             MinimalWaylandGlobal(1, "wl_compositor", 4),
             MinimalWaylandGlobal(2, "wl_shm", 1),
-            MinimalWaylandGlobal(3, "xdg_wm_base", 1),
+            MinimalWaylandGlobal(3, "xdg_wm_base", 6),
             MinimalWaylandGlobal(4, "wl_seat", 5),
             MinimalWaylandGlobal(5, "wl_output", 2),
+            MinimalWaylandGlobal(6, "wl_subcompositor", 1),
+            MinimalWaylandGlobal(7, "wl_data_device_manager", 3),
+            MinimalWaylandGlobal(8, "gtk_shell1", 5),
+            MinimalWaylandGlobal(9, "zxdg_shell_v6", 1),
         )
 
     private fun minimalWaylandGlobalNames(): List<String> =
@@ -3940,6 +3994,20 @@ class MainActivity : Activity() {
                 0 -> "wl_compositor.create_surface"
                 1 -> "wl_compositor.create_region"
                 else -> "wl_compositor.op$opcode"
+            }
+            "wl_subcompositor" -> when (opcode) {
+                0 -> "wl_subcompositor.destroy"
+                1 -> "wl_subcompositor.get_subsurface"
+                else -> "wl_subcompositor.op$opcode"
+            }
+            "wl_subsurface" -> when (opcode) {
+                0 -> "wl_subsurface.destroy"
+                1 -> "wl_subsurface.set_position"
+                2 -> "wl_subsurface.place_above"
+                3 -> "wl_subsurface.place_below"
+                4 -> "wl_subsurface.set_sync"
+                5 -> "wl_subsurface.set_desync"
+                else -> "wl_subsurface.op$opcode"
             }
             "wl_region" -> when (opcode) {
                 0 -> "wl_region.destroy"
@@ -3992,6 +4060,37 @@ class MainActivity : Activity() {
                 0 -> "wl_touch.release"
                 else -> "wl_touch.op$opcode"
             }
+            "wl_data_device_manager" -> when (opcode) {
+                0 -> "wl_data_device_manager.create_data_source"
+                1 -> "wl_data_device_manager.get_data_device"
+                else -> "wl_data_device_manager.op$opcode"
+            }
+            "wl_data_source" -> when (opcode) {
+                0 -> "wl_data_source.offer"
+                1 -> "wl_data_source.destroy"
+                2 -> "wl_data_source.set_actions"
+                else -> "wl_data_source.op$opcode"
+            }
+            "wl_data_device" -> when (opcode) {
+                0 -> "wl_data_device.start_drag"
+                1 -> "wl_data_device.set_selection"
+                2 -> "wl_data_device.release"
+                else -> "wl_data_device.op$opcode"
+            }
+            "gtk_shell1" -> when (opcode) {
+                0 -> "gtk_shell1.get_gtk_surface"
+                1 -> "gtk_shell1.set_startup_id"
+                2 -> "gtk_shell1.system_bell"
+                3 -> "gtk_shell1.notify_launch"
+                else -> "gtk_shell1.op$opcode"
+            }
+            "gtk_surface1" -> when (opcode) {
+                0 -> "gtk_surface1.set_dbus_properties"
+                1 -> "gtk_surface1.set_modal"
+                2 -> "gtk_surface1.unset_modal"
+                3 -> "gtk_surface1.present"
+                else -> "gtk_surface1.op$opcode"
+            }
             "wl_callback" -> when (opcode) {
                 0 -> "wl_callback.destroy"
                 else -> "wl_callback.op$opcode"
@@ -4002,6 +4101,13 @@ class MainActivity : Activity() {
                 2 -> "xdg_wm_base.get_xdg_surface"
                 3 -> "xdg_wm_base.pong"
                 else -> "xdg_wm_base.op$opcode"
+            }
+            "zxdg_shell_v6" -> when (opcode) {
+                0 -> "zxdg_shell_v6.destroy"
+                1 -> "zxdg_shell_v6.create_positioner"
+                2 -> "zxdg_shell_v6.get_xdg_surface"
+                3 -> "zxdg_shell_v6.pong"
+                else -> "zxdg_shell_v6.op$opcode"
             }
             "xdg_surface" -> when (opcode) {
                 0 -> "xdg_surface.destroy"
@@ -4027,6 +4133,31 @@ class MainActivity : Activity() {
                 12 -> "xdg_toplevel.unset_fullscreen"
                 13 -> "xdg_toplevel.set_minimized"
                 else -> "xdg_toplevel.op$opcode"
+            }
+            "zxdg_surface_v6" -> when (opcode) {
+                0 -> "zxdg_surface_v6.destroy"
+                1 -> "zxdg_surface_v6.get_toplevel"
+                2 -> "zxdg_surface_v6.get_popup"
+                3 -> "zxdg_surface_v6.set_window_geometry"
+                4 -> "zxdg_surface_v6.ack_configure"
+                else -> "zxdg_surface_v6.op$opcode"
+            }
+            "zxdg_toplevel_v6" -> when (opcode) {
+                0 -> "zxdg_toplevel_v6.destroy"
+                1 -> "zxdg_toplevel_v6.set_parent"
+                2 -> "zxdg_toplevel_v6.set_title"
+                3 -> "zxdg_toplevel_v6.set_app_id"
+                4 -> "zxdg_toplevel_v6.show_window_menu"
+                5 -> "zxdg_toplevel_v6.move"
+                6 -> "zxdg_toplevel_v6.resize"
+                7 -> "zxdg_toplevel_v6.set_max_size"
+                8 -> "zxdg_toplevel_v6.set_min_size"
+                9 -> "zxdg_toplevel_v6.set_maximized"
+                10 -> "zxdg_toplevel_v6.unset_maximized"
+                11 -> "zxdg_toplevel_v6.set_fullscreen"
+                12 -> "zxdg_toplevel_v6.unset_fullscreen"
+                13 -> "zxdg_toplevel_v6.set_minimized"
+                else -> "zxdg_toplevel_v6.op$opcode"
             }
             else -> "$interfaceName.op$opcode"
         }
@@ -4078,6 +4209,11 @@ class MainActivity : Activity() {
             objectInterfaces[regionId] = "wl_region"
             return emptyList()
         }
+        if (interfaceName == "wl_subcompositor" && opcode == 1 && payload.size >= 12) {
+            val subsurfaceId = readLe32(payload, 0)
+            objectInterfaces[subsurfaceId] = "wl_subsurface"
+            return emptyList()
+        }
         if (interfaceName == "wl_shm" && opcode == 0 && payload.size >= 8) {
             val poolId = readLe32(payload, 0)
             objectInterfaces[poolId] = "wl_shm_pool"
@@ -4103,6 +4239,21 @@ class MainActivity : Activity() {
             objectInterfaces[touchId] = "wl_touch"
             return emptyList()
         }
+        if (interfaceName == "wl_data_device_manager" && opcode == 0 && payload.size >= 4) {
+            val dataSourceId = readLe32(payload, 0)
+            objectInterfaces[dataSourceId] = "wl_data_source"
+            return emptyList()
+        }
+        if (interfaceName == "wl_data_device_manager" && opcode == 1 && payload.size >= 4) {
+            val dataDeviceId = readLe32(payload, 0)
+            objectInterfaces[dataDeviceId] = "wl_data_device"
+            return emptyList()
+        }
+        if (interfaceName == "gtk_shell1" && opcode == 0 && payload.size >= 8) {
+            val gtkSurfaceId = readLe32(payload, 0)
+            objectInterfaces[gtkSurfaceId] = "gtk_surface1"
+            return emptyList()
+        }
         if (interfaceName == "wl_surface" && opcode == 3 && payload.size >= 4) {
             val callbackId = readLe32(payload, 0)
             objectInterfaces[callbackId] = "wl_callback"
@@ -4118,9 +4269,27 @@ class MainActivity : Activity() {
             objectInterfaces[xdgSurfaceId] = "xdg_surface"
             return emptyList()
         }
+        if (interfaceName == "zxdg_shell_v6" && opcode == 1 && payload.size >= 4) {
+            val positionerId = readLe32(payload, 0)
+            objectInterfaces[positionerId] = "zxdg_positioner_v6"
+            return emptyList()
+        }
+        if (interfaceName == "zxdg_shell_v6" && opcode == 2 && payload.size >= 8) {
+            val xdgSurfaceId = readLe32(payload, 0)
+            objectInterfaces[xdgSurfaceId] = "zxdg_surface_v6"
+            return emptyList()
+        }
         if (interfaceName == "xdg_surface" && opcode == 1 && payload.size >= 4) {
             val toplevelId = readLe32(payload, 0)
             objectInterfaces[toplevelId] = "xdg_toplevel"
+            return listOf(
+                waylandXdgToplevelConfigure(toplevelId).asWaylandResponse(),
+                waylandXdgSurfaceConfigure(objectId, nextSerial()).asWaylandResponse(),
+            )
+        }
+        if (interfaceName == "zxdg_surface_v6" && opcode == 1 && payload.size >= 4) {
+            val toplevelId = readLe32(payload, 0)
+            objectInterfaces[toplevelId] = "zxdg_toplevel_v6"
             return listOf(
                 waylandXdgToplevelConfigure(toplevelId).asWaylandResponse(),
                 waylandXdgSurfaceConfigure(objectId, nextSerial()).asWaylandResponse(),
@@ -4152,6 +4321,7 @@ class MainActivity : Activity() {
                 if (version >= 2) add(waylandFixedU32Event(objectId, opcode = 3, value = 1))
             }
             "xdg_wm_base" -> listOf(waylandFixedU32Event(objectId, opcode = 0, value = nextSerial()))
+            "zxdg_shell_v6" -> listOf(waylandFixedU32Event(objectId, opcode = 0, value = nextSerial()))
             else -> emptyList()
         }
 

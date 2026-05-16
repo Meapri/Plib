@@ -792,6 +792,30 @@ class NativeCommandRunner(
             ),
         )
 
+    fun runAlrRuntimeTrampolineGimp3GdkSurfaceWaylandPythonProbe(rootfsDir: File): NativeCommandResult =
+        runAlrRuntimeTrampolineGlibcRootfsProgram(
+            rootfsDir,
+            "/usr/bin/python3",
+            listOf(
+                "-c",
+                "import gi,time; gi.require_version('Gtk','3.0'); from gi.repository import Gtk,Gdk; Gtk.init([]); d=Gdk.Display.get_default(); w=Gtk.Window(); w.set_default_size(320,200); w.set_title('ALR GDK Surface'); a=Gtk.DrawingArea();\ndef draw(widget,cr):\n    cr.set_source_rgb(0.05,0.18,0.32); cr.paint(); cr.set_source_rgb(0.9,0.45,0.12); cr.rectangle(24,24,160,96); cr.fill(); return False\na.connect('draw',draw); w.add(a); w.realize(); w.show_all(); w.present(); end=time.time()+1.2\nwhile time.time()<end:\n    a.queue_draw(); w.queue_draw()\n    while Gtk.events_pending(): Gtk.main_iteration_do(False)\n    d.flush(); time.sleep(0.02)\nprint('ALR_GIMP3_GDK_SURFACE_WAYLAND_PROBE ok realized=%s mapped=%s display=%s' % (w.get_realized(), w.get_mapped(), d.get_name()))",
+            ),
+            timeoutMs = 22000,
+            pathRewrite = true,
+            pathRewriteLimit = 120000,
+            pathRewriteIdleSyscallLimit = 25000,
+            extraGuestEnvironment = preloadPathFastPathEnvironment(rootfsDir) + mapOf(
+                "GDK_BACKEND" to "wayland",
+                "WAYLAND_DISPLAY" to File(rootfsDir, "tmp/alr-gimp-gdk-surface-0").absolutePath,
+                "WAYLAND_DEBUG" to "1",
+                "XDG_RUNTIME_DIR" to File(rootfsDir, "tmp").absolutePath,
+                "HOME" to File(rootfsDir, "tmp").absolutePath,
+                "USER" to "android",
+                "LOGNAME" to "android",
+                "NO_AT_BRIDGE" to "1",
+            ),
+        )
+
     fun runAlrRuntimeTrampolineInstalledPackageGpuSmoke(rootfsDir: File, port: Int): NativeCommandResult =
         runAlrRuntimeTrampoline(
             rootfsDir,
