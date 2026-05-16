@@ -1681,6 +1681,37 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
         (void)::kill(child, SIGKILL);
     };
 #endif
+    auto reap_after_forced_kill = [&]() {
+        for (int attempt = 0; attempt < 200; ++attempt) {
+            int reap_status = 0;
+            int reap_options = WNOHANG;
+#if defined(__ANDROID__) && defined(__aarch64__) && defined(__WALL)
+            if (trace_syscalls) {
+                reap_options |= __WALL;
+            }
+#endif
+            const pid_t reaped = ::waitpid(trace_syscalls ? -1 : child, &reap_status, reap_options);
+            if (reaped == child) {
+                status = reap_status;
+                waited = reaped;
+                return;
+            }
+            if (reaped > 0) {
+#if defined(__ANDROID__) && defined(__aarch64__)
+                live_traced_processes.erase(reaped);
+                trace_states.erase(reaped);
+#endif
+                continue;
+            }
+            if (reaped < 0 && errno == EINTR) {
+                continue;
+            }
+            if (reaped < 0 && errno == ECHILD) {
+                return;
+            }
+            ::usleep(1000);
+        }
+    };
     do {
         int wait_options = WNOHANG;
 #if defined(__ANDROID__) && defined(__aarch64__) && defined(__WALL)
@@ -1695,9 +1726,7 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
             if (waited_ms >= result.timeout_ms) {
                 result.timed_out = true;
                 kill_live_traced_processes();
-                do {
-                    waited = ::waitpid(child, &status, 0);
-                } while (waited < 0 && errno == EINTR);
+                reap_after_forced_kill();
                 break;
             }
             ::usleep(1000);
@@ -1937,7 +1966,7 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
             waited = 0;
         }
     } while (waited == 0 || (waited < 0 && errno == EINTR));
-    if (waited < 0) {
+    if (waited < 0 && !result.timed_out) {
         result.error = errno_message("waitpid static entry handoff");
         if (loader_exec_fd >= 0) {
             ::close(loader_exec_fd);
@@ -1957,6 +1986,9 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
     }
     if (ptrace_fault_stop_seen) {
         result.child_exited = false;
+    } else if (result.timed_out) {
+        result.child_signaled = true;
+        result.signal_number = SIGKILL;
     } else if (WIFEXITED(status)) {
         result.child_exited = true;
         result.exit_code = WEXITSTATUS(status);

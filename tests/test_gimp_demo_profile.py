@@ -9,6 +9,7 @@ PROFILE = ROOT / "rootfs/gimp-demo-profile.json"
 PAYLOAD = ROOT / "app/src/main/assets/rootfs/payloads/tiny-rootfs.tar"
 RUNNER = ROOT / "app/src/main/java/dev/chanwoo/androlinux/NativeCommandRunner.kt"
 MAIN = ROOT / "app/src/main/java/dev/chanwoo/androlinux/MainActivity.kt"
+HANDOFF = ROOT / "app/src/main/cpp/alr_runtime/alr_handoff.cpp"
 RESOLVER = ROOT / "tools/gimp_bundle_resolver.py"
 MATERIALIZER = ROOT / "tools/gimp_bundle_materializer.py"
 
@@ -88,16 +89,23 @@ def test_android_reports_materialized_gimp_version_probe():
     assert "runAlrRuntimeTrampolineInstalledPackageGimpGuiWaylandProbe" in runner
     assert "runAlrRuntimeTrampolineInstalledPackageGimpGuiWaylandFastProbe" in runner
     assert "runAlrRuntimeTrampolineGimp3HelpProbe" in runner
+    assert "runAlrRuntimeTrampolineGimp3ConsoleVersionProbe" in runner
+    assert "runAlrRuntimeTrampolineGimp3CoreQuitProbe" in runner
     assert "runAlrRuntimeTrampolineGimp3ConsoleBatchQuitProbe" in runner
     assert "plug-in-script-fu-eval" in runner
     assert "runAlrRuntimeTrampolineGimp3GuiQuitWaylandProbe" in runner
     assert "runAlrRuntimeTrampolineGimp3ProgramProbe" in runner
+    assert '"GIMP3_DIRECTORY" to "/tmp/alr-gimp3"' in runner
+    assert '"GIMP3_CACHEDIR" to "/tmp/alr-gimp3-cache"' in runner
     assert "runAlrRuntimeTrampolineGimp3GtkWaylandPythonProbe" in runner
     assert '"GDK_BACKEND" to "wayland"' in runner
     assert "WAYLAND_DISPLAY" in runner
     assert '"XDG_RUNTIME_DIR" to "/tmp"' in runner
     assert "GIMP DEMO PROFILE EXECUTION:" in text
     assert "GIMP CLI HELP PROBE EXECUTION:" in text
+    assert "GIMP CONSOLE VERSION PROBE EXECUTION:" in text
+    assert "GIMP CORE QUIT PROBE EXECUTION:" in text
+    assert "GIMP CORE QUIT BLOCKER:" in text
     assert "GIMP CONSOLE BATCH QUIT PROBE EXECUTION:" in text
     assert "GIMP CONSOLE BATCH QUIT BLOCKER:" in text
     assert "GIMP GTK WAYLAND PROBE EXECUTION:" in text
@@ -105,6 +113,9 @@ def test_android_reports_materialized_gimp_version_probe():
     assert "GIMP GUI WAYLAND PROBE EXECUTION:" in text
     assert "GIMP GUI WAYLAND BLOCKER:" in text
     assert "gimp cli help handoff=" in text
+    assert "gimp console version handoff=" in text
+    assert "gimp core quit handoff=" in text
+    assert "gimp core quit blocker=" in text
     assert "gimp console batch quit handoff=" in text
     assert "gimp console batch quit exit=" in text
     assert "gimp console batch quit interpreter=plug-in-script-fu-eval" in text
@@ -123,6 +134,15 @@ def test_android_reports_materialized_gimp_version_probe():
     assert "rootfs gimp demo materialized exists=" in text
     assert "ALR_GIMP_DEMO_BINARY present=true" in text
     assert "ALR_GIMP_DEMO_VERSION_EXIT 0" in text
+
+
+def test_alr_handoff_timeout_reaps_traced_gimp_style_processes():
+    text = HANDOFF.read_text()
+
+    assert "reap_after_forced_kill" in text
+    assert "result.timed_out = true" in text
+    assert "waited < 0 && !result.timed_out" in text
+    assert "result.signal_number = SIGKILL" in text
 
 
 def test_gimp_bundle_resolver_defaults_to_minimal_depends_profile():

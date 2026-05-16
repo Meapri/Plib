@@ -2214,6 +2214,8 @@ class MainActivity : Activity() {
         val runFullGimpProbe = intent.getBooleanExtra("ALR_RUN_FULL_GIMP_PROBE", false)
         val gimpProfileResult = nativeCommandRunner.runAlrRuntimeTrampolineInstalledPackageGimpDemoProfile(rootfsStatus.rootfsDir)
         val gimpHelpResult = nativeCommandRunner.runAlrRuntimeTrampolineGimp3HelpProbe(rootfsStatus.rootfsDir)
+        val gimpConsoleVersionResult = nativeCommandRunner.runAlrRuntimeTrampolineGimp3ConsoleVersionProbe(rootfsStatus.rootfsDir)
+        val gimpCoreQuitResult = nativeCommandRunner.runAlrRuntimeTrampolineGimp3CoreQuitProbe(rootfsStatus.rootfsDir)
         val gimpConsoleBatchQuitResult = nativeCommandRunner.runAlrRuntimeTrampolineGimp3ConsoleBatchQuitProbe(rootfsStatus.rootfsDir)
         val gimpGtkWaylandProbeResult = runGimpGtkWaylandProbe(nativeCommandRunner, rootfsStatus.rootfsDir)
         val gimpGuiQuitWaylandProbeResult = runGimpGuiQuitWaylandProbe(nativeCommandRunner, rootfsStatus.rootfsDir)
@@ -2273,9 +2275,16 @@ class MainActivity : Activity() {
             gimpHelpResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
                 gimpHelpResult.stdout.alrHandoffStdoutText().contains("--no-interface") &&
                 gimpHelpResult.stdout.alrHandoffStdoutText().contains("--quit")
+        val gimpConsoleVersionPassed =
+            gimpConsoleVersionResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+                gimpConsoleVersionResult.stdout.alrHandoffStdoutText().contains("GNU Image Manipulation Program version 3.")
+        val gimpCoreQuitPassed =
+            gimpCoreQuitResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+                gimpCoreQuitResult.exitCode == 0
         val gimpConsoleBatchQuitPassed =
             gimpConsoleBatchQuitResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
                 gimpConsoleBatchQuitResult.exitCode == 0
+        val gimpCoreQuitBlocker = describeGimpCoreQuitBlocker(gimpCoreQuitPassed, gimpCoreQuitResult)
         val gimpConsoleBatchQuitBlocker = describeGimpConsoleBatchQuitBlocker(gimpConsoleBatchQuitPassed, gimpConsoleBatchQuitResult)
         val gimpGtkWaylandProbePassed = isWaylandRegistryProbe(gimpGtkWaylandProbeResult)
         val gimpGuiQuitWaylandProbePassed = isWaylandRegistryProbe(gimpGuiQuitWaylandProbeResult)
@@ -2295,6 +2304,9 @@ class MainActivity : Activity() {
             "full gimp probe mode=${if (runFullGimpProbe) "enabled" else "skipped"}",
             "GIMP DEMO PROFILE EXECUTION: ${if (gimpDemoProfileExecutionPassed) "PASS" else "FAIL"}",
             "GIMP CLI HELP PROBE EXECUTION: ${if (gimpHelpExecutionPassed) "PASS" else "FAIL"}",
+            "GIMP CONSOLE VERSION PROBE EXECUTION: ${if (gimpConsoleVersionPassed) "PASS" else "FAIL"}",
+            "GIMP CORE QUIT PROBE EXECUTION: ${if (gimpCoreQuitPassed) "PASS" else "FAIL"}",
+            "GIMP CORE QUIT BLOCKER: ${gimpCoreQuitBlocker.uppercase().replace('-', '_')}",
             "GIMP CONSOLE BATCH QUIT PROBE EXECUTION: ${if (gimpConsoleBatchQuitPassed) "PASS" else "FAIL"}",
             "GIMP CONSOLE BATCH QUIT BLOCKER: ${gimpConsoleBatchQuitBlocker.uppercase().replace('-', '_')}",
             "GIMP GTK WAYLAND PROBE EXECUTION: ${if (gimpGtkWaylandProbePassed) "PASS" else "FAIL"}",
@@ -2306,6 +2318,15 @@ class MainActivity : Activity() {
             "gimp cli help handoff=${gimpHelpResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}",
             "gimp cli help stdout=${gimpHelpResult.stdout.alrHandoffStdoutText().forEvidenceLog()}",
             "gimp cli help stderr=${gimpHelpResult.stdout.alrHandoffStderrText().forEvidenceLog()}",
+            "gimp console version handoff=${gimpConsoleVersionResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}",
+            "gimp console version exit=${gimpConsoleVersionResult.exitCode}",
+            "gimp console version stdout=${gimpConsoleVersionResult.stdout.alrHandoffStdoutText().forEvidenceLog()}",
+            "gimp console version stderr=${gimpConsoleVersionResult.stdout.alrHandoffStderrText().forEvidenceLog()}",
+            "gimp core quit handoff=${gimpCoreQuitResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}",
+            "gimp core quit exit=${gimpCoreQuitResult.exitCode}",
+            "gimp core quit blocker=$gimpCoreQuitBlocker",
+            "gimp core quit stdout=${gimpCoreQuitResult.stdout.alrHandoffStdoutText().forEvidenceLog()}",
+            "gimp core quit stderr=${gimpCoreQuitResult.stdout.alrHandoffStderrText().forEvidenceLog()}",
             "gimp console batch quit handoff=${gimpConsoleBatchQuitResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}",
             "gimp console batch quit exit=${gimpConsoleBatchQuitResult.exitCode}",
             "gimp console batch quit interpreter=plug-in-script-fu-eval",
@@ -2419,8 +2440,22 @@ class MainActivity : Activity() {
     ): String =
         if (passed) {
             "none"
-        } else if (result.exitCode == -124) {
+        } else if (result.exitCode == -124 || result.stdout.contains("alr handoff timed out=true")) {
             "core-batch-timeout"
+        } else if (!result.stdout.contains("ALR STATIC ENTRY HANDOFF:")) {
+            "missing-handoff"
+        } else {
+            "exit-${result.exitCode}"
+        }
+
+    private fun describeGimpCoreQuitBlocker(
+        passed: Boolean,
+        result: NativeCommandResult,
+    ): String =
+        if (passed) {
+            "none"
+        } else if (result.exitCode == -124 || result.stdout.contains("alr handoff timed out=true")) {
+            "core-quit-timeout"
         } else if (!result.stdout.contains("ALR STATIC ENTRY HANDOFF:")) {
             "missing-handoff"
         } else {

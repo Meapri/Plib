@@ -288,6 +288,9 @@ def test_v104_adb_verifier_checks_gimp3_wayland_evidence():
     assert "simple gui demo android surface candidate=" in text
     assert "GIMP DEMO PROFILE EXECUTION: PASS" in script
     assert "GIMP CLI HELP PROBE EXECUTION: PASS" in script
+    assert "GIMP CONSOLE VERSION PROBE EXECUTION: PASS" in script
+    assert "GIMP CORE QUIT PROBE EXECUTION:" in script
+    assert "GIMP CORE QUIT BLOCKER: CORE_QUIT_TIMEOUT" in script
     assert "GIMP CONSOLE BATCH QUIT PROBE EXECUTION:" in script
     assert "GIMP CONSOLE BATCH QUIT BLOCKER: CORE_BATCH_TIMEOUT" in script
     assert "full gimp probe mode=skipped" in script
@@ -303,6 +306,10 @@ def test_v104_adb_verifier_checks_gimp3_wayland_evidence():
     assert "ALR_GIMP_DEMO_VERSION_EXIT 0" in script
     assert "ALR_GIMP_DEMO_VERSION_STDOUT GNU Image Manipulation Program version 3." in script
     assert "gimp cli help handoff=ALR STATIC ENTRY HANDOFF: PASS" in script
+    assert "gimp console version handoff=ALR STATIC ENTRY HANDOFF: PASS" in script
+    assert "gimp console version stdout=GNU Image Manipulation Program version 3." in script
+    assert "gimp core quit blocker=core-quit-timeout" in script
+    assert "gimp console batch quit handoff=ALR STATIC ENTRY HANDOFF: FAIL" in script
     assert "gimp console batch quit interpreter=plug-in-script-fu-eval" in script
     assert "gimp console batch quit blocker=core-batch-timeout" in script
     assert "gimp gtk wayland object=1" in script

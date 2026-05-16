@@ -652,6 +652,26 @@ class NativeCommandRunner(
             pathRewriteIdleSyscallLimit = 4000,
         )
 
+    fun runAlrRuntimeTrampolineGimp3ConsoleVersionProbe(rootfsDir: File): NativeCommandResult =
+        runAlrRuntimeTrampolineGimp3ProgramProbe(
+            rootfsDir = rootfsDir,
+            program = "/usr/bin/gimp-console",
+            arguments = listOf("--version"),
+            timeoutMs = 10000,
+            pathRewriteLimit = 30000,
+            pathRewriteIdleSyscallLimit = 5000,
+        )
+
+    fun runAlrRuntimeTrampolineGimp3CoreQuitProbe(rootfsDir: File): NativeCommandResult =
+        runAlrRuntimeTrampolineGimp3ProgramProbe(
+            rootfsDir = rootfsDir,
+            program = "/usr/bin/gimp",
+            arguments = listOf("--no-interface", "--no-data", "--no-fonts", "--no-splash", "--no-shm", "--quit"),
+            timeoutMs = 20000,
+            pathRewriteLimit = 120000,
+            pathRewriteIdleSyscallLimit = 20000,
+        )
+
     fun runAlrRuntimeTrampolineGimp3ConsoleBatchQuitProbe(rootfsDir: File): NativeCommandResult =
         runAlrRuntimeTrampolineGimp3ProgramProbe(
             rootfsDir = rootfsDir,
@@ -691,7 +711,6 @@ class NativeCommandRunner(
         pathRewriteLimit: Int = 80000,
         pathRewriteIdleSyscallLimit: Int = 10000,
     ): NativeCommandResult {
-        val runtimeDir = File(rootfsDir, "tmp").absolutePath
         val waylandEnvironment = if (waylandSocketLeaf == null) {
             emptyMap()
         } else {
@@ -709,11 +728,17 @@ class NativeCommandRunner(
             pathRewriteLimit = pathRewriteLimit,
             pathRewriteIdleSyscallLimit = pathRewriteIdleSyscallLimit,
             extraGuestEnvironment = preloadPathFastPathEnvironment(rootfsDir) + mapOf(
-                "XDG_RUNTIME_DIR" to runtimeDir,
-                "HOME" to runtimeDir,
+                "XDG_RUNTIME_DIR" to "/tmp",
+                "HOME" to "/tmp/alr-home",
                 "USER" to "android",
                 "LOGNAME" to "android",
                 "NO_AT_BRIDGE" to "1",
+                "GIO_USE_VFS" to "local",
+                "XDG_CONFIG_HOME" to "/tmp/alr-xdg-config",
+                "XDG_CACHE_HOME" to "/tmp/alr-xdg-cache",
+                "GIMP3_DIRECTORY" to "/tmp/alr-gimp3",
+                "GIMP3_CACHEDIR" to "/tmp/alr-gimp3-cache",
+                "GIMP3_TEMPDIR" to "/tmp/alr-gimp3-tmp",
             ) + waylandEnvironment,
         )
     }

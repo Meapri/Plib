@@ -1097,14 +1097,18 @@ filesystem Unix sockets for GTK and GIMP startup probes, serves a minimal
 clean-room registry/sync response, and keeps a separate deep full-GIMP probe
 switch for the slower GUI startup investigation. GIMP 3 batch mode is also
 checked with `plug-in-script-fu-eval`, because GIMP 3 no longer has a default
-batch interpreter. That core/plugin startup probe is currently an explicit
-blocker (`core-batch-timeout`), while the GTK Wayland registry probe is passing.
+batch interpreter. The console version probe passes, but the non-GUI core quit
+probe still times out, so the current blocker is earlier than Script-Fu batch
+evaluation. The GTK Wayland registry probe is passing.
 
 Expected V104 GIMP 3 Wayland evidence:
 
 ```text
 GIMP DEMO PROFILE EXECUTION: PASS
 GIMP CLI HELP PROBE EXECUTION: PASS
+GIMP CONSOLE VERSION PROBE EXECUTION: PASS
+GIMP CORE QUIT PROBE EXECUTION: FAIL
+GIMP CORE QUIT BLOCKER: CORE_QUIT_TIMEOUT
 GIMP CONSOLE BATCH QUIT PROBE EXECUTION: FAIL
 GIMP CONSOLE BATCH QUIT BLOCKER: CORE_BATCH_TIMEOUT
 full gimp probe mode=skipped
@@ -1118,6 +1122,10 @@ ALR_GIMP_DEMO_BUNDLE_LOCK present=true suite=trixie package_count=313
 ALR_GIMP_DEMO_MATERIALIZED present=true package_count=313 gimp_version=3.
 ALR_GIMP_DEMO_VERSION_STDOUT GNU Image Manipulation Program version 3.
 gimp cli help handoff=ALR STATIC ENTRY HANDOFF: PASS
+gimp console version handoff=ALR STATIC ENTRY HANDOFF: PASS
+gimp console version stdout=GNU Image Manipulation Program version 3.
+gimp core quit blocker=core-quit-timeout
+gimp console batch quit handoff=ALR STATIC ENTRY HANDOFF: FAIL
 gimp console batch quit interpreter=plug-in-script-fu-eval
 gimp console batch quit blocker=core-batch-timeout
 gimp gtk wayland connected=true

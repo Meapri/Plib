@@ -1701,10 +1701,15 @@ instead of hidden behind one long launch timeout:
 
 - `gimp --help` proves the GIMP 3 binary, dynamic loader, and ALR handoff can
   run beyond a version probe.
+- `gimp-console --version` proves the console binary entry path independently
+  of GUI and batch interpreter startup.
+- `gimp --no-interface --no-data --no-fonts --no-splash --no-shm --quit`
+  isolates GIMP core quit startup. On the connected device this still times out,
+  so the blocker is now known to be earlier than Script-Fu batch evaluation.
 - `gimp-console --batch-interpreter plug-in-script-fu-eval --batch
   "(gimp-quit 0)" --quit` is the current GIMP 3 core/plugin startup probe.
-  On the connected device it still times out before ALR handoff, so it is
-  tracked as the next non-Wayland blocker rather than counted as GUI progress.
+  On the connected device it still does not reach a passing ALR handoff, so it
+  is tracked as the next non-Wayland blocker rather than counted as GUI progress.
 - The GTK/PyGObject probe at `$rootfs/tmp/alr-gimp-gtk-0` talks to a tiny
   clean-room Wayland responder rather than a passive socket. Android advertises
   `wl_compositor`, `wl_shm`, `xdg_wm_base`, `wl_seat`, and `wl_output`, answers
@@ -1723,6 +1728,9 @@ rootfs_sha256=9ed659c149510393662754f2508805f84edef5721a49539c26fe820481fcd75e
 rootfs_size=1365166080
 GIMP DEMO PROFILE EXECUTION: PASS
 GIMP CLI HELP PROBE EXECUTION: PASS
+GIMP CONSOLE VERSION PROBE EXECUTION: PASS
+GIMP CORE QUIT PROBE EXECUTION: FAIL
+GIMP CORE QUIT BLOCKER: CORE_QUIT_TIMEOUT
 GIMP CONSOLE BATCH QUIT PROBE EXECUTION: FAIL
 GIMP CONSOLE BATCH QUIT BLOCKER: CORE_BATCH_TIMEOUT
 full gimp probe mode=skipped
@@ -1736,6 +1744,10 @@ ALR_GIMP_DEMO_BUNDLE_LOCK present=true suite=trixie package_count=313
 ALR_GIMP_DEMO_MATERIALIZED present=true package_count=313 gimp_version=3.0.4-3+deb13u7
 ALR_GIMP_DEMO_VERSION_STDOUT GNU Image Manipulation Program version 3.
 gimp cli help handoff=ALR STATIC ENTRY HANDOFF: PASS
+gimp console version handoff=ALR STATIC ENTRY HANDOFF: PASS
+gimp console version stdout=GNU Image Manipulation Program version 3.
+gimp core quit blocker=core-quit-timeout
+gimp console batch quit handoff=ALR STATIC ENTRY HANDOFF: FAIL
 gimp console batch quit interpreter=plug-in-script-fu-eval
 gimp console batch quit blocker=core-batch-timeout
 gimp gtk wayland connected=true
