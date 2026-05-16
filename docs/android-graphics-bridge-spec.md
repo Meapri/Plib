@@ -1010,6 +1010,30 @@ ALR_WL_BINARY_MESSAGE index=0 object=1 opcode=1 size=12
 ALR_WL_BINARY_MESSAGE index=14 object=10 opcode=6 size=8
 ```
 
+Build `0.4.100-wayland-continuous-gui` changes the main Surface proof from
+host replay to a guest-driven continuous stream. The guest emits eight commits,
+Android decodes 30 Wayland requests from 568 raw bytes, verifies eight shared
+payloads and eight memfd payloads, and presents the eight frames through the same
+three-slot AHardwareBuffer/EGLImage/Surface path.
+
+Expected V100 continuous GUI evidence:
+
+```text
+wayland display continuous stream ready=true
+wayland display wire messages=30
+wayland display binary messages=30
+wayland display binary bytes=568
+wayland display shared payload frames=8/8
+wayland display fd payload frames=8/8
+wayland display dirty rect bytes=460800
+wayland ahardwarebuffer surface replay passes=1
+wayland ahardwarebuffer surface continuous guest commits=true
+wayland ahardwarebuffer surface simple gui demo candidate=true
+wayland ahardwarebuffer surface buffer pool reuses=5
+wayland ahardwarebuffer surface presented frames=8
+wayland ahardwarebuffer surface hardware render=true
+```
+
 ## Open Questions
 
 - Can the V90 file-backed payload bridge move fully behind the v96 host-buffer path without keeping memfd payloads as mandatory fallback evidence?

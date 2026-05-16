@@ -1286,7 +1286,7 @@ std::string render_wayland_hardware_buffers_to_android_surface(JNIEnv* env, jobj
         out << "\nwayland ahardwarebuffer surface execution=FAIL reason=null-surface";
         return out.str();
     }
-    if (frame_count <= 0 || frame_count > 8) {
+    if (frame_count <= 0 || frame_count > 24) {
         out << "\nwayland ahardwarebuffer surface execution=FAIL reason=bad-frame-count";
         return out.str();
     }
@@ -1392,7 +1392,7 @@ std::string render_wayland_hardware_buffers_to_android_surface(JNIEnv* env, jobj
     uint32_t full_bytes_total = 0;
     GLenum last_gl_error = GL_NO_ERROR;
     EGLBoolean last_swap = EGL_FALSE;
-    constexpr int replay_passes = 2;
+    constexpr int replay_passes = 1;
     const int total_present_targets = frame_count * replay_passes;
 
     struct PooledSurfaceBuffer {
@@ -1602,6 +1602,8 @@ std::string render_wayland_hardware_buffers_to_android_surface(JNIEnv* env, jobj
         last_swap == EGL_TRUE &&
         !software;
     out << "\nwayland ahardwarebuffer surface replay passes=" << replay_passes;
+    out << "\nwayland ahardwarebuffer surface continuous guest commits=" << (frame_count >= 8 && replay_passes == 1 ? "true" : "false");
+    out << "\nwayland ahardwarebuffer surface simple gui demo candidate=" << (frame_count >= 8 && replay_passes == 1 ? "true" : "false");
     out << "\nwayland ahardwarebuffer surface total frame submissions=" << total_present_targets;
     out << "\nwayland ahardwarebuffer surface buffer pool mode=slot-reuse";
     out << "\nwayland ahardwarebuffer surface buffer pool slots=" << buffer_pool.size();

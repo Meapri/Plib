@@ -1713,6 +1713,54 @@ Android verifier:
 Android v99 Wayland binary decode verification passed.
 ```
 
+Latest V100 Wayland continuous-GUI evidence target:
+
+```text
+build: 0.4.100-wayland-continuous-gui
+versionCode=100
+versionName=0.4.100-wayland-continuous-gui
+rootfs_version=bookworm-slim-2026-05-wayland-continuous-v100
+rootfs sha256=84713c829832154e004e40090d40e632f439118848be3baa78c64a5d7c8d292e
+rootfs size bytes=35307520
+WAYLAND DISPLAY SOCKET AVAILABLE: PASS
+WAYLAND DISPLAY COMMIT SURFACE EXECUTION: PASS
+wayland display continuous stream ready=true
+wayland display wire messages=30
+wayland display binary messages=30
+wayland display binary bytes=568
+wayland display binary subset ready=true
+wayland display shared payload frames=8/8
+wayland display fd payload frames=8/8
+wayland display dirty rect bytes=460800
+ALR_WL_DISPLAY_ACK ... commits=8 expected=8 continuous_stream_ready=true ...
+WAYLAND AHARDWAREBUFFER SURFACE COMPOSITOR EXECUTION: PASS
+wayland ahardwarebuffer surface replay passes=1
+wayland ahardwarebuffer surface continuous guest commits=true
+wayland ahardwarebuffer surface simple gui demo candidate=true
+wayland ahardwarebuffer surface buffer pool reuses=5
+wayland ahardwarebuffer surface presented frames=8
+wayland ahardwarebuffer surface hardware render=true
+```
+
+V100 removes the artificial v97-v99 two-pass Surface replay from the main proof
+path. The guest now emits an eight-frame continuous Wayland-shaped stream with
+matching raw binary request decode, shared-file payloads, SCM_RIGHTS payload
+FDs, dirty rectangles, and Android-host AHardwareBuffer slot reuse. This is
+still a Plib fixture, not a GTK/Qt app, but it is closer to the V118 demo gate
+because the frame count now comes from guest commits rather than host replay.
+
+Comparison target correction:
+
+- The performance and compatibility comparison target is `coderredlab/proroot`,
+  not only classic PRoot. The proroot public README describes an LD_PRELOAD
+  runtime, raw SVC path, binary patching for glibc-internal syscalls,
+  clean-room linker, procfs/link2symlink compatibility, and real smoke coverage
+  for Node, Python, Git, Chromium/Playwright, XFCE, and VNC.
+- Plib is not yet generally superior to proroot. The intended superiority path
+  is narrower and concrete: reach proroot-class non-root glibc app execution
+  while adding Android-native Surface/EGL/Vulkan GUI/GPU presentation that
+  proroot does not currently claim as its core value.
+
 Implementation compression window:
 
 - v99-v118 are the forced completion window. No more small evidence-only
@@ -1733,9 +1781,8 @@ Implementation compression window:
 
 Next implementation batch:
 
-1. Replace the replay-based pool proof with real continuous guest commits and long-lived buffer reuse across Surface callbacks.
-2. Add the simple Linux/glibc GUI demo track now, not at the end: a small guest app should use the real binary Wayland subset and draw into the Android Surface path.
-3. Replace the loader-info smoke with the real Khronos Vulkan loader or a stricter ABI-compatible loader subset.
-4. Add a small real toolkit fixture target, likely a tiny GTK/Qt-independent Wayland protocol smoke before pulling in a larger GUI stack.
-5. Start measuring compositor-path CPU/GPU cost against PRoot image transport and the existing Vulkan Surface clear path.
-6. Keep growing adb verification around visual present, fence state, package-version evidence, and the V118 GUI demo gate so device regressions stay cheap while implementation is moving quickly.
+1. Turn the V100 continuous fixture into a named simple Linux/glibc GUI demo binary with explicit launch UX in the Android app.
+2. Replace the loader-info smoke with the real Khronos Vulkan loader or a stricter ABI-compatible loader subset.
+3. Add a small real toolkit fixture target, likely a tiny GTK/Qt-independent Wayland protocol smoke before pulling in a larger GUI stack.
+4. Start measuring compositor-path CPU/GPU cost against proroot/VNC or proroot image-transport baselines and the existing Vulkan Surface clear path.
+5. Keep growing adb verification around visual present, fence state, package-version evidence, and the V118 GUI demo gate so device regressions stay cheap while implementation is moving quickly.

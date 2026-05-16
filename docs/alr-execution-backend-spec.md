@@ -1594,6 +1594,38 @@ wayland ahardwarebuffer surface presented frames=6
 wayland ahardwarebuffer surface hardware render=true
 ```
 
+### V100 Wayland Continuous GUI Stream
+
+Build `0.4.100-wayland-continuous-gui` turns the previous host-side replay
+proof into a guest-driven continuous stream. The display client now emits eight
+Wayland-shaped commits in one connection, and the binary Wayland request stream
+grows to 30 decoded requests and 568 bytes. Android validates the continuous
+stream markers, payload checksums, FD payloads, dirty rectangles, and
+AHardwareBuffer state before ACKing.
+
+```text
+build: 0.4.100-wayland-continuous-gui
+versionCode=100
+versionName=0.4.100-wayland-continuous-gui
+rootfs_version=bookworm-slim-2026-05-wayland-continuous-v100
+rootfs sha256=84713c829832154e004e40090d40e632f439118848be3baa78c64a5d7c8d292e
+rootfs size bytes=35307520
+WAYLAND DISPLAY COMMIT SURFACE EXECUTION: PASS
+wayland display continuous stream ready=true
+wayland display wire messages=30
+wayland display binary messages=30
+wayland display binary bytes=568
+wayland display dirty rect bytes=460800
+alr installed package wayland display ipc ack raw=... commits=8 expected=8 continuous_stream_ready=true ...
+WAYLAND AHARDWAREBUFFER SURFACE COMPOSITOR EXECUTION: PASS
+wayland ahardwarebuffer surface replay passes=1
+wayland ahardwarebuffer surface continuous guest commits=true
+wayland ahardwarebuffer surface simple gui demo candidate=true
+wayland ahardwarebuffer surface buffer pool reuses=5
+wayland ahardwarebuffer surface presented frames=8
+wayland ahardwarebuffer surface hardware render=true
+```
+
 Report:
 
 ```text

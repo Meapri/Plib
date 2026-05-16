@@ -169,6 +169,7 @@ The runtime must separate cold compatibility from hot execution:
 
 - Package installation, rootfs mutation, and distro maintenance may use a heavier compatibility layer while ALR is still learning required Linux semantics.
 - Interactive application launch, event loops, IPC, and GUI/GPU work must not depend on trapping every syscall through a PRoot-style loop.
+- Runtime compatibility and overhead should be compared against `coderredlab/proroot` as the stronger near-term baseline, not only against classic PRoot. Plib must earn superiority by combining proroot-class glibc execution coverage with Android-native Surface/EGL/Vulkan presentation.
 - Termux is a packaging and Android-prefix reference, not the final product UX.
 - proroot-class behavior is a performance and compatibility target, but ALR remains an open implementation with documented clean-room boundaries.
 

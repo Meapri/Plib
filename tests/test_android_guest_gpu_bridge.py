@@ -246,30 +246,35 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "alr installed package vulkan proxy stdout" in text
 
 
-def test_v99_adb_verifier_checks_wayland_binary_decode_evidence():
-    script = (ROOT / "scripts/verify-android-v99-wayland-binary-decode.sh").read_text()
+def test_v100_adb_verifier_checks_wayland_continuous_gui_evidence():
+    script = (ROOT / "scripts/verify-android-v100-wayland-continuous-gui.sh").read_text()
     text = MAIN.read_text()
     runner = RUNNER.read_text()
     display_source = (ROOT / "rootfs/guest-src/gui/alr_wayland_display_client.c").read_text()
     assert "WAYLAND AHARDWAREBUFFER SURFACE COMPOSITOR EXECUTION: PASS" in script
-    assert "wayland display wire messages=15" in script
+    assert "wayland display continuous stream ready=true" in script
+    assert "wayland display wire messages=30" in script
     assert "wayland display wire subset ready=true" in script
     assert "wayland display wire surface lifecycle=true" in script
-    assert "wayland display binary messages=15" in script
-    assert "wayland display binary bytes=308" in script
+    assert "wayland display binary messages=30" in script
+    assert "wayland display binary bytes=568" in script
     assert "wayland display binary subset ready=true" in script
     assert "wayland ahardwarebuffer surface compositor=egl-image-texture-to-android-surface" in script
-    assert "wayland ahardwarebuffer surface replay passes=2" in script
-    assert "wayland ahardwarebuffer surface total frame submissions=6" in script
-    assert "wayland ahardwarebuffer surface buffer pool reuses=3" in script
-    assert "wayland ahardwarebuffer surface presented frames=6" in script
+    assert "wayland ahardwarebuffer surface replay passes=1" in script
+    assert "wayland ahardwarebuffer surface continuous guest commits=true" in script
+    assert "wayland ahardwarebuffer surface simple gui demo candidate=true" in script
+    assert "wayland ahardwarebuffer surface total frame submissions=8" in script
+    assert "wayland ahardwarebuffer surface buffer pool reuses=5" in script
+    assert "wayland ahardwarebuffer surface presented frames=8" in script
     assert "wayland ahardwarebuffer surface hardware render=true" in script
-    assert "wayland ahardwarebuffer surface dirty rect bytes=345600" in script
+    assert "wayland ahardwarebuffer surface dirty rect bytes=460800" in script
     assert "wayland ahardwarebuffer surface fence pacing mode=reuse-slot-fence-handoff" in script
     assert "wayland ahardwarebuffer surface sync fence accounting=ok" in script
     assert "surface vulkan hardware render=true" in script
-    assert "versionName=0.4.99-wayland-binary-decode" in script
-    assert "ALR_WL_BINARY_STREAM bytes=%zu messages=15 checksum=%08x wire=wayland-binary-v1 endian=little" in display_source
+    assert "versionName=0.4.100-wayland-continuous-gui" in script
+    assert "ALR_WL_BINARY_STREAM bytes=%zu messages=%d checksum=%08x wire=wayland-binary-v1 endian=little" in display_source
+    assert "ALR_WL_APP_STREAM_BEGIN frames=%d mode=continuous-demo" in display_source
+    assert "ALR_WL_APP_STREAM_END frames=%d commits=%d mode=continuous-demo" in display_source
     assert "emit_wayland_binary_subset" in display_source
     assert "append_wayland_binary_request" in display_source
     assert "put_u32_le" in display_source
@@ -651,7 +656,7 @@ def test_guest_gui_client_sources_support_unix_socket_transport():
     assert "fnv1a32" in display_source
     assert "write_rgba_payload" in display_source
     assert "ALR_WL_SURFACE_COMMIT surface=10 buffer=20 seq=%d" in display_source
-    assert "ALR_WL_DISPLAY_CLIENT ok display=%s commits=3 ack=%s" in display_source
+    assert "ALR_WL_DISPLAY_CLIENT ok display=%s commits=%d ack=%s" in display_source
     assert "alr-wayland-gpu-client" in build_script
     assert "alr-x11-gpu-client" in build_script
     assert "alr-wayland-display-client" in build_script

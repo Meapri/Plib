@@ -102,6 +102,7 @@ def test_main_activity_owns_surface_view_and_appends_native_surface_report():
     assert 'waylandHardwareBufferSurfaceReport.lineStartingWith("wayland ahardwarebuffer surface hardware render=")' in text
     assert 'waylandHardwareBufferSurfaceReport.lineStartingWith("wayland ahardwarebuffer surface presented frames=")' in text
     assert 'waylandHardwareBufferSurfaceReport.lineStartingWith("wayland ahardwarebuffer surface buffer pool reuses=")' in text
+    assert 'surfaceReport.lineStartingWith("wayland ahardwarebuffer surface continuous guest commits=")' in text
     assert 'waylandHardwareBufferSurfaceReport.lineStartingWith("wayland ahardwarebuffer surface fence pacing mode=")' in text
     assert 'waylandHardwareBufferSurfaceReport.lineStartingWith("wayland ahardwarebuffer surface sync fence accounting=")' in text
     assert "nativeRenderWaylandHardwareBufferSurface" in text

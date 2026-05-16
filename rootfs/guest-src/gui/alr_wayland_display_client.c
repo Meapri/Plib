@@ -202,12 +202,12 @@ static int create_memfd_payload(
 }
 
 static int send_fd_preamble(int socket_fd, const int* payload_fds, size_t payload_fd_count) {
-    if (payload_fds == 0 || payload_fd_count == 0 || payload_fd_count > 8) return 0;
+    if (payload_fds == 0 || payload_fd_count == 0 || payload_fd_count > 12) return 0;
     char marker = 'F';
     struct iovec iov;
     iov.iov_base = &marker;
     iov.iov_len = 1;
-    char control[CMSG_SPACE(sizeof(int) * 8u)];
+    char control[CMSG_SPACE(sizeof(int) * 12u)];
     memset(control, 0, sizeof(control));
     struct msghdr msg;
     memset(&msg, 0, sizeof(msg));
@@ -248,7 +248,15 @@ static int emit_wayland_wire_line(
     return write_all(fd, line);
 }
 
-static int emit_wayland_wire_subset(int fd, size_t pool_bytes) {
+static int emit_wayland_wire_subset(
+    int fd,
+    size_t pool_bytes,
+    int frame_count,
+    const int* dirty_x,
+    const int* dirty_y,
+    const int* dirty_w,
+    const int* dirty_h
+) {
     char args[192];
     if (!emit_wayland_wire_line(fd, 1, 1, 12, "wl_display.get_registry", "new_id=2")) return 0;
     if (!emit_wayland_wire_line(fd, 2, 0, 40, "wl_registry.bind", "name=1 interface=wl_compositor version=4 new_id=3")) return 0;
@@ -257,15 +265,13 @@ static int emit_wayland_wire_subset(int fd, size_t pool_bytes) {
     snprintf(args, sizeof(args), "new_id=30 fd=0 size=%zu", pool_bytes);
     if (!emit_wayland_wire_line(fd, 4, 0, 20, "wl_shm.create_pool", args)) return 0;
     if (!emit_wayland_wire_line(fd, 30, 0, 36, "wl_shm_pool.create_buffer", "new_id=20 x=0 y=0 width=320 height=180 stride=1280 format=argb8888")) return 0;
-    if (!emit_wayland_wire_line(fd, 10, 1, 20, "wl_surface.attach", "buffer=20 x=0 y=0")) return 0;
-    if (!emit_wayland_wire_line(fd, 10, 9, 24, "wl_surface.damage_buffer", "x=0 y=0 width=160 height=90")) return 0;
-    if (!emit_wayland_wire_line(fd, 10, 6, 8, "wl_surface.commit", "seq=1")) return 0;
-    if (!emit_wayland_wire_line(fd, 10, 1, 20, "wl_surface.attach", "buffer=20 x=0 y=0")) return 0;
-    if (!emit_wayland_wire_line(fd, 10, 9, 24, "wl_surface.damage_buffer", "x=80 y=45 width=160 height=90")) return 0;
-    if (!emit_wayland_wire_line(fd, 10, 6, 8, "wl_surface.commit", "seq=2")) return 0;
-    if (!emit_wayland_wire_line(fd, 10, 1, 20, "wl_surface.attach", "buffer=20 x=0 y=0")) return 0;
-    if (!emit_wayland_wire_line(fd, 10, 9, 24, "wl_surface.damage_buffer", "x=160 y=90 width=160 height=90")) return 0;
-    if (!emit_wayland_wire_line(fd, 10, 6, 8, "wl_surface.commit", "seq=3")) return 0;
+    for (int seq = 0; seq < frame_count; ++seq) {
+        if (!emit_wayland_wire_line(fd, 10, 1, 20, "wl_surface.attach", "buffer=20 x=0 y=0")) return 0;
+        snprintf(args, sizeof(args), "x=%d y=%d width=%d height=%d", dirty_x[seq], dirty_y[seq], dirty_w[seq], dirty_h[seq]);
+        if (!emit_wayland_wire_line(fd, 10, 9, 24, "wl_surface.damage_buffer", args)) return 0;
+        snprintf(args, sizeof(args), "seq=%d", seq + 1);
+        if (!emit_wayland_wire_line(fd, 10, 6, 8, "wl_surface.commit", args)) return 0;
+    }
     return 1;
 }
 
@@ -293,8 +299,8 @@ static int append_wayland_binary_request(
     return 1;
 }
 
-static int emit_wayland_binary_subset(int fd) {
-    unsigned char bytes[512];
+static int emit_wayland_binary_subset(int fd, int frame_count) {
+    unsigned char bytes[1024];
     size_t offset = 0;
     memset(bytes, 0, sizeof(bytes));
     if (!append_wayland_binary_request(bytes, sizeof(bytes), &offset, 1, 1, 12)) return 0;
@@ -303,17 +309,19 @@ static int emit_wayland_binary_subset(int fd) {
     if (!append_wayland_binary_request(bytes, sizeof(bytes), &offset, 2, 0, 32)) return 0;
     if (!append_wayland_binary_request(bytes, sizeof(bytes), &offset, 4, 0, 20)) return 0;
     if (!append_wayland_binary_request(bytes, sizeof(bytes), &offset, 30, 0, 36)) return 0;
-    for (int seq = 0; seq < 3; ++seq) {
+    for (int seq = 0; seq < frame_count; ++seq) {
         if (!append_wayland_binary_request(bytes, sizeof(bytes), &offset, 10, 1, 20)) return 0;
         if (!append_wayland_binary_request(bytes, sizeof(bytes), &offset, 10, 9, 24)) return 0;
         if (!append_wayland_binary_request(bytes, sizeof(bytes), &offset, 10, 6, 8)) return 0;
     }
+    const int message_count = 6 + (frame_count * 3);
     char header[160];
     snprintf(
         header,
         sizeof(header),
-        "ALR_WL_BINARY_STREAM bytes=%zu messages=15 checksum=%08x wire=wayland-binary-v1 endian=little\n",
+        "ALR_WL_BINARY_STREAM bytes=%zu messages=%d checksum=%08x wire=wayland-binary-v1 endian=little\n",
         offset,
+        message_count,
         fnv1a32(bytes, offset)
     );
     return write_all(fd, header) && write_all_bytes(fd, bytes, offset);
@@ -327,10 +335,11 @@ int main(void) {
     const int width = 320;
     const int height = 180;
     const int stride = width * 4;
-    const int dirty_x[3] = {0, 80, 160};
-    const int dirty_y[3] = {0, 45, 90};
-    const int dirty_w[3] = {160, 160, 160};
-    const int dirty_h[3] = {90, 90, 90};
+    enum { frame_count = 8 };
+    const int dirty_x[frame_count] = {0, 80, 160, 0, 80, 160, 0, 80};
+    const int dirty_y[frame_count] = {0, 45, 90, 90, 45, 0, 0, 90};
+    const int dirty_w[frame_count] = {160, 160, 160, 160, 160, 160, 160, 160};
+    const int dirty_h[frame_count] = {90, 90, 90, 90, 90, 90, 90, 90};
     if (!ensure_runtime_dir(payload_dir)) {
         fprintf(stderr, "ALR_WL_DISPLAY_CLIENT payload dir failed dir=%s errno=%d\n", payload_dir, errno);
         return 11;
@@ -341,10 +350,9 @@ int main(void) {
         return 2;
     }
 
-    enum { frame_count = 3 };
-    const float payload_reds[frame_count] = {0.19f, 0.36f, 0.52f};
-    const float payload_greens[frame_count] = {0.24f, 0.43f, 0.31f};
-    const float payload_blues[frame_count] = {0.55f, 0.22f, 0.16f};
+    const float payload_reds[frame_count] = {0.19f, 0.36f, 0.52f, 0.65f, 0.22f, 0.44f, 0.74f, 0.30f};
+    const float payload_greens[frame_count] = {0.24f, 0.43f, 0.31f, 0.20f, 0.58f, 0.48f, 0.36f, 0.66f};
+    const float payload_blues[frame_count] = {0.55f, 0.22f, 0.16f, 0.42f, 0.30f, 0.68f, 0.24f, 0.52f};
     char payload_paths[frame_count][256];
     uint32_t checksums[frame_count];
     size_t payload_bytes[frame_count];
@@ -407,7 +415,9 @@ int main(void) {
     }
 
     char line[512];
-    if (!emit_wayland_binary_subset(fd)) return 24;
+    if (!emit_wayland_binary_subset(fd, frame_count)) return 24;
+    snprintf(line, sizeof(line), "ALR_WL_APP_STREAM_BEGIN frames=%d mode=continuous-demo pacing=guest-driven target=v118-simple-gui-demo\n", frame_count);
+    if (!write_all(fd, line)) return 25;
     snprintf(line, sizeof(line), "ALR_WL_CONNECT display=%s runtime=%s transport=unix-abstract-wayland\n", display, runtime_dir);
     if (!write_all(fd, line)) return 3;
     if (!write_all(fd, "ALR_WL_REGISTRY global=wl_compositor version=4 id=1\n")) return 4;
@@ -415,7 +425,7 @@ int main(void) {
     if (!write_all(fd, "ALR_WL_BIND name=wl_compositor id=1 version=4\n")) return 6;
     if (!write_all(fd, "ALR_WL_SURFACE_CREATE id=10 compositor=1\n")) return 7;
     if (!write_all(fd, "ALR_WL_BIND name=wl_shm id=2 version=1\n")) return 8;
-    if (!emit_wayland_wire_subset(fd, payload_bytes[0] * frame_count)) return 23;
+    if (!emit_wayland_wire_subset(fd, payload_bytes[0] * frame_count, frame_count, dirty_x, dirty_y, dirty_w, dirty_h)) return 23;
     if (!write_all(fd, "ALR_WL_AHB_BACKING_ADVERTISE version=1 allocator=android-host format=R8G8B8A8_UNORM usage=cpu-read-write+gpu-sampled+gpu-color-output max_buffers=3 dirty_rect=true\n")) return 21;
     snprintf(
         line,
@@ -509,6 +519,8 @@ int main(void) {
         );
         if (!write_all(fd, line)) return 16;
     }
+    snprintf(line, sizeof(line), "ALR_WL_APP_STREAM_END frames=%d commits=%d mode=continuous-demo\n", frame_count, frame_count);
+    if (!write_all(fd, line)) return 26;
     shutdown(fd, SHUT_WR);
 
     char ack[256];
@@ -520,6 +532,6 @@ int main(void) {
     ack[strcspn(ack, "\r\n")] = 0;
     close(fd);
     printf("alr-wayland-display-client ok\n");
-    printf("ALR_WL_DISPLAY_CLIENT ok display=%s commits=3 ack=%s\n", display, ack);
+    printf("ALR_WL_DISPLAY_CLIENT ok display=%s commits=%d ack=%s\n", display, frame_count, ack);
     return 0;
 }
