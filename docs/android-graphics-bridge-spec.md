@@ -148,10 +148,13 @@ Current paths:
 - Unix `SCM_RIGHTS` memfd payload descriptors.
 - V92 triple-buffer layout: three frame payload FDs, per-frame `fd_index`,
   byte count, and FNV-1a checksum verification.
+- V93 Android `AHardwareBuffer` host-managed triple-buffer probe with CPU
+  write/read checksum verification and EGLImage/GL texture import.
 
 Candidate next path:
 
-- Android `AHardwareBuffer` for host-managed buffers and lower copy count.
+- Wire `AHardwareBuffer` allocation/import into the Wayland display bridge as
+  the host-owned backing store for selected `wl_buffer` objects.
 
 ### Stage 4: Fence and Frame Pacing
 
@@ -241,6 +244,26 @@ wayland display fd payload bytes=691200
 fd_received=3
 layout=triple-buffer
 transport=unix-abstract-wayland-scm-rights
+```
+
+### Renderer v3.6: Host-Managed AHardwareBuffer Probe
+
+Android allocates three `AHardwareBuffer` objects with CPU read/write and GPU
+sample/color-output usage, writes deterministic RGBA payloads, verifies visible
+bytes by checksum, then imports each buffer as an EGLImage-backed GL texture.
+This does not replace the v92 memfd bridge yet; it proves the Android-owned
+native-buffer half of the next bridge.
+
+Report:
+
+```text
+ANDROID HOST AHARDWAREBUFFER EXECUTION: PASS
+ahardwarebuffer allocated buffers=3
+ahardwarebuffer cpu verified buffers=3
+ahardwarebuffer egl imported buffers=3
+ahardwarebuffer visible payload bytes=691200
+ahardwarebuffer host managed triple buffer=true
+ahardwarebuffer egl image import=ok
 ```
 
 ### Renderer v4: Guest GLES Shim

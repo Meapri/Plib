@@ -1375,6 +1375,33 @@ surface vulkan present=ok
 surface vulkan hardware render=true
 ```
 
+V93 adds the Android-owned native-buffer half of the graphics bridge. The APK
+allocates three `AHardwareBuffer` objects with CPU read/write and GPU
+sample/color-output usage, writes deterministic RGBA payloads, verifies each
+visible payload by checksum, and imports every buffer through
+`eglGetNativeClientBufferANDROID`/`eglCreateImageKHR`/`glEGLImageTargetTexture2DOES`.
+The v92 memfd display bridge remains the guest-to-host transport evidence; v93
+proves the host can also own GPU-importable triple buffers under an ordinary APK
+UID.
+
+```text
+build: 0.4.93-ahardwarebuffer-host
+versionCode=93
+versionName=0.4.93-ahardwarebuffer-host
+rootfs_version=bookworm-slim-2026-05-wayland-triple-fd-v92
+ANDROID HOST AHARDWAREBUFFER EXECUTION: PASS
+ahardwarebuffer allocated buffers=3
+ahardwarebuffer cpu verified buffers=3
+ahardwarebuffer egl imported buffers=3
+ahardwarebuffer visible payload bytes=691200
+ahardwarebuffer host managed triple buffer=true
+ahardwarebuffer egl image import=ok
+WAYLAND DISPLAY SOCKET AVAILABLE: PASS
+WAYLAND DISPLAY COMMIT SURFACE EXECUTION: PASS
+surface vulkan present=ok
+surface vulkan hardware render=true
+```
+
 Report:
 
 ```text

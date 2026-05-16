@@ -1500,11 +1500,36 @@ clean-room ALR text envelope around Wayland-shaped events, but the important
 buffer-transport behavior is now closer to the real direction: control messages
 carry object IDs and indexes while image bytes travel through file descriptors.
 
+Latest V93 Android host `AHardwareBuffer` evidence:
+
+```text
+build: 0.4.93-ahardwarebuffer-host
+versionCode=93
+versionName=0.4.93-ahardwarebuffer-host
+rootfs_version=bookworm-slim-2026-05-wayland-triple-fd-v92
+ANDROID HOST AHARDWAREBUFFER EXECUTION: PASS
+ahardwarebuffer allocated buffers=3
+ahardwarebuffer cpu verified buffers=3
+ahardwarebuffer egl imported buffers=3
+ahardwarebuffer visible payload bytes=691200
+ahardwarebuffer host managed triple buffer=true
+ahardwarebuffer egl image import=ok
+WAYLAND DISPLAY SOCKET AVAILABLE: PASS
+WAYLAND DISPLAY COMMIT SURFACE EXECUTION: PASS
+surface vulkan present=ok
+surface vulkan hardware render=true
+```
+
+V93 completes the first Android-owned native-buffer experiment from the previous
+batch. The current state now has two validated halves: guest-to-host frame
+payload descriptors via v92 memfd `SCM_RIGHTS`, and host-managed GPU-importable
+triple buffers via v93 `AHardwareBuffer` EGLImage import.
+
 Next implementation batch:
 
-1. Add an Android-owned `AHardwareBuffer` experiment for host-managed Wayland buffers and compare copy count against the v92 memfd path.
-2. Expand the minimal Wayland bridge from ALR_WL text records to a stricter subset of real Wayland wire opcodes for registry, compositor, shm, surface, and buffer lifetimes.
-3. Add dirty-rectangle metadata and host-side partial-upload accounting to the triple-buffer path.
+1. Wire `AHardwareBuffer` allocation/import into the Wayland display bridge as an explicit host-owned `wl_buffer` backing mode.
+2. Add dirty-rectangle metadata and host-side partial-upload accounting to compare v92 memfd copy count against v93 host-owned buffers.
+3. Expand the minimal Wayland bridge from ALR_WL text records to a stricter subset of real Wayland wire opcodes for registry, compositor, shm, surface, and buffer lifetimes.
 4. Replace the loader-info smoke with the real Khronos Vulkan loader or a stricter ABI-compatible loader subset.
 5. Add a small real toolkit fixture target, likely a tiny GTK/Qt-independent Wayland protocol smoke before pulling in a larger GUI stack.
 6. Turn the current evidence logs into a reusable adb verification script so device regressions are cheaper to catch while implementation is moving quickly.

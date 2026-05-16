@@ -32,6 +32,21 @@ def test_native_vulkan_surface_renderer_builds_android_swapchain_clear_path():
     assert "android host vulkan surface execution=" in text
 
 
+def test_native_ahardwarebuffer_probe_builds_host_managed_buffer_path():
+    text = CPP.read_text()
+    assert "#include <android/hardware_buffer.h>" in text
+    assert "AHardwareBuffer_allocate" in text
+    assert "AHardwareBuffer_lock" in text
+    assert "AHardwareBuffer_unlock" in text
+    assert "AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE" in text
+    assert "AHARDWAREBUFFER_USAGE_GPU_COLOR_OUTPUT" in text
+    assert "eglGetNativeClientBufferANDROID" in text
+    assert "eglCreateImageKHR" in text
+    assert "glEGLImageTargetTexture2DOES" in text
+    assert "ahardwarebuffer host managed triple buffer=" in text
+    assert "ahardwarebuffer execution=" in text
+
+
 def test_main_activity_owns_surface_view_and_appends_native_surface_report():
     text = MAIN.read_text()
     assert "SurfaceView" in text
@@ -58,6 +73,12 @@ def test_main_activity_owns_surface_view_and_appends_native_surface_report():
     assert 'surfaceReport.lineStartingWith("guest gles draw via android surface=")' in text
     assert "Linux guest Wayland/X11 GUI GPU surface renderer" in text
     assert "nativeRenderVulkanSurfaceClear" in text
+    assert "nativeHostHardwareBufferProbe" in text
+    assert "ANDROID HOST AHARDWAREBUFFER EXECUTION:" in text
+    assert "ANDROID HOST AHARDWAREBUFFER EGL IMPORT EXECUTION:" in text
+    assert 'hostHardwareBufferProbe.lineStartingWith("ahardwarebuffer execution=")' in text
+    assert 'hostHardwareBufferProbe.lineStartingWith("ahardwarebuffer egl image import=")' in text
+    assert "Android host AHardwareBuffer bridge probe" in text
     assert "ANDROID HOST VULKAN SURFACE EXECUTION:" in text
     assert "GUEST VULKAN SURFACE CLEAR REQUEST EXECUTION:" in text
     assert 'vulkanSurfaceReport.lineStartingWith("surface vulkan clear request source=")' in text

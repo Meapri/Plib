@@ -1,9 +1,12 @@
 #include <jni.h>
 
+#include <android/hardware_buffer.h>
 #include <android/native_window_jni.h>
 
 #include <EGL/egl.h>
+#include <EGL/eglext.h>
 #include <GLES2/gl2.h>
+#include <GLES2/gl2ext.h>
 #define VK_USE_PLATFORM_ANDROID_KHR
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_android.h>
@@ -11,17 +14,33 @@
 #include <dlfcn.h>
 
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <chrono>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <sstream>
 #include <string>
 #include <vector>
+#include <unistd.h>
 
 #include "runtime_plan.hpp"
 
 namespace {
+
+#ifndef EGL_NATIVE_BUFFER_ANDROID
+#define EGL_NATIVE_BUFFER_ANDROID 0x3140
+#endif
+
+#ifndef EGL_IMAGE_PRESERVED_KHR
+#define EGL_IMAGE_PRESERVED_KHR 0x30D2
+#endif
+
+using EglGetNativeClientBufferAndroidFn = EGLClientBuffer (*)(const AHardwareBuffer*);
+using EglCreateImageKhrFn = EGLImageKHR (*)(EGLDisplay, EGLContext, EGLenum, EGLClientBuffer, const EGLint*);
+using EglDestroyImageKhrFn = EGLBoolean (*)(EGLDisplay, EGLImageKHR);
+using GlEglImageTargetTexture2DOesFn = void (*)(GLenum, GLeglImageOES);
 
 std::string jstring_to_string(JNIEnv* env, jstring value) {
     if (value == nullptr) {
@@ -135,6 +154,21 @@ bool renderer_looks_software(const std::string& vendor, const std::string& rende
            combined.find("softpipe") != std::string::npos ||
            combined.find("software") != std::string::npos ||
            combined.find("mesa offscreen") != std::string::npos;
+}
+
+uint32_t fnv1a32_bytes(const uint8_t* bytes, size_t count) {
+    uint32_t hash = 2166136261u;
+    for (size_t i = 0; i < count; ++i) {
+        hash ^= static_cast<uint32_t>(bytes[i]);
+        hash *= 16777619u;
+    }
+    return hash;
+}
+
+std::string hex_u32(uint32_t value) {
+    std::ostringstream out;
+    out << std::hex << value;
+    return out.str();
 }
 
 const char* vulkan_result_name(VkResult result) {
@@ -1146,6 +1180,333 @@ std::string render_vulkan_clear_to_android_surface(JNIEnv* env, jobject surface_
     return out.str();
 }
 
+std::string probe_android_hardware_buffer_bridge() {
+    constexpr uint32_t width = 320;
+    constexpr uint32_t height = 180;
+    constexpr int buffer_count = 3;
+    const auto started = std::chrono::steady_clock::now();
+    std::ostringstream out;
+    out << "host ahardwarebuffer renderer=android-native-buffer-egl-image";
+    out << "\nahardwarebuffer requested buffers=" << buffer_count;
+    out << "\nahardwarebuffer requested size=" << width << "x" << height;
+    out << "\nahardwarebuffer format=R8G8B8A8_UNORM";
+    out << "\nahardwarebuffer usage=cpu-read-write+gpu-sampled+gpu-color-output";
+
+    AHardwareBuffer_Desc request{};
+    request.width = width;
+    request.height = height;
+    request.layers = 1;
+    request.format = AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM;
+    request.usage =
+        AHARDWAREBUFFER_USAGE_CPU_WRITE_RARELY |
+        AHARDWAREBUFFER_USAGE_CPU_READ_RARELY |
+        AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE |
+        AHARDWAREBUFFER_USAGE_GPU_COLOR_OUTPUT;
+
+    std::array<AHardwareBuffer*, buffer_count> buffers{};
+    std::array<uint32_t, buffer_count> expected_checksums{};
+    int allocated = 0;
+    int cpu_written = 0;
+    int cpu_verified = 0;
+    uint32_t total_visible_bytes = 0;
+
+    auto release_buffers = [&]() {
+        for (auto* buffer : buffers) {
+            if (buffer != nullptr) {
+                AHardwareBuffer_release(buffer);
+            }
+        }
+    };
+
+    for (int index = 0; index < buffer_count; ++index) {
+        AHardwareBuffer* buffer = nullptr;
+        const int allocate_result = AHardwareBuffer_allocate(&request, &buffer);
+        if (allocate_result != 0 || buffer == nullptr) {
+            out << "\nahardwarebuffer allocate index=" << index << " result=" << allocate_result;
+            release_buffers();
+            out << "\nahardwarebuffer execution=FAIL";
+            return out.str();
+        }
+        buffers[index] = buffer;
+        ++allocated;
+
+        AHardwareBuffer_Desc actual{};
+        AHardwareBuffer_describe(buffer, &actual);
+        out << "\nahardwarebuffer buffer " << index
+            << " width=" << actual.width
+            << " height=" << actual.height
+            << " layers=" << actual.layers
+            << " stride=" << actual.stride
+            << " format=" << actual.format
+            << " usage=0x" << std::hex << actual.usage << std::dec;
+        if (actual.width != width || actual.height != height || actual.layers != 1 || actual.stride < width) {
+            out << "\nahardwarebuffer describe valid=false";
+            release_buffers();
+            out << "\nahardwarebuffer execution=FAIL";
+            return out.str();
+        }
+
+        void* write_address = nullptr;
+        int lock_result = AHardwareBuffer_lock(
+            buffer,
+            AHARDWAREBUFFER_USAGE_CPU_WRITE_RARELY,
+            -1,
+            nullptr,
+            &write_address
+        );
+        if (lock_result != 0 || write_address == nullptr) {
+            out << "\nahardwarebuffer cpu write lock index=" << index << " result=" << lock_result;
+            release_buffers();
+            out << "\nahardwarebuffer execution=FAIL";
+            return out.str();
+        }
+
+        std::vector<uint8_t> compact;
+        compact.reserve(static_cast<size_t>(width) * height * 4u);
+        const uint8_t red = static_cast<uint8_t>(48 + index * 39);
+        const uint8_t green = static_cast<uint8_t>(72 + index * 29);
+        const uint8_t blue = static_cast<uint8_t>(160 - index * 31);
+        auto* base = static_cast<uint8_t*>(write_address);
+        for (uint32_t y = 0; y < height; ++y) {
+            auto* row = base + static_cast<size_t>(y) * actual.stride * 4u;
+            for (uint32_t x = 0; x < width; ++x) {
+                row[x * 4u + 0u] = red;
+                row[x * 4u + 1u] = green;
+                row[x * 4u + 2u] = blue;
+                row[x * 4u + 3u] = 255u;
+                compact.push_back(red);
+                compact.push_back(green);
+                compact.push_back(blue);
+                compact.push_back(255u);
+            }
+        }
+        int fence_fd = -1;
+        const int unlock_result = AHardwareBuffer_unlock(buffer, &fence_fd);
+        if (fence_fd >= 0) {
+            close(fence_fd);
+        }
+        if (unlock_result != 0) {
+            out << "\nahardwarebuffer cpu write unlock index=" << index << " result=" << unlock_result;
+            release_buffers();
+            out << "\nahardwarebuffer execution=FAIL";
+            return out.str();
+        }
+        ++cpu_written;
+        expected_checksums[index] = fnv1a32_bytes(compact.data(), compact.size());
+        total_visible_bytes += static_cast<uint32_t>(compact.size());
+
+        void* read_address = nullptr;
+        lock_result = AHardwareBuffer_lock(
+            buffer,
+            AHARDWAREBUFFER_USAGE_CPU_READ_RARELY,
+            -1,
+            nullptr,
+            &read_address
+        );
+        if (lock_result != 0 || read_address == nullptr) {
+            out << "\nahardwarebuffer cpu read lock index=" << index << " result=" << lock_result;
+            release_buffers();
+            out << "\nahardwarebuffer execution=FAIL";
+            return out.str();
+        }
+        std::vector<uint8_t> readback;
+        readback.reserve(static_cast<size_t>(width) * height * 4u);
+        auto* read_base = static_cast<uint8_t*>(read_address);
+        for (uint32_t y = 0; y < height; ++y) {
+            auto* row = read_base + static_cast<size_t>(y) * actual.stride * 4u;
+            readback.insert(readback.end(), row, row + static_cast<size_t>(width) * 4u);
+        }
+        fence_fd = -1;
+        const int read_unlock_result = AHardwareBuffer_unlock(buffer, &fence_fd);
+        if (fence_fd >= 0) {
+            close(fence_fd);
+        }
+        if (read_unlock_result != 0) {
+            out << "\nahardwarebuffer cpu read unlock index=" << index << " result=" << read_unlock_result;
+            release_buffers();
+            out << "\nahardwarebuffer execution=FAIL";
+            return out.str();
+        }
+        const uint32_t read_checksum = fnv1a32_bytes(readback.data(), readback.size());
+        const bool verified = read_checksum == expected_checksums[index];
+        if (verified) {
+            ++cpu_verified;
+        }
+        out << "\nahardwarebuffer payload index=" << index
+            << " bytes=" << readback.size()
+            << " checksum=" << hex_u32(read_checksum)
+            << " verified=" << (verified ? "true" : "false");
+    }
+
+    EGLDisplay display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+    if (display == EGL_NO_DISPLAY) {
+        out << "\nahardwarebuffer egl display=fail error=" << egl_error_hex();
+        release_buffers();
+        out << "\nahardwarebuffer execution=FAIL";
+        return out.str();
+    }
+    EGLint major = 0;
+    EGLint minor = 0;
+    if (eglInitialize(display, &major, &minor) != EGL_TRUE) {
+        out << "\nahardwarebuffer egl initialize=fail error=" << egl_error_hex();
+        release_buffers();
+        out << "\nahardwarebuffer execution=FAIL";
+        return out.str();
+    }
+    out << "\nahardwarebuffer egl initialize=ok version=" << major << "." << minor;
+
+    const EGLint config_attribs[] = {
+        EGL_SURFACE_TYPE, EGL_PBUFFER_BIT,
+        EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+        EGL_RED_SIZE, 8,
+        EGL_GREEN_SIZE, 8,
+        EGL_BLUE_SIZE, 8,
+        EGL_ALPHA_SIZE, 8,
+        EGL_NONE,
+    };
+    EGLConfig config = nullptr;
+    EGLint config_count = 0;
+    if (eglChooseConfig(display, config_attribs, &config, 1, &config_count) != EGL_TRUE || config_count < 1) {
+        out << "\nahardwarebuffer egl choose config=fail error=" << egl_error_hex();
+        eglTerminate(display);
+        release_buffers();
+        out << "\nahardwarebuffer execution=FAIL";
+        return out.str();
+    }
+    out << "\nahardwarebuffer egl choose config=ok count=" << config_count;
+
+    const EGLint surface_attribs[] = {
+        EGL_WIDTH, 16,
+        EGL_HEIGHT, 16,
+        EGL_NONE,
+    };
+    EGLSurface pbuffer = eglCreatePbufferSurface(display, config, surface_attribs);
+    if (pbuffer == EGL_NO_SURFACE) {
+        out << "\nahardwarebuffer egl pbuffer=fail error=" << egl_error_hex();
+        eglTerminate(display);
+        release_buffers();
+        out << "\nahardwarebuffer execution=FAIL";
+        return out.str();
+    }
+
+    const EGLint context_attribs[] = {EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE};
+    EGLContext context = eglCreateContext(display, config, EGL_NO_CONTEXT, context_attribs);
+    if (context == EGL_NO_CONTEXT) {
+        out << "\nahardwarebuffer egl context=fail error=" << egl_error_hex();
+        eglDestroySurface(display, pbuffer);
+        eglTerminate(display);
+        release_buffers();
+        out << "\nahardwarebuffer execution=FAIL";
+        return out.str();
+    }
+    if (eglMakeCurrent(display, pbuffer, pbuffer, context) != EGL_TRUE) {
+        out << "\nahardwarebuffer egl make current=fail error=" << egl_error_hex();
+        eglDestroyContext(display, context);
+        eglDestroySurface(display, pbuffer);
+        eglTerminate(display);
+        release_buffers();
+        out << "\nahardwarebuffer execution=FAIL";
+        return out.str();
+    }
+
+    auto get_native_client_buffer = reinterpret_cast<EglGetNativeClientBufferAndroidFn>(
+        eglGetProcAddress("eglGetNativeClientBufferANDROID")
+    );
+    auto create_image = reinterpret_cast<EglCreateImageKhrFn>(
+        eglGetProcAddress("eglCreateImageKHR")
+    );
+    auto destroy_image = reinterpret_cast<EglDestroyImageKhrFn>(
+        eglGetProcAddress("eglDestroyImageKHR")
+    );
+    auto image_target_texture = reinterpret_cast<GlEglImageTargetTexture2DOesFn>(
+        eglGetProcAddress("glEGLImageTargetTexture2DOES")
+    );
+    const bool import_functions_ready =
+        get_native_client_buffer != nullptr &&
+        create_image != nullptr &&
+        destroy_image != nullptr &&
+        image_target_texture != nullptr;
+    out << "\nahardwarebuffer egl image functions=" << (import_functions_ready ? "ok" : "missing");
+    if (!import_functions_ready) {
+        eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+        eglDestroyContext(display, context);
+        eglDestroySurface(display, pbuffer);
+        eglTerminate(display);
+        release_buffers();
+        out << "\nahardwarebuffer execution=FAIL";
+        return out.str();
+    }
+
+    int egl_imported = 0;
+    GLenum last_gl_error = GL_NO_ERROR;
+    for (int index = 0; index < buffer_count; ++index) {
+        EGLClientBuffer client_buffer = get_native_client_buffer(buffers[index]);
+        if (client_buffer == nullptr) {
+            out << "\nahardwarebuffer egl client buffer index=" << index << " status=fail";
+            continue;
+        }
+        const EGLint image_attribs[] = {
+            EGL_IMAGE_PRESERVED_KHR, EGL_TRUE,
+            EGL_NONE,
+        };
+        EGLImageKHR image = create_image(
+            display,
+            EGL_NO_CONTEXT,
+            EGL_NATIVE_BUFFER_ANDROID,
+            client_buffer,
+            image_attribs
+        );
+        if (image == EGL_NO_IMAGE_KHR) {
+            out << "\nahardwarebuffer egl image index=" << index << " status=fail error=" << egl_error_hex();
+            continue;
+        }
+        GLuint texture = 0;
+        glGenTextures(1, &texture);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        image_target_texture(GL_TEXTURE_2D, reinterpret_cast<GLeglImageOES>(image));
+        last_gl_error = glGetError();
+        if (last_gl_error == GL_NO_ERROR) {
+            ++egl_imported;
+        }
+        out << "\nahardwarebuffer egl import index=" << index
+            << " texture=" << texture
+            << " gl_error=0x" << std::hex << last_gl_error << std::dec
+            << " status=" << (last_gl_error == GL_NO_ERROR ? "ok" : "fail");
+        glDeleteTextures(1, &texture);
+        destroy_image(display, image);
+    }
+
+    eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+    eglDestroyContext(display, context);
+    eglDestroySurface(display, pbuffer);
+    eglTerminate(display);
+    release_buffers();
+
+    const auto elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now() - started
+    ).count();
+    const bool passed =
+        allocated == buffer_count &&
+        cpu_written == buffer_count &&
+        cpu_verified == buffer_count &&
+        egl_imported == buffer_count &&
+        last_gl_error == GL_NO_ERROR;
+    out << "\nahardwarebuffer allocated buffers=" << allocated;
+    out << "\nahardwarebuffer cpu written buffers=" << cpu_written;
+    out << "\nahardwarebuffer cpu verified buffers=" << cpu_verified;
+    out << "\nahardwarebuffer egl imported buffers=" << egl_imported;
+    out << "\nahardwarebuffer visible payload bytes=" << total_visible_bytes;
+    out << "\nahardwarebuffer host managed triple buffer=" << (passed ? "true" : "false");
+    out << "\nahardwarebuffer egl image import=" << (egl_imported == buffer_count ? "ok" : "fail");
+    out << "\nahardwarebuffer render elapsed us=" << elapsed_us;
+    out << "\nahardwarebuffer execution=" << (passed ? "PASS" : "FAIL");
+    return out.str();
+}
+
 void append_dlopen_probe(std::ostringstream& out, const std::string& path, const std::string& label) {
     dlerror();
     void* handle = dlopen(path.c_str(), RTLD_NOW | RTLD_LOCAL);
@@ -1291,5 +1652,13 @@ Java_dev_chanwoo_androlinux_MainActivity_nativeRenderVulkanSurfaceClear(
     jobject surface,
     jstring clear_request) {
     const auto report = render_vulkan_clear_to_android_surface(env, surface, jstring_to_string(env, clear_request));
+    return env->NewStringUTF(report.c_str());
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_dev_chanwoo_androlinux_MainActivity_nativeHostHardwareBufferProbe(
+    JNIEnv* env,
+    jobject /* thiz */) {
+    const auto report = probe_android_hardware_buffer_bridge();
     return env->NewStringUTF(report.c_str());
 }
