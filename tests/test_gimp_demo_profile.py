@@ -101,6 +101,7 @@ def test_android_reports_materialized_gimp_version_probe():
     assert "runAlrRuntimeTrampolineGimp3GtkWaylandPythonProbe" in runner
     assert '"GDK_BACKEND" to "wayland"' in runner
     assert "WAYLAND_DISPLAY" in runner
+    assert '"WAYLAND_DEBUG" to "1"' in runner
     assert '"XDG_RUNTIME_DIR" to "/tmp"' in runner
     assert "GIMP DEMO PROFILE EXECUTION:" in text
     assert "GIMP CLI HELP PROBE EXECUTION:" in text
@@ -135,17 +136,40 @@ def test_android_reports_materialized_gimp_version_probe():
     assert "gimp gtk wayland server globals=" in text
     assert "gimp gtk wayland server request trace=" in text
     assert "gimp gtk wayland server bind trace=" in text
+    assert "gimp gtk wayland server fd count=" in text
+    assert "gimp gtk wayland server shm pool buffers=" in text
+    assert "gimp gtk wayland server surface commits=" in text
+    assert "gimp gtk wayland server keyboard keymaps=" in text
     assert "minimalWaylandGlobals" in text
     assert "waylandRegistryGlobal" in text
     assert '"wl_shm_pool" -> when (opcode)' in text
+    assert '"wl_seat" -> when (opcode)' in text
+    assert "wl_seat.get_keyboard" in text
+    assert "waylandKeyboardKeymap" in text
+    assert "ParcelFileDescriptor.open" in text
+    assert "socket.ancillaryFileDescriptors" in text
+    assert "waylandFdSizeBytes" in text
     assert "gimp gtk window wayland server request trace=" in text
     assert "gimp gtk window wayland server bind trace=" in text
+    assert "gimp gtk window wayland server fd count=" in text
+    assert "gimp gtk window wayland server shm pool buffers=" in text
+    assert "gimp gtk window wayland server surface commits=" in text
+    assert "gimp gtk window wayland server seat trace=" in text
+    assert "gimp gtk window wayland server keyboard keymaps=" in text
     assert "gimp gtk window wayland handoff=" in text
     assert "gimp gui quit wayland request=" in text
     assert "gimp gui quit wayland server globals=" in text
     assert "gimp gui quit wayland server request trace=" in text
     assert "gimp gui quit wayland server bind trace=" in text
+    assert "gimp gui quit wayland server fd count=" in text
+    assert "gimp gui quit wayland server shm pool buffers=" in text
+    assert "gimp gui quit wayland server surface commits=" in text
+    assert "gimp gui quit wayland server keyboard keymaps=" in text
     assert "gimp gui wayland request=" in text
+    assert "gimp gui wayland server fd count=" in text
+    assert "gimp gui wayland server shm pool buffers=" in text
+    assert "gimp gui wayland server surface commits=" in text
+    assert "gimp gui wayland server keyboard keymaps=" in text
     assert "GIMP DEMO BUNDLE LOCK:" in text
     assert "rootfs /usr/bin/gimp exists=" in text
     assert "rootfs gimp demo materialized exists=" in text

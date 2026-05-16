@@ -717,6 +717,7 @@ class NativeCommandRunner(
             mapOf(
                 "GDK_BACKEND" to "wayland",
                 "WAYLAND_DISPLAY" to File(rootfsDir, "tmp/$waylandSocketLeaf").absolutePath,
+                "WAYLAND_DEBUG" to "1",
             )
         }
         return runAlrRuntimeTrampolineGlibcRootfsProgram(
@@ -758,6 +759,7 @@ class NativeCommandRunner(
             extraGuestEnvironment = preloadPathFastPathEnvironment(rootfsDir) + mapOf(
                 "GDK_BACKEND" to "wayland",
                 "WAYLAND_DISPLAY" to File(rootfsDir, "tmp/alr-gimp-gtk-0").absolutePath,
+                "WAYLAND_DEBUG" to "1",
                 "XDG_RUNTIME_DIR" to File(rootfsDir, "tmp").absolutePath,
                 "HOME" to File(rootfsDir, "tmp").absolutePath,
                 "USER" to "android",
@@ -781,6 +783,7 @@ class NativeCommandRunner(
             extraGuestEnvironment = preloadPathFastPathEnvironment(rootfsDir) + mapOf(
                 "GDK_BACKEND" to "wayland",
                 "WAYLAND_DISPLAY" to File(rootfsDir, "tmp/alr-gimp-gtk-window-0").absolutePath,
+                "WAYLAND_DEBUG" to "1",
                 "XDG_RUNTIME_DIR" to File(rootfsDir, "tmp").absolutePath,
                 "HOME" to File(rootfsDir, "tmp").absolutePath,
                 "USER" to "android",
