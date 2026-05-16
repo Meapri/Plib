@@ -37,12 +37,12 @@ class MainActivity : Activity() {
 
         val rootfsManifest = RootfsManifest(
             name = "debian-arm64",
-            version = "bookworm-slim-2026-05-simple-gui-demo-v101",
+            version = "bookworm-slim-2026-05-gimp-profile-v102",
             assets = listOf(
                 RootfsAsset(
                     path = "tiny-rootfs.tar",
-                    sha256 = "3ccd54fd7df06e703c8328306f592e3af058935314a13a96063f82a02c98e7e6",
-                    sizeBytes = 35348480,
+                    sha256 = "79bb73d7abcf28dbd32e33497e67f3f53db6b0a1f54dcd57a7583be215f2ecca",
+                    sizeBytes = 35481600,
                 ),
             ),
         )
@@ -179,6 +179,7 @@ class MainActivity : Activity() {
         val alrDpkgInstallLocalResult = nativeCommandRunner.runAlrRuntimeTrampolineDpkgInstallLocalSmoke(rootfsStatus.rootfsDir)
         val alrDpkgInstallLocalPreloadResult = nativeCommandRunner.runAlrRuntimeTrampolineDpkgInstallLocalSmokePreload(rootfsStatus.rootfsDir)
         val alrInstalledPackageSmokePreloadResult = nativeCommandRunner.runAlrRuntimeTrampolineInstalledPackageSmokePreload(rootfsStatus.rootfsDir)
+        val alrInstalledPackageGimpDemoProfileResult = nativeCommandRunner.runAlrRuntimeTrampolineInstalledPackageGimpDemoProfile(rootfsStatus.rootfsDir)
         val prootDpkgInstallLocalResult = nativeCommandRunner.runProotRootfsDpkgInstallLocalSmoke(rootfsStatus.rootfsDir)
         val prootInstalledPackageSmokeResult = nativeCommandRunner.runProotRootfsInstalledPackageSmoke(rootfsStatus.rootfsDir)
         val prootGuestGpuClientResult = nativeCommandRunner.runProotRootfsGuestGpuClient(rootfsStatus.rootfsDir)
@@ -342,6 +343,10 @@ class MainActivity : Activity() {
         val rootfsLocalDebFile = File(rootfsStatus.rootfsDir, "var/cache/apt/archives/alr-smoke_1.0_arm64.deb")
         val rootfsDpkgDebFile = File(rootfsStatus.rootfsDir, "usr/bin/dpkg-deb")
         val rootfsInstalledSmokeFile = File(rootfsStatus.rootfsDir, "usr/local/bin/alr-package-smoke")
+        val rootfsInstalledGimpDemoFile = File(rootfsStatus.rootfsDir, "usr/local/bin/alr-package-gimp-demo")
+        val rootfsGimpDemoProfileFile = File(rootfsStatus.rootfsDir, "usr/share/androlinux/gimp-demo-profile.json")
+        val rootfsGimpDemoBundleLockFile = File(rootfsStatus.rootfsDir, "usr/share/androlinux/gimp-demo-bundle.lock.json")
+        val rootfsGimpBinaryFile = File(rootfsStatus.rootfsDir, "usr/bin/gimp")
         val rootfsInstalledGpuSmokeFile = File(rootfsStatus.rootfsDir, "usr/local/bin/alr-package-gpu-smoke")
         val rootfsInstalledGlesDemoFile = File(rootfsStatus.rootfsDir, "usr/local/bin/alr-package-gles-demo")
         val rootfsInstalledGlesProcaddrDemoFile = File(rootfsStatus.rootfsDir, "usr/local/bin/alr-package-gles-procaddr-demo")
@@ -529,6 +534,20 @@ class MainActivity : Activity() {
                 alrInstalledPackageSmokePreloadResult.stdout.alrHandoffStdoutText().contains("alr local deb package smoke ok") &&
                 alrInstalledPackageSmokePreloadResult.stdout.alrHandoffStdoutText().contains("ALR_SMOKE_ARCH=arm64") &&
                 alrInstalledPackageSmokePreloadResult.stdout.alrHandoffStdoutText().contains("ALR_SMOKE_ENV_ARCH=arm64")
+        val gimpDemoProfileStdout = alrInstalledPackageGimpDemoProfileResult.stdout.alrHandoffStdoutText()
+        val gimpDemoProfileExecutionPassed =
+            alrInstalledPackageGimpDemoProfileResult.exitCode == 0 &&
+                alrInstalledPackageGimpDemoProfileResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+                rootfsInstalledGimpDemoFile.isFile &&
+                rootfsInstalledGimpDemoFile.canExecute() &&
+                rootfsGimpDemoProfileFile.isFile &&
+                rootfsGimpDemoBundleLockFile.isFile &&
+                gimpDemoProfileStdout.contains("ALR_GIMP_DEMO_PROFILE_READY target=gimp") &&
+                gimpDemoProfileStdout.contains("ALR_GIMP_DEMO_PROFILE_PROGRAM path=/usr/bin/gimp") &&
+                gimpDemoProfileStdout.contains("ALR_GIMP_DEMO_PROFILE_ENV GDK_BACKEND=wayland WAYLAND_DISPLAY=alr-gimp-0") &&
+                gimpDemoProfileStdout.contains("ALR_GIMP_DEMO_BUNDLE_LOCK present=true package_count=246") &&
+                gimpDemoProfileStdout.contains("ALR_GIMP_DEMO_BINARY present=false path=/usr/bin/gimp") &&
+                gimpDemoProfileStdout.contains("ALR_GIMP_DEMO_NEXT_STEP install_debian_arm64_bundle_from_lock")
         val guestGpuBridgeCommandPassed = prootGuestGpuClientResult.exitCode == 0 &&
             prootGuestGpuClientResult.stdout.contains("alr guest gpu client ok") &&
             guestGpuCommands.isNotEmpty()
@@ -906,6 +925,7 @@ class MainActivity : Activity() {
 
         val installedPackageCompatibilityTable =
             "script:${if (alrInstalledPackagePreloadExecutionPassed) "PASS" else "FAIL"}," +
+                "gimp-profile:${if (gimpDemoProfileExecutionPassed) "PASS" else "FAIL"}," +
                 "gpu-clear-ipc:${if (alrInstalledPackageGpuIpcBridgePassed) "PASS" else "FAIL"}," +
                 "gles-demo:${if (alrInstalledPackageGlesDemoPassed) "PASS" else "FAIL"}," +
                 "gles-tcp-ack:${if (alrInstalledPackageGlesIpcBridgePassed) "PASS" else "FAIL"}," +
@@ -924,7 +944,7 @@ class MainActivity : Activity() {
                 "vulkan-loader:${if (alrInstalledPackageVulkanLoaderInfoPassed) "PASS" else "FAIL"}," +
                 "vulkan-loader-unix:${if (alrInstalledPackageVulkanUnixLoaderInfoPassed) "PASS" else "FAIL"}"
 
-        val executionSummary = "build: 0.4.101-simple-gui-demo" +
+        val executionSummary = "build: 0.4.102-gimp-demo-profile" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -973,6 +993,8 @@ class MainActivity : Activity() {
             "\nDPKG LOCAL INSTALL EXECUTION: ${if (dpkgLocalInstallExecutionPassed) "PASS" else "FAIL"}" +
             "\nINSTALLED PACKAGE EXECUTION: ${if (installedPackageExecutionPassed) "PASS" else "FAIL"}" +
             "\nALR INSTALLED PACKAGE PRELOAD EXECUTION: ${if (alrInstalledPackagePreloadExecutionPassed) "PASS" else "FAIL"}" +
+            "\nGIMP DEMO PROFILE EXECUTION: ${if (gimpDemoProfileExecutionPassed) "PASS" else "FAIL"}" +
+            "\nGIMP DEMO BUNDLE LOCK: ${if (rootfsGimpDemoBundleLockFile.isFile) "PASS" else "FAIL"}" +
             "\nHOST GPU EGL/GLES EXECUTION: ${if (hostGpuHardwareCandidate) "PASS" else "FAIL"}" +
             "\nHOST VULKAN DISCOVERY EXECUTION: ${if (hostVulkanDiscoveryPassed) "PASS" else "FAIL"}" +
             "\nHOST GPU SURFACE EXECUTION: PENDING_SURFACE_CALLBACK" +
@@ -1067,6 +1089,10 @@ class MainActivity : Activity() {
             "\nrootfs local deb exists=${rootfsLocalDebFile.isFile} bytes=${rootfsLocalDebFile.length()}" +
             "\nrootfs /usr/bin/dpkg-deb exists=${rootfsDpkgDebFile.isFile} executable=${rootfsDpkgDebFile.canExecute()} bytes=${rootfsDpkgDebFile.length()}" +
             "\nrootfs installed alr smoke exists=${rootfsInstalledSmokeFile.isFile} executable=${rootfsInstalledSmokeFile.canExecute()} bytes=${rootfsInstalledSmokeFile.length()}" +
+            "\nrootfs installed alr gimp demo exists=${rootfsInstalledGimpDemoFile.isFile} executable=${rootfsInstalledGimpDemoFile.canExecute()} bytes=${rootfsInstalledGimpDemoFile.length()}" +
+            "\nrootfs gimp demo profile exists=${rootfsGimpDemoProfileFile.isFile} bytes=${rootfsGimpDemoProfileFile.length()}" +
+            "\nrootfs gimp demo bundle lock exists=${rootfsGimpDemoBundleLockFile.isFile} bytes=${rootfsGimpDemoBundleLockFile.length()}" +
+            "\nrootfs /usr/bin/gimp exists=${rootfsGimpBinaryFile.isFile} executable=${rootfsGimpBinaryFile.canExecute()} bytes=${rootfsGimpBinaryFile.length()}" +
             "\nrootfs installed alr gpu smoke exists=${rootfsInstalledGpuSmokeFile.isFile} executable=${rootfsInstalledGpuSmokeFile.canExecute()} bytes=${rootfsInstalledGpuSmokeFile.length()}" +
             "\nrootfs installed alr gles demo exists=${rootfsInstalledGlesDemoFile.isFile} executable=${rootfsInstalledGlesDemoFile.canExecute()} bytes=${rootfsInstalledGlesDemoFile.length()}" +
             "\nrootfs installed alr gles procaddr demo exists=${rootfsInstalledGlesProcaddrDemoFile.isFile} executable=${rootfsInstalledGlesProcaddrDemoFile.canExecute()} bytes=${rootfsInstalledGlesProcaddrDemoFile.length()}" +
@@ -1631,6 +1657,9 @@ class MainActivity : Activity() {
             "\nalr installed package preload path rewrite=${alrInstalledPackageSmokePreloadResult.stdout.lineStartingWith("alr handoff path rewrite count=")}" +
             "\nalr installed package preload stdout=${alrInstalledPackageSmokePreloadResult.stdout.alrHandoffStdoutText()}" +
             "\nalr installed package preload stderr=${alrInstalledPackageSmokePreloadResult.stdout.alrHandoffStderrText()}" +
+            "\nalr installed package gimp demo profile handoff=${alrInstalledPackageGimpDemoProfileResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
+            "\nalr installed package gimp demo profile stdout=$gimpDemoProfileStdout" +
+            "\nalr installed package gimp demo profile stderr=${alrInstalledPackageGimpDemoProfileResult.stdout.alrHandoffStderrText()}" +
             "\nproot dpkg -i local deb exit=${prootDpkgInstallLocalResult.exitCode}" +
             "\nproot dpkg -i local deb stdout=${prootDpkgInstallLocalResult.stdout}" +
             "\nproot dpkg -i local deb stderr=${prootDpkgInstallLocalResult.stderr}" +
@@ -1753,6 +1782,7 @@ class MainActivity : Activity() {
             resultBlock("alr dpkg -i local deb", alrDpkgInstallLocalResult) +
             resultBlock("alr dpkg -i local deb preload", alrDpkgInstallLocalPreloadResult) +
             resultBlock("alr installed package smoke preload", alrInstalledPackageSmokePreloadResult) +
+            resultBlock("alr installed package gimp demo profile", alrInstalledPackageGimpDemoProfileResult) +
             resultBlock("proot dpkg -i local deb", prootDpkgInstallLocalResult) +
             resultBlock("proot installed package smoke", prootInstalledPackageSmokeResult) +
             resultBlock("proot guest gpu client", prootGuestGpuClientResult) +
@@ -1798,11 +1828,13 @@ class MainActivity : Activity() {
         Log.i(
             "ALR_DEVICE_EVIDENCE",
             listOf(
-                "build: 0.4.101-simple-gui-demo",
+                "build: 0.4.102-gimp-demo-profile",
                 "WAYLAND DISPLAY SOCKET AVAILABLE: ${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}",
                 "WAYLAND DISPLAY COMMIT SURFACE EXECUTION: ${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}",
                 "SIMPLE GUI DEMO EXECUTION: ${if (alrInstalledPackageSimpleGuiDemoPassed) "PASS" else "FAIL"}",
                 "SIMPLE GUI DEMO GLIBC DYNAMIC EXECUTION: ${if (alrInstalledPackageSimpleGuiDemoPassed) "PASS" else "FAIL"}",
+                "GIMP DEMO PROFILE EXECUTION: ${if (gimpDemoProfileExecutionPassed) "PASS" else "FAIL"}",
+                "GIMP DEMO BUNDLE LOCK: ${if (rootfsGimpDemoBundleLockFile.isFile) "PASS" else "FAIL"}",
                 "ANDROID HOST AHARDWAREBUFFER EXECUTION: ${if (hostHardwareBufferPassed) "PASS" else "FAIL"}",
                 "WAYLAND DISPLAY AHARDWAREBUFFER BACKING EXECUTION: ${if (waylandHardwareBufferBridgePassed) "PASS" else "FAIL"}",
                 hostHardwareBufferProbe.lineStartingWith("ahardwarebuffer allocated buffers="),
@@ -1821,6 +1853,11 @@ class MainActivity : Activity() {
                 "rootfs /usr/bin/alr-wayland-display-client exists=${rootfsWaylandDisplayClientFile.isFile} executable=${rootfsWaylandDisplayClientFile.canExecute()} bytes=${rootfsWaylandDisplayClientFile.length()}",
                 "rootfs installed alr simple gui demo exists=${rootfsInstalledSimpleGuiDemoFile.isFile} executable=${rootfsInstalledSimpleGuiDemoFile.canExecute()} bytes=${rootfsInstalledSimpleGuiDemoFile.length()}",
                 "rootfs /usr/bin/alr-simple-gui-demo exists=${rootfsSimpleGuiDemoFile.isFile} executable=${rootfsSimpleGuiDemoFile.canExecute()} bytes=${rootfsSimpleGuiDemoFile.length()}",
+                "rootfs installed alr gimp demo exists=${rootfsInstalledGimpDemoFile.isFile} executable=${rootfsInstalledGimpDemoFile.canExecute()} bytes=${rootfsInstalledGimpDemoFile.length()}",
+                "rootfs gimp demo profile exists=${rootfsGimpDemoProfileFile.isFile} bytes=${rootfsGimpDemoProfileFile.length()}",
+                "rootfs gimp demo bundle lock exists=${rootfsGimpDemoBundleLockFile.isFile} bytes=${rootfsGimpDemoBundleLockFile.length()}",
+                "rootfs /usr/bin/gimp exists=${rootfsGimpBinaryFile.isFile} executable=${rootfsGimpBinaryFile.canExecute()} bytes=${rootfsGimpBinaryFile.length()}",
+                "gimp demo profile stdout=$gimpDemoProfileStdout",
                 "simple gui demo glibc dynamic=${alrInstalledPackageSimpleGuiDemoBridgeResult.clientResult.stdout.alrHandoffStdoutText().contains("glibc_dynamic=true")}",
                 "simple gui demo display commits=${alrInstalledPackageSimpleGuiDemoBridgeResult.commands.size}/${alrInstalledPackageSimpleGuiDemoBridgeResult.expectedFrames}",
                 "simple gui demo binary messages=${alrInstalledPackageSimpleGuiDemoBridgeResult.rawLines.count { it.startsWith("ALR_WL_BINARY_MESSAGE ") }}",
@@ -1921,7 +1958,7 @@ class MainActivity : Activity() {
                     Log.i(
                         "ALR_SURFACE_EVIDENCE",
                         listOf(
-                            "build: 0.4.101-simple-gui-demo",
+                            "build: 0.4.102-gimp-demo-profile",
                             "WAYLAND DISPLAY SOCKET AVAILABLE: ${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}",
                             "WAYLAND DISPLAY COMMIT SURFACE EXECUTION: ${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}",
                             "SIMPLE GUI DEMO EXECUTION: ${if (alrInstalledPackageSimpleGuiDemoPassed) "PASS" else "FAIL"}",

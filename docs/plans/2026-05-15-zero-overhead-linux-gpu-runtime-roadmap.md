@@ -1785,16 +1785,20 @@ Next implementation batch:
    `alr-simple-gui-demo` path, with explicit Android evidence that the demo
    launches through `/lib/ld-linux-aarch64.so.1` and presents through the
    Wayland/AHardwareBuffer/Surface path.
-2. V102-V105: grow the rootfs from a tiny smoke archive into a GIMP-capable
+2. V102: embed the Debian bookworm arm64 GIMP bundle lock, GIMP Wayland launch
+   profile, and installed package launcher. This creates a deterministic
+   `gimp --new-instance --no-data --no-fonts` target without pretending GIMP is
+   installed yet.
+3. V103-V105: grow the rootfs from a tiny smoke archive into a GIMP-capable
    Debian GUI bundle: GTK stack, GIO modules, fontconfig, shared MIME data,
-   icons/themes, GEGL/Babl, image-codec libraries, and a deterministic
-   `gimp --new-instance` launcher profile.
-3. V106-V110: extend the Wayland/graphics bridge from the controlled subset to
+   icons/themes, GEGL/Babl, image-codec libraries, and the first `/usr/bin/gimp`
+   binary presence check.
+4. V106-V110: extend the Wayland/graphics bridge from the controlled subset to
    the protocol and buffer behavior GIMP/GTK needs, while keeping Android-native
    Surface/EGL/Vulkan as the presentation target instead of VNC.
-4. V111-V114: replace the loader-info smoke with the real Khronos Vulkan loader
+5. V111-V114: replace the loader-info smoke with the real Khronos Vulkan loader
    or a stricter ABI-compatible loader subset, then route OpenGL-over-Zink and
    native Vulkan probes through the same host backend plan.
-5. V115-V118: run the GIMP launch demo on the connected Android device, capture
+6. V115-V118: run the GIMP launch demo on the connected Android device, capture
    visual present/fence/package evidence, and compare CPU/GPU path overhead
    against PRoot/proroot-class baselines and VNC-style GUI paths.

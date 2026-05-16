@@ -603,6 +603,23 @@ class NativeCommandRunner(
             extraGuestEnvironment = preloadPathFastPathEnvironment(rootfsDir),
         )
 
+    fun runAlrRuntimeTrampolineInstalledPackageGimpDemoProfile(rootfsDir: File): NativeCommandResult =
+        runAlrRuntimeTrampolineGlibcRootfsProgram(
+            rootfsDir,
+            "/bin/dash",
+            listOf("/usr/local/bin/alr-package-gimp-demo"),
+            timeoutMs = 8000,
+            pathRewrite = true,
+            pathRewriteLimit = 2048,
+            pathRewriteIdleSyscallLimit = 256,
+            extraGuestEnvironment = preloadPathFastPathEnvironment(rootfsDir) + mapOf(
+                "GDK_BACKEND" to "wayland",
+                "WAYLAND_DISPLAY" to "alr-gimp-0",
+                "XDG_RUNTIME_DIR" to "/usr/share/alr-smoke/alr-wayland-runtime",
+                "NO_AT_BRIDGE" to "1",
+            ),
+        )
+
     fun runAlrRuntimeTrampolineInstalledPackageGpuSmoke(rootfsDir: File, port: Int): NativeCommandResult =
         runAlrRuntimeTrampoline(
             rootfsDir,

@@ -9,7 +9,7 @@ PAYLOAD = ROOT / "app" / "src" / "main" / "assets" / "rootfs" / "payloads" / "ti
 def test_android_assets_include_rootfs_manifest_and_payload():
     assert MANIFEST.is_file()
     assert PAYLOAD.is_file()
-    assert PAYLOAD.stat().st_size == 35348480
+    assert PAYLOAD.stat().st_size == 35481600
 
 
 def test_android_asset_manifest_matches_host_manifest():
@@ -310,6 +310,9 @@ def test_tiny_rootfs_contains_local_deb_install_smoke_package():
             wayland_gui = data_archive.extractfile("./usr/local/bin/alr-package-wayland-gpu-client").read()
             x11_gui = data_archive.extractfile("./usr/local/bin/alr-package-x11-gpu-client").read()
             wayland_display = data_archive.extractfile("./usr/local/bin/alr-package-wayland-display-client").read()
+            gimp_demo = data_archive.extractfile("./usr/local/bin/alr-package-gimp-demo").read()
+            gimp_profile = data_archive.extractfile("./usr/share/androlinux/gimp-demo-profile.json").read()
+            gimp_lock = data_archive.extractfile("./usr/share/androlinux/gimp-demo-bundle.lock.json").read()
             vulkan_discovery = data_archive.extractfile("./usr/local/bin/alr-package-vulkan-discovery-client").read()
             vulkan_proxy_smoke = data_archive.extractfile("./usr/local/bin/alr-package-vulkan-proxy-smoke").read()
             vulkan_icd_smoke = data_archive.extractfile("./usr/local/bin/alr-package-vulkan-icd-manifest-smoke").read()
@@ -358,6 +361,13 @@ def test_tiny_rootfs_contains_local_deb_install_smoke_package():
         assert b"dirty_bytes=%zu" in wayland_display
         assert b"update=partial" in wayland_display
         assert b"ALR_WL_DISPLAY_CLIENT ok" in wayland_display
+        assert b"ALR_GIMP_DEMO_PROFILE_READY target=gimp" in gimp_demo
+        assert b"ALR_GIMP_DEMO_BUNDLE_LOCK present=true" in gimp_demo
+        assert b"ALR_GIMP_DEMO_BINARY present=false" in gimp_demo
+        assert b'"target_app": "gimp"' in gimp_profile
+        assert b'"package_count": 246' in gimp_lock
+        assert b'"package": "gimp"' in gimp_lock
+        assert b'"download_size_mib": 122.27' in gimp_lock
         assert vulkan_discovery.startswith(b"\x7fELF")
         assert b"ALR_VK_DEVICE_RECORD" in vulkan_discovery
         assert b"ALR_VK_DISCOVERY_DEVICE_RECORD ok" in vulkan_discovery

@@ -1056,6 +1056,31 @@ simple gui demo android surface candidate=true
 ALR_SIMPLE_GUI_DEMO ok
 ```
 
+Build `0.4.102-gimp-demo-profile` makes GIMP the named GUI application target
+for the remaining V118 path. The Android app still renders the V101 simple demo
+frames, but the rootfs now also contains:
+
+- `/usr/share/androlinux/gimp-demo-bundle.lock.json`, a Debian bookworm arm64
+  strict dependency lock for `gimp`.
+- `/usr/share/androlinux/gimp-demo-profile.json`, the intended Wayland launch
+  environment.
+- `/usr/local/bin/alr-package-gimp-demo`, an installed package launcher that
+  reports profile readiness and either execs `/usr/bin/gimp` or reports the
+  bundle as not installed.
+
+Expected V102 GIMP profile evidence:
+
+```text
+GIMP DEMO PROFILE EXECUTION: PASS
+GIMP DEMO BUNDLE LOCK: PASS
+ALR_GIMP_DEMO_PROFILE_READY target=gimp
+ALR_GIMP_DEMO_PROFILE_PROGRAM path=/usr/bin/gimp
+ALR_GIMP_DEMO_PROFILE_ENV GDK_BACKEND=wayland WAYLAND_DISPLAY=alr-gimp-0
+ALR_GIMP_DEMO_BUNDLE_LOCK present=true package_count=246
+ALR_GIMP_DEMO_BINARY present=false path=/usr/bin/gimp
+ALR_GIMP_DEMO_NEXT_STEP install_debian_arm64_bundle_from_lock
+```
+
 ## Open Questions
 
 - Can the V90 file-backed payload bridge move fully behind the v96 host-buffer path without keeping memfd payloads as mandatory fallback evidence?

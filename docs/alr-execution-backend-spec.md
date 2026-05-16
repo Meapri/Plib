@@ -1652,6 +1652,34 @@ so subsequent backend work should grow rootfs packaging, GTK/GIO/font/module
 coverage, and Wayland protocol coverage toward `gimp --new-instance` rather than
 inventing another tiny final fixture.
 
+Build `0.4.102-gimp-demo-profile` adds the first concrete GIMP staging
+artifact. It does not claim GIMP is installed or rendered yet. Instead, it
+locks the Debian bookworm arm64 strict dependency closure for `gimp`, embeds the
+launch profile and bundle lock in the rootfs, and runs an installed package
+launcher that reports the exact next install step when `/usr/bin/gimp` is not
+present.
+
+```text
+build: 0.4.102-gimp-demo-profile
+versionCode=102
+versionName=0.4.102-gimp-demo-profile
+rootfs_version=bookworm-slim-2026-05-gimp-profile-v102
+rootfs_sha256=79bb73d7abcf28dbd32e33497e67f3f53db6b0a1f54dcd57a7583be215f2ecca
+rootfs_size=35481600
+GIMP DEMO PROFILE EXECUTION: PASS
+GIMP DEMO BUNDLE LOCK: PASS
+ALR_GIMP_DEMO_PROFILE_READY target=gimp
+ALR_GIMP_DEMO_BUNDLE_LOCK present=true package_count=246 download_size_mib=122.27
+ALR_GIMP_DEMO_BINARY present=false path=/usr/bin/gimp
+ALR_GIMP_DEMO_NEXT_STEP install_debian_arm64_bundle_from_lock
+```
+
+The bundle lock is generated from the official Debian `bookworm/main` arm64
+`Packages.xz` index by `tools/gimp_bundle_resolver.py`. The default profile is
+strict `Pre-Depends` + `Depends` only, currently 246 packages and 122.27 MiB of
+`.deb` downloads, because APK/device iteration needs a minimal GIMP launch set
+before optional recommends are added.
+
 Report:
 
 ```text
