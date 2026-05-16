@@ -131,10 +131,15 @@ def test_android_reports_materialized_gimp_version_probe():
     assert "gimp gtk wayland server requests=" in text
     assert "gimp gtk wayland server response bytes=" in text
     assert "gimp gtk wayland server globals=" in text
+    assert "gimp gtk wayland server request trace=" in text
+    assert "gimp gtk wayland server bind trace=" in text
     assert "minimalWaylandGlobals" in text
     assert "waylandRegistryGlobal" in text
+    assert '"wl_shm_pool" -> when (opcode)' in text
     assert "gimp gui quit wayland request=" in text
     assert "gimp gui quit wayland server globals=" in text
+    assert "gimp gui quit wayland server request trace=" in text
+    assert "gimp gui quit wayland server bind trace=" in text
     assert "gimp gui wayland request=" in text
     assert "GIMP DEMO BUNDLE LOCK:" in text
     assert "rootfs /usr/bin/gimp exists=" in text

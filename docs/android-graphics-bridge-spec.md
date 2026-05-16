@@ -1101,9 +1101,10 @@ batch interpreter. The console version probe passes, but the non-GUI core quit
 probe now reaches an ALR-controlled timeout report instead of the Java outer
 timeout after ALR emulates the NUMA/mempolicy probe syscalls that previously
 stopped at `SIGSYS`. The GUI quit probe now reaches the Android Wayland socket
-and issues `wl_display.get_registry`; the remaining work is the Script-Fu batch
-timeout and full GUI Wayland surface path. The GTK Wayland registry probe is
-passing.
+binds `wl_compositor`, `wl_shm`, and `wl_output`, then reaches
+`wl_shm.create_pool` and repeated `wl_shm_pool.resize` requests. The remaining
+work is the Script-Fu batch timeout and full GUI Wayland surface path. The GTK
+Wayland registry probe is passing.
 
 Expected V104 GIMP 3 Wayland evidence:
 
@@ -1115,11 +1116,11 @@ GIMP CORE QUIT PROBE EXECUTION: FAIL
 GIMP CORE QUIT BLOCKER: CORE_QUIT_TIMEOUT
 GIMP CONSOLE BATCH QUIT PROBE EXECUTION: FAIL
 GIMP CONSOLE BATCH QUIT BLOCKER: CORE_BATCH_TIMEOUT
-full gimp probe mode=skipped
+full gimp probe mode=fast-scout
 GIMP GTK WAYLAND PROBE EXECUTION: PASS
 GIMP GUI QUIT WAYLAND PROBE EXECUTION: PASS
 GIMP GUI WAYLAND PROBE EXECUTION:
-GIMP GUI WAYLAND BLOCKER: FAST_VERIFIER_SKIPPED
+GIMP GUI WAYLAND BLOCKER: PRE_WAYLAND_CONNECT
 GIMP DEMO BUNDLE LOCK: PASS
 ALR_GIMP_DEMO_PROFILE_ENV GDK_BACKEND=wayland WAYLAND_DISPLAY=alr-gimp-0 XDG_RUNTIME_DIR=/tmp
 ALR_GIMP_DEMO_BUNDLE_LOCK present=true suite=trixie package_count=313
@@ -1149,12 +1150,19 @@ gimp gtk wayland request=wl_display.get_registry
 gimp gtk wayland server requests=10
 gimp gtk wayland server response bytes=316
 gimp gtk wayland server globals=wl_compositor,wl_shm,xdg_wm_base,wl_seat,wl_output
+gimp gtk wayland server request trace=wl_display.get_registry,wl_display.sync,wl_registry.bind:wl_compositor,wl_registry.bind:wl_shm,wl_registry.bind:wl_output,wl_display.sync,wl_shm.create_pool,wl_shm_pool.resize
+gimp gtk wayland server bind trace=wl_compositor,wl_shm,wl_output
+gimp gtk wayland server last request=wl_shm_pool.resize
 gimp gtk wayland handoff=ALR STATIC ENTRY HANDOFF: PASS
 gimp gtk wayland stdout=ALR_GIMP3_GTK_WAYLAND_PROBE ok
 gimp gui quit wayland connected=true
 gimp gui quit wayland request=wl_display.get_registry
+gimp gui quit wayland server request trace=wl_display.get_registry,wl_display.sync,wl_registry.bind:wl_compositor,wl_registry.bind:wl_shm,wl_registry.bind:wl_output,wl_display.sync,wl_shm.create_pool,wl_shm_pool.resize
+gimp gui quit wayland server bind trace=wl_compositor,wl_shm,wl_output
+gimp gui quit wayland server last request=wl_shm_pool.resize
 gimp gui quit wayland handoff=ALR STATIC ENTRY HANDOFF: FAIL
-gimp gui wayland blocker=fast-verifier-skipped
+gimp gui wayland blocker=pre-wayland-connect
+gimp gui wayland handoff=ALR STATIC ENTRY HANDOFF: FAIL
 wayland ahardwarebuffer surface hardware render=true
 surface vulkan hardware render=true
 ```

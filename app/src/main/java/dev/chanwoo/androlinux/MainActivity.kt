@@ -18,6 +18,7 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileDescriptor
 import java.io.FileInputStream
+import java.io.IOException
 import java.io.InputStream
 import java.net.InetAddress
 import java.net.ServerSocket
@@ -2211,7 +2212,7 @@ class MainActivity : Activity() {
             File(applicationInfo.nativeLibraryDir),
             File(cacheDir, "proot-tmp"),
         )
-        val runFullGimpProbe = intent.getBooleanExtra("ALR_RUN_FULL_GIMP_PROBE", false)
+        val runDeepGimpProbe = intent.getBooleanExtra("ALR_RUN_FULL_GIMP_PROBE", false)
         val gimpProfileResult = nativeCommandRunner.runAlrRuntimeTrampolineInstalledPackageGimpDemoProfile(rootfsStatus.rootfsDir)
         val gimpHelpResult = nativeCommandRunner.runAlrRuntimeTrampolineGimp3HelpProbe(rootfsStatus.rootfsDir)
         val gimpConsoleVersionResult = nativeCommandRunner.runAlrRuntimeTrampolineGimp3ConsoleVersionProbe(rootfsStatus.rootfsDir)
@@ -2219,11 +2220,11 @@ class MainActivity : Activity() {
         val gimpConsoleBatchQuitResult = nativeCommandRunner.runAlrRuntimeTrampolineGimp3ConsoleBatchQuitProbe(rootfsStatus.rootfsDir)
         val gimpGtkWaylandProbeResult = runGimpGtkWaylandProbe(nativeCommandRunner, rootfsStatus.rootfsDir)
         val gimpGuiQuitWaylandProbeResult = runGimpGuiQuitWaylandProbe(nativeCommandRunner, rootfsStatus.rootfsDir)
-        val gimpGuiWaylandProbeResult = if (runFullGimpProbe) {
-            runGimpGuiWaylandProbe(nativeCommandRunner, rootfsStatus.rootfsDir, fast = true)
-        } else {
-            skippedGimpGuiWaylandProbe(rootfsStatus.rootfsDir)
-        }
+        val gimpGuiWaylandProbeResult = runGimpGuiWaylandProbe(
+            nativeCommandRunner,
+            rootfsStatus.rootfsDir,
+            fast = !runDeepGimpProbe,
+        )
 
         val rootfsInstalledGimpDemoFile = File(rootfsStatus.rootfsDir, "usr/local/bin/alr-package-gimp-demo")
         val rootfsGimpDemoProfileFile = File(rootfsStatus.rootfsDir, "usr/share/androlinux/gimp-demo-profile.json")
@@ -2289,10 +2290,10 @@ class MainActivity : Activity() {
         val gimpGtkWaylandProbePassed = isWaylandRegistryProbe(gimpGtkWaylandProbeResult)
         val gimpGuiQuitWaylandProbePassed = isWaylandRegistryProbe(gimpGuiQuitWaylandProbeResult)
         val gimpGuiWaylandProbePassed = isWaylandRegistryProbe(gimpGuiWaylandProbeResult)
-        val gimpGuiWaylandBlocker = if (runFullGimpProbe) {
+        val gimpGuiWaylandBlocker = if (runDeepGimpProbe || gimpGuiWaylandProbeResult.connected) {
             describeGimpGuiWaylandBlocker(gimpGuiWaylandProbePassed, gimpGuiWaylandProbeResult)
         } else {
-            "fast-verifier-skipped"
+            "pre-wayland-connect"
         }
 
         val evidence = listOf(
@@ -2301,7 +2302,7 @@ class MainActivity : Activity() {
             "versionName=0.4.104-gimp3-wayland",
             "rootfs plan verified=${rootfsPlan.assetDestinations.values.all { it.exists() }}",
             "rootfs verified=${rootfsStatus.verified} extracted=${rootfsStatus.extracted}",
-            "full gimp probe mode=${if (runFullGimpProbe) "enabled" else "skipped"}",
+            "full gimp probe mode=${if (runDeepGimpProbe) "deep" else "fast-scout"}",
             "GIMP DEMO PROFILE EXECUTION: ${if (gimpDemoProfileExecutionPassed) "PASS" else "FAIL"}",
             "GIMP CLI HELP PROBE EXECUTION: ${if (gimpHelpExecutionPassed) "PASS" else "FAIL"}",
             "GIMP CONSOLE VERSION PROBE EXECUTION: ${if (gimpConsoleVersionPassed) "PASS" else "FAIL"}",
@@ -2365,6 +2366,9 @@ class MainActivity : Activity() {
             "gimp gtk wayland server requests=${gimpGtkWaylandProbeResult.waylandRequestCount}",
             "gimp gtk wayland server response bytes=${gimpGtkWaylandProbeResult.waylandResponseBytes}",
             "gimp gtk wayland server globals=${gimpGtkWaylandProbeResult.waylandGlobals.joinToString(",")}",
+            "gimp gtk wayland server request trace=${gimpGtkWaylandProbeResult.waylandRequestNames.joinToString(",")}",
+            "gimp gtk wayland server bind trace=${gimpGtkWaylandProbeResult.waylandBindInterfaces.joinToString(",")}",
+            "gimp gtk wayland server last request=${gimpGtkWaylandProbeResult.lastWaylandRequest}",
             "gimp gtk wayland error=${gimpGtkWaylandProbeResult.error ?: "none"}",
             "gimp gtk wayland handoff=${gimpGtkWaylandProbeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}",
             "gimp gtk wayland stdout=${gimpGtkWaylandProbeResult.clientResult.stdout.alrHandoffStdoutText().forEvidenceLog()}",
@@ -2380,6 +2384,9 @@ class MainActivity : Activity() {
             "gimp gui quit wayland server requests=${gimpGuiQuitWaylandProbeResult.waylandRequestCount}",
             "gimp gui quit wayland server response bytes=${gimpGuiQuitWaylandProbeResult.waylandResponseBytes}",
             "gimp gui quit wayland server globals=${gimpGuiQuitWaylandProbeResult.waylandGlobals.joinToString(",")}",
+            "gimp gui quit wayland server request trace=${gimpGuiQuitWaylandProbeResult.waylandRequestNames.joinToString(",")}",
+            "gimp gui quit wayland server bind trace=${gimpGuiQuitWaylandProbeResult.waylandBindInterfaces.joinToString(",")}",
+            "gimp gui quit wayland server last request=${gimpGuiQuitWaylandProbeResult.lastWaylandRequest}",
             "gimp gui quit wayland error=${gimpGuiQuitWaylandProbeResult.error ?: "none"}",
             "gimp gui quit wayland handoff=${gimpGuiQuitWaylandProbeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}",
             "gimp gui quit wayland stdout=${gimpGuiQuitWaylandProbeResult.clientResult.stdout.alrHandoffStdoutText().forEvidenceLog()}",
@@ -2395,6 +2402,9 @@ class MainActivity : Activity() {
             "gimp gui wayland server requests=${gimpGuiWaylandProbeResult.waylandRequestCount}",
             "gimp gui wayland server response bytes=${gimpGuiWaylandProbeResult.waylandResponseBytes}",
             "gimp gui wayland server globals=${gimpGuiWaylandProbeResult.waylandGlobals.joinToString(",")}",
+            "gimp gui wayland server request trace=${gimpGuiWaylandProbeResult.waylandRequestNames.joinToString(",")}",
+            "gimp gui wayland server bind trace=${gimpGuiWaylandProbeResult.waylandBindInterfaces.joinToString(",")}",
+            "gimp gui wayland server last request=${gimpGuiWaylandProbeResult.lastWaylandRequest}",
             "gimp gui wayland error=${gimpGuiWaylandProbeResult.error ?: "none"}",
             "gimp gui wayland blocker=$gimpGuiWaylandBlocker",
             "gimp gui wayland handoff=${gimpGuiWaylandProbeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}",
@@ -2537,6 +2547,9 @@ class MainActivity : Activity() {
         val waylandRequestCount: Int = 0,
         val waylandResponseBytes: Int = 0,
         val waylandGlobals: List<String> = emptyList(),
+        val waylandRequestNames: List<String> = emptyList(),
+        val waylandBindInterfaces: List<String> = emptyList(),
+        val lastWaylandRequest: String = "",
     )
 
     private data class GuestFdPayloadVerification(
@@ -3550,6 +3563,8 @@ class MainActivity : Activity() {
         var waylandRequestCount = 0
         var waylandResponseBytes = 0
         var waylandGlobals = emptyList<String>()
+        var waylandRequestNames = emptyList<String>()
+        var waylandBindInterfaces = emptyList<String>()
         var server: LocalServerSocket? = null
         val listenSocket = try {
             LocalSocket().also { socket ->
@@ -3574,6 +3589,8 @@ class MainActivity : Activity() {
                             waylandRequestCount = stats.requestCount
                             waylandResponseBytes = stats.responseBytes
                             waylandGlobals = stats.globals
+                            waylandRequestNames = stats.requestNames
+                            waylandBindInterfaces = stats.bindInterfaces
                         }
                     }
                 } catch (error: SocketTimeoutException) {
@@ -3625,6 +3642,9 @@ class MainActivity : Activity() {
             waylandRequestCount = waylandRequestCount,
             waylandResponseBytes = waylandResponseBytes,
             waylandGlobals = waylandGlobals,
+            waylandRequestNames = waylandRequestNames,
+            waylandBindInterfaces = waylandBindInterfaces,
+            lastWaylandRequest = waylandRequestNames.lastOrNull().orEmpty(),
         )
     }
 
@@ -3632,6 +3652,8 @@ class MainActivity : Activity() {
         val requestCount: Int,
         val responseBytes: Int,
         val globals: List<String>,
+        val requestNames: List<String>,
+        val bindInterfaces: List<String>,
     )
 
     private data class WaylandString(
@@ -3648,6 +3670,8 @@ class MainActivity : Activity() {
         val objectInterfaces = mutableMapOf(1 to "wl_display")
         val globals = minimalWaylandGlobals()
         val globalNames = globals.map { it.interfaceName }
+        val requestNames = mutableListOf<String>()
+        val bindInterfaces = mutableListOf<String>()
         var requestCount = 0
         var responseBytes = 0
         var serial = 1
@@ -3655,6 +3679,8 @@ class MainActivity : Activity() {
             val header = try {
                 readExactlyOrNull(input, 8)
             } catch (_: SocketTimeoutException) {
+                break
+            } catch (_: IOException) {
                 break
             } ?: break
             rawBytes.write(header)
@@ -3667,9 +3693,17 @@ class MainActivity : Activity() {
                 readExactlyOrNull(input, size - 8)
             } catch (_: SocketTimeoutException) {
                 break
+            } catch (_: IOException) {
+                break
             } ?: break
             rawBytes.write(payload)
             requestCount += 1
+            val interfaceName = objectInterfaces[objectId] ?: "unknown"
+            val requestName = describeMinimalWaylandRequest(interfaceName, opcode, payload)
+            requestNames += requestName
+            if (requestName.startsWith("wl_registry.bind:")) {
+                bindInterfaces += requestName.substringAfter(":")
+            }
             val responses = buildMinimalWaylandResponses(
                 objectId = objectId,
                 opcode = opcode,
@@ -3688,6 +3722,8 @@ class MainActivity : Activity() {
             requestCount = requestCount,
             responseBytes = responseBytes,
             globals = globalNames,
+            requestNames = requestNames,
+            bindInterfaces = bindInterfaces,
         )
     }
 
@@ -3708,6 +3744,85 @@ class MainActivity : Activity() {
 
     private fun minimalWaylandGlobalNames(): List<String> =
         minimalWaylandGlobals().map { it.interfaceName }
+
+    private fun describeMinimalWaylandRequest(
+        interfaceName: String,
+        opcode: Int,
+        payload: ByteArray,
+    ): String =
+        when (interfaceName) {
+            "wl_display" -> when (opcode) {
+                0 -> "wl_display.sync"
+                1 -> "wl_display.get_registry"
+                else -> "wl_display.op$opcode"
+            }
+            "wl_registry" -> when (opcode) {
+                0 -> "wl_registry.bind:${readRegistryBindInterface(payload)}"
+                else -> "wl_registry.op$opcode"
+            }
+            "wl_compositor" -> when (opcode) {
+                0 -> "wl_compositor.create_surface"
+                1 -> "wl_compositor.create_region"
+                else -> "wl_compositor.op$opcode"
+            }
+            "wl_surface" -> when (opcode) {
+                0 -> "wl_surface.destroy"
+                1 -> "wl_surface.attach"
+                2 -> "wl_surface.damage"
+                3 -> "wl_surface.frame"
+                4 -> "wl_surface.set_opaque_region"
+                5 -> "wl_surface.set_input_region"
+                6 -> "wl_surface.commit"
+                9 -> "wl_surface.damage_buffer"
+                else -> "wl_surface.op$opcode"
+            }
+            "wl_shm" -> when (opcode) {
+                0 -> "wl_shm.create_pool"
+                else -> "wl_shm.op$opcode"
+            }
+            "wl_shm_pool" -> when (opcode) {
+                0 -> "wl_shm_pool.create_buffer"
+                1 -> "wl_shm_pool.destroy"
+                2 -> "wl_shm_pool.resize"
+                else -> "wl_shm_pool.op$opcode"
+            }
+            "xdg_wm_base" -> when (opcode) {
+                0 -> "xdg_wm_base.destroy"
+                1 -> "xdg_wm_base.create_positioner"
+                2 -> "xdg_wm_base.get_xdg_surface"
+                3 -> "xdg_wm_base.pong"
+                else -> "xdg_wm_base.op$opcode"
+            }
+            "xdg_surface" -> when (opcode) {
+                0 -> "xdg_surface.destroy"
+                1 -> "xdg_surface.get_toplevel"
+                2 -> "xdg_surface.get_popup"
+                3 -> "xdg_surface.set_window_geometry"
+                4 -> "xdg_surface.ack_configure"
+                else -> "xdg_surface.op$opcode"
+            }
+            "xdg_toplevel" -> when (opcode) {
+                0 -> "xdg_toplevel.destroy"
+                1 -> "xdg_toplevel.set_parent"
+                2 -> "xdg_toplevel.set_title"
+                3 -> "xdg_toplevel.set_app_id"
+                4 -> "xdg_toplevel.show_window_menu"
+                5 -> "xdg_toplevel.move"
+                6 -> "xdg_toplevel.resize"
+                7 -> "xdg_toplevel.set_max_size"
+                8 -> "xdg_toplevel.set_min_size"
+                9 -> "xdg_toplevel.set_maximized"
+                10 -> "xdg_toplevel.unset_maximized"
+                11 -> "xdg_toplevel.set_fullscreen"
+                12 -> "xdg_toplevel.unset_fullscreen"
+                13 -> "xdg_toplevel.set_minimized"
+                else -> "xdg_toplevel.op$opcode"
+            }
+            else -> "$interfaceName.op$opcode"
+        }
+
+    private fun readRegistryBindInterface(payload: ByteArray): String =
+        if (payload.size >= 8) readWaylandString(payload, 4).value else "unknown"
 
     private fun buildMinimalWaylandResponses(
         objectId: Int,
@@ -3744,6 +3859,16 @@ class MainActivity : Activity() {
         if (interfaceName == "wl_compositor" && opcode == 0 && payload.size >= 4) {
             val surfaceId = readLe32(payload, 0)
             objectInterfaces[surfaceId] = "wl_surface"
+            return emptyList()
+        }
+        if (interfaceName == "wl_shm" && opcode == 0 && payload.size >= 8) {
+            val poolId = readLe32(payload, 0)
+            objectInterfaces[poolId] = "wl_shm_pool"
+            return emptyList()
+        }
+        if (interfaceName == "wl_shm_pool" && opcode == 0 && payload.size >= 4) {
+            val bufferId = readLe32(payload, 0)
+            objectInterfaces[bufferId] = "wl_buffer"
             return emptyList()
         }
         if (interfaceName == "wl_surface" && opcode == 3 && payload.size >= 4) {

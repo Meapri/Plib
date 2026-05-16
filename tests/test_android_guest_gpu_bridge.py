@@ -293,11 +293,11 @@ def test_v104_adb_verifier_checks_gimp3_wayland_evidence():
     assert "GIMP CORE QUIT BLOCKER: CORE_QUIT_TIMEOUT" in script
     assert "GIMP CONSOLE BATCH QUIT PROBE EXECUTION:" in script
     assert "GIMP CONSOLE BATCH QUIT BLOCKER: CORE_BATCH_TIMEOUT" in script
-    assert "full gimp probe mode=skipped" in script
+    assert "full gimp probe mode=fast-scout" in script
     assert "GIMP GTK WAYLAND PROBE EXECUTION: PASS" in script
     assert "GIMP GUI QUIT WAYLAND PROBE EXECUTION: PASS" in script
     assert "GIMP GUI WAYLAND PROBE EXECUTION:" in script
-    assert "GIMP GUI WAYLAND BLOCKER: FAST_VERIFIER_SKIPPED" in script
+    assert "GIMP GUI WAYLAND BLOCKER: PRE_WAYLAND_CONNECT" in script
     assert "ALR_GIMP_DEMO_PROFILE_READY target=gimp" in script
     assert "ALR_GIMP_DEMO_PROFILE_ENV GDK_BACKEND=wayland WAYLAND_DISPLAY=alr-gimp-0 XDG_RUNTIME_DIR=/tmp" in script
     assert "ALR_GIMP_DEMO_BUNDLE_LOCK present=true suite=trixie package_count=313" in script
@@ -322,9 +322,16 @@ def test_v104_adb_verifier_checks_gimp3_wayland_evidence():
     assert "gimp console batch quit blocker=core-batch-timeout" in script
     assert "gimp console batch quit timed out=alr handoff timed out=true" in script
     assert "gimp gtk wayland object=1" in script
+    assert "gimp gtk wayland server request trace=wl_display.get_registry,wl_display.sync,wl_registry.bind:wl_compositor,wl_registry.bind:wl_shm,wl_registry.bind:wl_output,wl_display.sync,wl_shm.create_pool,wl_shm_pool.resize" in script
+    assert "gimp gtk wayland server bind trace=wl_compositor,wl_shm,wl_output" in script
+    assert "gimp gtk wayland server last request=wl_shm_pool.resize" in script
     assert "gimp gui quit wayland connected=true" in script
     assert "gimp gui quit wayland request=wl_display.get_registry" in script
     assert "gimp gui quit wayland handoff=ALR STATIC ENTRY HANDOFF: FAIL" in script
+    assert "gimp gui quit wayland server requests=10" in script
+    assert "gimp gui quit wayland server request trace=wl_display.get_registry,wl_display.sync,wl_registry.bind:wl_compositor,wl_registry.bind:wl_shm,wl_registry.bind:wl_output,wl_display.sync,wl_shm.create_pool,wl_shm_pool.resize" in script
+    assert "gimp gui quit wayland server bind trace=wl_compositor,wl_shm,wl_output" in script
+    assert "gimp gui quit wayland server last request=wl_shm_pool.resize" in script
     assert "gimp gtk wayland opcode=1" in script
     assert "gimp gtk wayland size=12" in script
     assert "gimp gtk wayland request=wl_display.get_registry" in script
@@ -334,7 +341,8 @@ def test_v104_adb_verifier_checks_gimp3_wayland_evidence():
     assert "gimp gtk wayland handoff=ALR STATIC ENTRY HANDOFF: PASS" in script
     assert "gimp gtk wayland stdout=ALR_GIMP3_GTK_WAYLAND_PROBE ok" in script
     assert "gimp gui quit wayland connected=" in script
-    assert "gimp gui wayland blocker=fast-verifier-skipped" in script
+    assert "gimp gui wayland blocker=pre-wayland-connect" in script
+    assert "gimp gui wayland handoff=ALR STATIC ENTRY HANDOFF: FAIL" in script
     assert "versionName=0.4.104-gimp3-wayland" in script
     assert "ALR_WL_BINARY_STREAM bytes=%zu messages=%d checksum=%08x wire=wayland-binary-v1 endian=little" in display_source
     assert "ALR_WL_APP_STREAM_BEGIN frames=%d mode=%s" in display_source
