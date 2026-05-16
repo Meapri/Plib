@@ -32,8 +32,8 @@ Guest shim or proxy client
   Wayland-shaped, X11-shaped, EGL/GLES, or Vulkan ICD subset
         |
         v
-IPC transport
-  loopback TCP first, Unix socket later, shared memory/buffer transport later
+  IPC transport
+  loopback TCP, Unix socket, SCM_RIGHTS memfd payload descriptors
         |
         v
 Android host bridge service
@@ -86,7 +86,10 @@ ALR_GUI_BRIDGE_HOST=127.0.0.1
 ALR_GUI_BRIDGE_PORT=<port>
 ALR_GUI_BRIDGE_PROTOCOL=WAYLAND|X11
 
-WAYLAND_DISPLAY=<future socket name>
+WAYLAND_DISPLAY=alr-wayland-0
+XDG_RUNTIME_DIR=/usr/share/alr-smoke/alr-wayland-runtime
+ALR_WAYLAND_DISPLAY_SOCKET=@<android-local-server-socket>
+ALR_WAYLAND_PAYLOAD_DIR=/usr/share/alr-smoke/alr-wayland-runtime
 DISPLAY=<future display name>
 ```
 
@@ -139,11 +142,16 @@ Purpose:
 - Support dirty rectangles.
 - Measure copy count and latency.
 
-Candidate paths:
+Current paths:
 
-- App-private ashmem/memfd-like path if available.
-- TCP with binary payload for initial portability.
-- Android `AHardwareBuffer` exploration for later host-managed buffers.
+- App-private shared-file RGBA fallback for ordinary APK UIDs.
+- Unix `SCM_RIGHTS` memfd payload descriptors.
+- V92 triple-buffer layout: three frame payload FDs, per-frame `fd_index`,
+  byte count, and FNV-1a checksum verification.
+
+Candidate next path:
+
+- Android `AHardwareBuffer` for host-managed buffers and lower copy count.
 
 ### Stage 4: Fence and Frame Pacing
 
@@ -213,6 +221,26 @@ guest x11 gui bridge execution=PASS
 surface wayland frames rendered=4
 surface x11 frames rendered=4
 surface gui total frames rendered=8
+```
+
+### Renderer v3.5: Wayland Display Socket With FD Payloads
+
+The Android host exposes an app-private `WAYLAND_DISPLAY` endpoint through
+`LocalServerSocket`. The guest connects over Unix domain sockets, sends
+Wayland-shaped compositor/shm/surface records, and passes frame payload memfds
+through `SCM_RIGHTS`.
+
+Report:
+
+```text
+WAYLAND DISPLAY SOCKET AVAILABLE: PASS
+WAYLAND DISPLAY COMMIT SURFACE EXECUTION: PASS
+wayland display shared payload frames=3/3
+wayland display fd payload frames=3/3
+wayland display fd payload bytes=691200
+fd_received=3
+layout=triple-buffer
+transport=unix-abstract-wayland-scm-rights
 ```
 
 ### Renderer v4: Guest GLES Shim

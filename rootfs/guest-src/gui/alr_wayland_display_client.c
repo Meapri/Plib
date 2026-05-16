@@ -7,8 +7,18 @@
 #include <sys/select.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/syscall.h>
 #include <sys/un.h>
+#include <sys/uio.h>
 #include <unistd.h>
+
+#ifndef SYS_memfd_create
+#define SYS_memfd_create 279
+#endif
+
+#ifndef MFD_CLOEXEC
+#define MFD_CLOEXEC 0x0001U
+#endif
 
 static const char* env_or_default(const char* name, const char* fallback) {
     const char* value = getenv(name);
@@ -136,6 +146,84 @@ static int write_rgba_payload(
     return 1;
 }
 
+static int write_all_bytes(int fd, const unsigned char* bytes, size_t byte_count) {
+    size_t written_total = 0;
+    while (written_total < byte_count) {
+        ssize_t written = write(fd, bytes + written_total, byte_count - written_total);
+        if (written <= 0) return 0;
+        written_total += (size_t)written;
+    }
+    return 1;
+}
+
+static unsigned char* build_rgba_payload(
+    int width,
+    int height,
+    float red,
+    float green,
+    float blue,
+    size_t* bytes_out,
+    uint32_t* checksum_out
+) {
+    const size_t pixel_count = (size_t)width * (size_t)height;
+    const size_t byte_count = pixel_count * 4u;
+    unsigned char* pixels = (unsigned char*)malloc(byte_count);
+    if (pixels == 0) return 0;
+    const unsigned char r = (unsigned char)(red * 255.0f);
+    const unsigned char g = (unsigned char)(green * 255.0f);
+    const unsigned char b = (unsigned char)(blue * 255.0f);
+    for (size_t i = 0; i < pixel_count; ++i) {
+        pixels[(i * 4u) + 0u] = b;
+        pixels[(i * 4u) + 1u] = g;
+        pixels[(i * 4u) + 2u] = r;
+        pixels[(i * 4u) + 3u] = 255u;
+    }
+    *bytes_out = byte_count;
+    *checksum_out = fnv1a32(pixels, byte_count);
+    return pixels;
+}
+
+static int create_memfd_payload(
+    const unsigned char* payload,
+    size_t payload_bytes,
+    const char* name
+) {
+    int fd = (int)syscall(SYS_memfd_create, name, MFD_CLOEXEC);
+    if (fd < 0) return -1;
+    if (!write_all_bytes(fd, payload, payload_bytes)) {
+        close(fd);
+        return -1;
+    }
+    if (lseek(fd, 0, SEEK_SET) < 0) {
+        close(fd);
+        return -1;
+    }
+    return fd;
+}
+
+static int send_fd_preamble(int socket_fd, const int* payload_fds, size_t payload_fd_count) {
+    if (payload_fds == 0 || payload_fd_count == 0 || payload_fd_count > 8) return 0;
+    char marker = 'F';
+    struct iovec iov;
+    iov.iov_base = &marker;
+    iov.iov_len = 1;
+    char control[CMSG_SPACE(sizeof(int) * 8u)];
+    memset(control, 0, sizeof(control));
+    struct msghdr msg;
+    memset(&msg, 0, sizeof(msg));
+    msg.msg_iov = &iov;
+    msg.msg_iovlen = 1;
+    msg.msg_control = control;
+    msg.msg_controllen = sizeof(control);
+    struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
+    cmsg->cmsg_level = SOL_SOCKET;
+    cmsg->cmsg_type = SCM_RIGHTS;
+    cmsg->cmsg_len = CMSG_LEN(sizeof(int) * payload_fd_count);
+    memcpy(CMSG_DATA(cmsg), payload_fds, sizeof(int) * payload_fd_count);
+    msg.msg_controllen = CMSG_SPACE(sizeof(int) * payload_fd_count);
+    return sendmsg(socket_fd, &msg, 0) == 1;
+}
+
 int main(void) {
     const char* display = env_or_default("WAYLAND_DISPLAY", "wayland-0");
     const char* runtime_dir = env_or_default("XDG_RUNTIME_DIR", "/tmp");
@@ -154,6 +242,71 @@ int main(void) {
         return 2;
     }
 
+    enum { frame_count = 3 };
+    const float payload_reds[frame_count] = {0.19f, 0.36f, 0.52f};
+    const float payload_greens[frame_count] = {0.24f, 0.43f, 0.31f};
+    const float payload_blues[frame_count] = {0.55f, 0.22f, 0.16f};
+    char payload_paths[frame_count][256];
+    uint32_t checksums[frame_count];
+    size_t payload_bytes[frame_count];
+    int memfds[frame_count];
+    memset(checksums, 0, sizeof(checksums));
+    memset(payload_bytes, 0, sizeof(payload_bytes));
+    for (int seq = 0; seq < frame_count; ++seq) {
+        memfds[seq] = -1;
+    }
+    for (int seq = 0; seq < frame_count; ++seq) {
+        snprintf(payload_paths[seq], sizeof(payload_paths[seq]), "%s/alr-wl-buffer-20-seq%02d.rgba", payload_dir, seq + 1);
+        unsigned char* payload = build_rgba_payload(
+            width,
+            height,
+            payload_reds[seq],
+            payload_greens[seq],
+            payload_blues[seq],
+            &payload_bytes[seq],
+            &checksums[seq]
+        );
+        if (payload == 0) {
+            fprintf(stderr, "ALR_WL_DISPLAY_CLIENT payload allocation failed seq=%d\n", seq + 1);
+            return 17;
+        }
+        if (!write_rgba_payload(
+                payload_paths[seq],
+                width,
+                height,
+                payload_reds[seq],
+                payload_greens[seq],
+                payload_blues[seq],
+                &checksums[seq],
+                &payload_bytes[seq]
+            )) {
+            free(payload);
+            fprintf(stderr, "ALR_WL_DISPLAY_CLIENT payload write failed seq=%d path=%s errno=%d\n", seq + 1, payload_paths[seq], errno);
+            return 12;
+        }
+        char fd_name[64];
+        snprintf(fd_name, sizeof(fd_name), "alr-wayland-buffer-20-seq%02d", seq + 1);
+        memfds[seq] = create_memfd_payload(payload, payload_bytes[seq], fd_name);
+        free(payload);
+        if (memfds[seq] < 0) {
+            fprintf(stderr, "ALR_WL_DISPLAY_CLIENT memfd failed seq=%d bytes=%zu errno=%d\n", seq + 1, payload_bytes[seq], errno);
+            for (int close_seq = 0; close_seq < frame_count; ++close_seq) {
+                if (memfds[close_seq] >= 0) close(memfds[close_seq]);
+            }
+            return 18;
+        }
+    }
+    if (!send_fd_preamble(fd, memfds, frame_count)) {
+        for (int seq = 0; seq < frame_count; ++seq) {
+            close(memfds[seq]);
+        }
+        fprintf(stderr, "ALR_WL_DISPLAY_CLIENT fd send failed errno=%d\n", errno);
+        return 19;
+    }
+    for (int seq = 0; seq < frame_count; ++seq) {
+        close(memfds[seq]);
+    }
+
     char line[512];
     snprintf(line, sizeof(line), "ALR_WL_CONNECT display=%s runtime=%s transport=unix-abstract-wayland\n", display, runtime_dir);
     if (!write_all(fd, line)) return 3;
@@ -162,61 +315,70 @@ int main(void) {
     if (!write_all(fd, "ALR_WL_BIND name=wl_compositor id=1 version=4\n")) return 6;
     if (!write_all(fd, "ALR_WL_SURFACE_CREATE id=10 compositor=1\n")) return 7;
     if (!write_all(fd, "ALR_WL_BIND name=wl_shm id=2 version=1\n")) return 8;
-    const float payload_red = 0.19f;
-    const float payload_green = 0.24f;
-    const float payload_blue = 0.55f;
-    char payload_path[256];
-    snprintf(payload_path, sizeof(payload_path), "%s/alr-wl-buffer-20.rgba", payload_dir);
-    uint32_t checksum = 0;
-    size_t payload_bytes = 0;
-    if (!write_rgba_payload(payload_path, width, height, payload_red, payload_green, payload_blue, &checksum, &payload_bytes)) {
-        fprintf(stderr, "ALR_WL_DISPLAY_CLIENT payload write failed path=%s errno=%d\n", payload_path, errno);
-        return 12;
+    snprintf(
+        line,
+        sizeof(line),
+        "ALR_WL_SHM_POOL_CREATE id=30 path=%s bytes=%zu checksum=%08x buffers=%d layout=triple-buffer-file\n",
+        payload_paths[0],
+        payload_bytes[0],
+        checksums[0],
+        frame_count
+    );
+    if (!write_all(fd, line)) return 13;
+    for (int seq = 0; seq < frame_count; ++seq) {
+        snprintf(
+            line,
+            sizeof(line),
+            "ALR_WL_SHM_POOL_FD id=%d fd_index=%d bytes=%zu checksum=%08x transport=scm-rights-memfd layout=triple-buffer\n",
+            31 + seq,
+            seq,
+            payload_bytes[seq],
+            checksums[seq]
+        );
+        if (!write_all(fd, line)) return 20;
     }
     snprintf(
         line,
         sizeof(line),
-        "ALR_WL_SHM_POOL_CREATE id=30 path=%s bytes=%zu checksum=%08x\n",
-        payload_path,
-        payload_bytes,
-        checksum
-    );
-    if (!write_all(fd, line)) return 13;
-    snprintf(
-        line,
-        sizeof(line),
-        "ALR_WL_BUFFER_CREATE id=20 width=%d height=%d stride=%d format=argb8888 payload=shared-file\n",
+        "ALR_WL_BUFFER_CREATE id=20 width=%d height=%d stride=%d format=argb8888 payload=shared-file fd_payload=scm-rights-memfd\n",
         width,
         height,
         stride
     );
     if (!write_all(fd, line)) return 14;
-    for (int seq = 1; seq <= 3; ++seq) {
+    for (int seq = 1; seq <= frame_count; ++seq) {
+        const int index = seq - 1;
         snprintf(
             line,
             sizeof(line),
-            "ALR_WL_BUFFER_ATTACH surface=10 buffer=20 seq=%d path=%s width=%d height=%d stride=%d bytes=%zu checksum=%08x transport=shared-file\n",
+            "ALR_WL_BUFFER_ATTACH surface=10 buffer=20 seq=%d path=%s width=%d height=%d stride=%d bytes=%zu checksum=%08x fd_index=%d fd_bytes=%zu fd_checksum=%08x transport=shared-file+scm-rights-memfd layout=triple-buffer\n",
             seq,
-            payload_path,
+            payload_paths[index],
             width,
             height,
             stride,
-            payload_bytes,
-            checksum
+            payload_bytes[index],
+            checksums[index],
+            index,
+            payload_bytes[index],
+            checksums[index]
         );
         if (!write_all(fd, line)) return 15;
         snprintf(
             line,
             sizeof(line),
-            "ALR_WL_SURFACE_COMMIT surface=10 buffer=20 seq=%d %.2f %.2f %.2f WAYLAND_DISPLAY-frame-%04d payload=%s bytes=%zu checksum=%08x transport=shared-file\n",
+            "ALR_WL_SURFACE_COMMIT surface=10 buffer=20 seq=%d %.2f %.2f %.2f WAYLAND_DISPLAY-frame-%04d payload=%s bytes=%zu checksum=%08x fd_index=%d fd_bytes=%zu fd_checksum=%08x transport=shared-file+scm-rights-memfd layout=triple-buffer\n",
             seq,
-            payload_red,
-            payload_green,
-            payload_blue,
+            payload_reds[index],
+            payload_greens[index],
+            payload_blues[index],
             seq,
-            payload_path,
-            payload_bytes,
-            checksum
+            payload_paths[index],
+            payload_bytes[index],
+            checksums[index],
+            index,
+            payload_bytes[index],
+            checksums[index]
         );
         if (!write_all(fd, line)) return 16;
     }

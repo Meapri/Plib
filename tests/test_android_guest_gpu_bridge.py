@@ -64,9 +64,12 @@ def test_rootfs_contains_guest_gpu_ipc_client_and_gles_shim():
         assert b"WAYLAND_DISPLAY" in wayland_display
         assert b"ALR_WL_SURFACE_COMMIT" in wayland_display
         assert b"ALR_WL_SHM_POOL_CREATE" in wayland_display
+        assert b"ALR_WL_SHM_POOL_FD" in wayland_display
         assert b"ALR_WL_BUFFER_ATTACH" in wayland_display
         assert b"ALR_WAYLAND_PAYLOAD_DIR" in wayland_display
         assert b"transport=shared-file" in wayland_display
+        assert b"scm-rights-memfd" in wayland_display
+        assert b"layout=triple-buffer" in wayland_display
 
 
 def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
@@ -184,8 +187,13 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "wayland display surface commits=" in text
     assert "wayland display shared payload frames=" in text
     assert "wayland display shared payload bytes=" in text
+    assert "wayland display fd payload frames=" in text
+    assert "wayland display fd payload bytes=" in text
     assert "payload_verified=true" in text
-    assert "transport=unix-abstract-wayland-shared-file" in text
+    assert "fd_payload_verified=true" in text
+    assert "fd_received=${fdPayloads.size}" in text
+    assert "layout=triple-buffer" in text
+    assert "transport=unix-abstract-wayland-scm-rights" in text
     assert "gui bridge transport wayland unix vs tcp ratio pct=" in text
     assert "gui bridge transport x11 unix vs tcp ratio pct=" in text
     assert "alr installed package vulkan discovery ack" in text
@@ -550,8 +558,14 @@ def test_guest_gui_client_sources_support_unix_socket_transport():
     assert "ALR_WL_REGISTRY global=wl_compositor" in display_source
     assert "ALR_WL_SURFACE_CREATE id=10 compositor=1" in display_source
     assert "ALR_WL_BUFFER_CREATE id=20 width=%d height=%d stride=%d format=argb8888 payload=shared-file" in display_source
-    assert "ALR_WL_SHM_POOL_CREATE id=30 path=%s bytes=%zu checksum=%08x" in display_source
+    assert "ALR_WL_SHM_POOL_CREATE id=30 path=%s bytes=%zu checksum=%08x buffers=%d layout=triple-buffer-file" in display_source
+    assert "ALR_WL_SHM_POOL_FD id=%d fd_index=%d bytes=%zu checksum=%08x transport=scm-rights-memfd layout=triple-buffer" in display_source
     assert "ALR_WL_BUFFER_ATTACH surface=10 buffer=20 seq=%d path=%s" in display_source
+    assert "send_fd_preamble" in display_source
+    assert "create_memfd_payload" in display_source
+    assert "SCM_RIGHTS" in display_source
+    assert "payload_reds[frame_count]" in display_source
+    assert "alr-wl-buffer-20-seq%02d.rgba" in display_source
     assert "ALR_WAYLAND_PAYLOAD_DIR" in display_source
     assert "fnv1a32" in display_source
     assert "write_rgba_payload" in display_source

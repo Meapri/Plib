@@ -1342,6 +1342,39 @@ surface vulkan present=ok
 surface vulkan hardware render=true
 ```
 
+V91 moved the same payload contract onto Unix `SCM_RIGHTS`: the source-built
+guest creates a `memfd`, sends it over the Android-hosted `WAYLAND_DISPLAY`
+`LocalServerSocket`, and Android verifies the received FD contents before ACKing
+the surface commits.
+
+V92 expands that from one reusable FD to a triple-buffer layout. The guest now
+creates three distinct RGBA payloads, sends three memfds in one ancillary-data
+preamble, emits per-frame `fd_index`/checksum metadata, and requires Android to
+match every commit to the correct received FD. The file-backed payload remains
+as a fallback evidence lane, but the display bridge PASS condition now depends
+on the FD-backed path too.
+
+```text
+build: 0.4.92-wayland-triple-fd
+versionCode=92
+versionName=0.4.92-wayland-triple-fd
+rootfs_version=bookworm-slim-2026-05-wayland-triple-fd-v92
+rootfs sha256=521a3c0f565a171f92bf5f260fbacfae8cf1a8ac2c7953d7f73441962fab6282
+rootfs size bytes=34561024
+WAYLAND DISPLAY SOCKET AVAILABLE: PASS
+WAYLAND DISPLAY COMMIT SURFACE EXECUTION: PASS
+alr installed package wayland display ipc received frames=3/3
+wayland display shared payload frames=3/3
+wayland display shared payload bytes=691200
+wayland display fd payload frames=3/3
+wayland display fd payload bytes=691200
+alr installed package wayland display ipc ack raw=ALR_WL_DISPLAY_ACK display=alr-wayland-0 commits=3 expected=3 lossless=true payloads=3 payload_bytes=691200 payload_verified=true fd_payloads=3 fd_payload_bytes=691200 fd_payload_verified=true fd_received=3 layout=triple-buffer transport=unix-abstract-wayland-scm-rights
+surface wayland frames rendered=19
+surface x11 frames rendered=16
+surface vulkan present=ok
+surface vulkan hardware render=true
+```
+
 Report:
 
 ```text

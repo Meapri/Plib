@@ -1471,11 +1471,40 @@ APK UID and can be verified today. The next upgrade should keep the same
 backing store with ashmem/memfd-style FD passing or Android-owned
 `AHardwareBuffer` handles.
 
+Latest V92 Wayland triple-FD payload bridge evidence:
+
+```text
+build: 0.4.92-wayland-triple-fd
+versionCode=92
+versionName=0.4.92-wayland-triple-fd
+rootfs_version=bookworm-slim-2026-05-wayland-triple-fd-v92
+rootfs sha256=521a3c0f565a171f92bf5f260fbacfae8cf1a8ac2c7953d7f73441962fab6282
+rootfs size bytes=34561024
+WAYLAND DISPLAY SOCKET AVAILABLE: PASS
+WAYLAND DISPLAY COMMIT SURFACE EXECUTION: PASS
+alr installed package wayland display ipc received frames=3/3
+wayland display shared payload frames=3/3
+wayland display shared payload bytes=691200
+wayland display fd payload frames=3/3
+wayland display fd payload bytes=691200
+alr installed package wayland display ipc ack raw=ALR_WL_DISPLAY_ACK display=alr-wayland-0 commits=3 expected=3 lossless=true payloads=3 payload_bytes=691200 payload_verified=true fd_payloads=3 fd_payload_bytes=691200 fd_payload_verified=true fd_received=3 layout=triple-buffer transport=unix-abstract-wayland-scm-rights
+surface wayland frames rendered=19
+surface x11 frames rendered=16
+surface vulkan present=ok
+surface vulkan hardware render=true
+```
+
+V92 completes the memfd/`SCM_RIGHTS` part of the previous batch and makes it
+frame-indexed instead of a single reusable smoke FD. The bridge still uses a
+clean-room ALR text envelope around Wayland-shaped events, but the important
+buffer-transport behavior is now closer to the real direction: control messages
+carry object IDs and indexes while image bytes travel through file descriptors.
+
 Next implementation batch:
 
-1. Replace file-backed shared payloads with ashmem/memfd-style FD passing where Android permits it, preserving the current checksum/size validation.
-2. Add an Android-owned `AHardwareBuffer` experiment for host-managed Wayland buffers.
-3. Expand the minimal Wayland bridge from ALR_WL text records to a stricter subset of real Wayland wire opcodes for registry, compositor, shm, surface, and buffer lifetimes.
+1. Add an Android-owned `AHardwareBuffer` experiment for host-managed Wayland buffers and compare copy count against the v92 memfd path.
+2. Expand the minimal Wayland bridge from ALR_WL text records to a stricter subset of real Wayland wire opcodes for registry, compositor, shm, surface, and buffer lifetimes.
+3. Add dirty-rectangle metadata and host-side partial-upload accounting to the triple-buffer path.
 4. Replace the loader-info smoke with the real Khronos Vulkan loader or a stricter ABI-compatible loader subset.
 5. Add a small real toolkit fixture target, likely a tiny GTK/Qt-independent Wayland protocol smoke before pulling in a larger GUI stack.
 6. Turn the current evidence logs into a reusable adb verification script so device regressions are cheaper to catch while implementation is moving quickly.
