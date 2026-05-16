@@ -2325,12 +2325,31 @@ class MainActivity : Activity() {
             "gimp core quit handoff=${gimpCoreQuitResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}",
             "gimp core quit exit=${gimpCoreQuitResult.exitCode}",
             "gimp core quit blocker=$gimpCoreQuitBlocker",
+            "gimp core quit timed out=${gimpCoreQuitResult.stdout.lineStartingWith("alr handoff timed out=")}",
+            "gimp core quit child exited=${gimpCoreQuitResult.stdout.lineStartingWith("alr handoff child exited=")}",
+            "gimp core quit child signaled=${gimpCoreQuitResult.stdout.lineStartingWith("alr handoff child signaled=")}",
+            "gimp core quit handoff exit=${gimpCoreQuitResult.stdout.lineStartingWith("alr handoff exit code=")}",
+            "gimp core quit handoff signal=${gimpCoreQuitResult.stdout.lineStartingWith("alr handoff signal=")}",
+            "gimp core quit fault signal=${gimpCoreQuitResult.stdout.lineStartingWith("alr handoff fault signal=")}",
+            "gimp core quit fault syscall=${gimpCoreQuitResult.stdout.lineStartingWith("alr handoff fault syscall=")}",
+            "gimp core quit fault pc=${gimpCoreQuitResult.stdout.lineStartingWith("alr handoff fault pc=")}",
+            "gimp core quit elapsed=${gimpCoreQuitResult.stdout.lineStartingWith("alr handoff elapsed ms=")}",
+            "gimp core quit traced processes=${gimpCoreQuitResult.stdout.lineStartingWith("alr handoff traced process count=")}",
+            "gimp core quit path rewrite syscalls=${gimpCoreQuitResult.stdout.lineStartingWith("alr handoff path rewrite syscall count=")}",
+            "gimp core quit path rewrites=${gimpCoreQuitResult.stdout.lineStartingWith("alr handoff path rewrite count=")}",
             "gimp core quit stdout=${gimpCoreQuitResult.stdout.alrHandoffStdoutText().forEvidenceLog()}",
             "gimp core quit stderr=${gimpCoreQuitResult.stdout.alrHandoffStderrText().forEvidenceLog()}",
             "gimp console batch quit handoff=${gimpConsoleBatchQuitResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}",
             "gimp console batch quit exit=${gimpConsoleBatchQuitResult.exitCode}",
             "gimp console batch quit interpreter=plug-in-script-fu-eval",
             "gimp console batch quit blocker=$gimpConsoleBatchQuitBlocker",
+            "gimp console batch quit timed out=${gimpConsoleBatchQuitResult.stdout.lineStartingWith("alr handoff timed out=")}",
+            "gimp console batch quit handoff signal=${gimpConsoleBatchQuitResult.stdout.lineStartingWith("alr handoff signal=")}",
+            "gimp console batch quit fault syscall=${gimpConsoleBatchQuitResult.stdout.lineStartingWith("alr handoff fault syscall=")}",
+            "gimp console batch quit elapsed=${gimpConsoleBatchQuitResult.stdout.lineStartingWith("alr handoff elapsed ms=")}",
+            "gimp console batch quit traced processes=${gimpConsoleBatchQuitResult.stdout.lineStartingWith("alr handoff traced process count=")}",
+            "gimp console batch quit path rewrite syscalls=${gimpConsoleBatchQuitResult.stdout.lineStartingWith("alr handoff path rewrite syscall count=")}",
+            "gimp console batch quit path rewrites=${gimpConsoleBatchQuitResult.stdout.lineStartingWith("alr handoff path rewrite count=")}",
             "gimp console batch quit stdout=${gimpConsoleBatchQuitResult.stdout.alrHandoffStdoutText().forEvidenceLog()}",
             "gimp console batch quit stderr=${gimpConsoleBatchQuitResult.stdout.alrHandoffStderrText().forEvidenceLog()}",
             "rootfs gimp demo materialized exists=${rootfsGimpDemoMaterializedFile.isFile}",
@@ -2456,6 +2475,13 @@ class MainActivity : Activity() {
             "none"
         } else if (result.exitCode == -124 || result.stdout.contains("alr handoff timed out=true")) {
             "core-quit-timeout"
+        } else if (result.stdout.contains("alr handoff signal=31")) {
+            "core-quit-sigsys"
+        } else if (
+            result.exitCode == 0 &&
+            result.stdout.contains("ALR STATIC ENTRY HANDOFF: FAIL")
+        ) {
+            "handoff-fail-exit-0"
         } else if (!result.stdout.contains("ALR STATIC ENTRY HANDOFF:")) {
             "missing-handoff"
         } else {

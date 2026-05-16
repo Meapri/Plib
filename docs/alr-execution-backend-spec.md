@@ -1704,8 +1704,10 @@ instead of hidden behind one long launch timeout:
 - `gimp-console --version` proves the console binary entry path independently
   of GUI and batch interpreter startup.
 - `gimp --no-interface --no-data --no-fonts --no-splash --no-shm --quit`
-  isolates GIMP core quit startup. On the connected device this still times out,
-  so the blocker is now known to be earlier than Script-Fu batch evaluation.
+  isolates GIMP core quit startup. On the connected device this now reaches an
+  ALR-controlled timeout report instead of the Java process timeout after ALR
+  emulates the NUMA/mempolicy probe syscalls that previously stopped at
+  `SIGSYS`.
 - `gimp-console --batch-interpreter plug-in-script-fu-eval --batch
   "(gimp-quit 0)" --quit` is the current GIMP 3 core/plugin startup probe.
   On the connected device it still does not reach a passing ALR handoff, so it
@@ -1715,9 +1717,9 @@ instead of hidden behind one long launch timeout:
   `wl_compositor`, `wl_shm`, `xdg_wm_base`, `wl_seat`, and `wl_output`, answers
   the initial `wl_display.sync`, and lets GTK finish `Gtk.init([])` through ALR.
 - The full GIMP probes at `$rootfs/tmp/alr-gimp-quit-0` and
-  `$rootfs/tmp/alr-gimp-0` remain separate deep evidence lines so the next
-  blocker is visible while the fast verifier still skips the long interactive
-  launch.
+  `$rootfs/tmp/alr-gimp-0` remain separate deep evidence lines. The quit probe
+  now reaches the Android Wayland socket and issues `wl_display.get_registry`;
+  the fast verifier still skips the long interactive launch.
 
 ```text
 build: 0.4.104-gimp3-wayland
@@ -1735,7 +1737,7 @@ GIMP CONSOLE BATCH QUIT PROBE EXECUTION: FAIL
 GIMP CONSOLE BATCH QUIT BLOCKER: CORE_BATCH_TIMEOUT
 full gimp probe mode=skipped
 GIMP GTK WAYLAND PROBE EXECUTION: PASS
-GIMP GUI QUIT WAYLAND PROBE EXECUTION:
+GIMP GUI QUIT WAYLAND PROBE EXECUTION: PASS
 GIMP GUI WAYLAND PROBE EXECUTION:
 GIMP GUI WAYLAND BLOCKER: FAST_VERIFIER_SKIPPED
 GIMP DEMO BUNDLE LOCK: PASS
@@ -1746,10 +1748,19 @@ ALR_GIMP_DEMO_VERSION_STDOUT GNU Image Manipulation Program version 3.
 gimp cli help handoff=ALR STATIC ENTRY HANDOFF: PASS
 gimp console version handoff=ALR STATIC ENTRY HANDOFF: PASS
 gimp console version stdout=GNU Image Manipulation Program version 3.
+gimp core quit handoff=ALR STATIC ENTRY HANDOFF: FAIL
+gimp core quit exit=0
 gimp core quit blocker=core-quit-timeout
+gimp core quit timed out=alr handoff timed out=true
+gimp core quit child signaled=alr handoff child signaled=true
+gimp core quit handoff exit=alr handoff exit code=-1
+gimp core quit handoff signal=alr handoff signal=9
+gimp core quit fault syscall=alr handoff fault syscall=439
+gimp core quit path rewrite syscalls=alr handoff path rewrite syscall count=
 gimp console batch quit handoff=ALR STATIC ENTRY HANDOFF: FAIL
 gimp console batch quit interpreter=plug-in-script-fu-eval
 gimp console batch quit blocker=core-batch-timeout
+gimp console batch quit timed out=alr handoff timed out=true
 gimp gtk wayland connected=true
 gimp gtk wayland object=1
 gimp gtk wayland opcode=1
@@ -1760,6 +1771,9 @@ gimp gtk wayland server response bytes=316
 gimp gtk wayland server globals=wl_compositor,wl_shm,xdg_wm_base,wl_seat,wl_output
 gimp gtk wayland handoff=ALR STATIC ENTRY HANDOFF: PASS
 gimp gtk wayland stdout=ALR_GIMP3_GTK_WAYLAND_PROBE ok
+gimp gui quit wayland connected=true
+gimp gui quit wayland request=wl_display.get_registry
+gimp gui quit wayland handoff=ALR STATIC ENTRY HANDOFF: FAIL
 gimp gui wayland blocker=fast-verifier-skipped
 ```
 

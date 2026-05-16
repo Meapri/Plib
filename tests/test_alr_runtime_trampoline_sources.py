@@ -69,6 +69,10 @@ def test_trampoline_report_contract_exists():
     assert "__NR_faccessat2" in handoff
     assert "virtual_access_result" in handoff
     assert "alr handoff syscall emulated count=" in handoff
+    assert "syscall_number == 236" in handoff
+    assert "syscall_number == 237" in handoff
+    assert "syscall_number == 238" in handoff
+    assert "syscall_number == 239" in handoff
     assert "PTRACE_SYSCALL" in handoff
     assert "process_vm_writev" in handoff
     assert "PTRACE_O_TRACEFORK" in handoff

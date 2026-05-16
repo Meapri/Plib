@@ -295,7 +295,7 @@ def test_v104_adb_verifier_checks_gimp3_wayland_evidence():
     assert "GIMP CONSOLE BATCH QUIT BLOCKER: CORE_BATCH_TIMEOUT" in script
     assert "full gimp probe mode=skipped" in script
     assert "GIMP GTK WAYLAND PROBE EXECUTION: PASS" in script
-    assert "GIMP GUI QUIT WAYLAND PROBE EXECUTION:" in script
+    assert "GIMP GUI QUIT WAYLAND PROBE EXECUTION: PASS" in script
     assert "GIMP GUI WAYLAND PROBE EXECUTION:" in script
     assert "GIMP GUI WAYLAND BLOCKER: FAST_VERIFIER_SKIPPED" in script
     assert "ALR_GIMP_DEMO_PROFILE_READY target=gimp" in script
@@ -308,11 +308,23 @@ def test_v104_adb_verifier_checks_gimp3_wayland_evidence():
     assert "gimp cli help handoff=ALR STATIC ENTRY HANDOFF: PASS" in script
     assert "gimp console version handoff=ALR STATIC ENTRY HANDOFF: PASS" in script
     assert "gimp console version stdout=GNU Image Manipulation Program version 3." in script
+    assert "gimp core quit handoff=ALR STATIC ENTRY HANDOFF: FAIL" in script
+    assert "gimp core quit exit=0" in script
     assert "gimp core quit blocker=core-quit-timeout" in script
+    assert "gimp core quit timed out=alr handoff timed out=true" in script
+    assert "gimp core quit child signaled=alr handoff child signaled=true" in script
+    assert "gimp core quit handoff exit=alr handoff exit code=-1" in script
+    assert "gimp core quit handoff signal=alr handoff signal=9" in script
+    assert "gimp core quit fault syscall=alr handoff fault syscall=439" in script
+    assert "gimp core quit path rewrite syscalls=alr handoff path rewrite syscall count=" in script
     assert "gimp console batch quit handoff=ALR STATIC ENTRY HANDOFF: FAIL" in script
     assert "gimp console batch quit interpreter=plug-in-script-fu-eval" in script
     assert "gimp console batch quit blocker=core-batch-timeout" in script
+    assert "gimp console batch quit timed out=alr handoff timed out=true" in script
     assert "gimp gtk wayland object=1" in script
+    assert "gimp gui quit wayland connected=true" in script
+    assert "gimp gui quit wayland request=wl_display.get_registry" in script
+    assert "gimp gui quit wayland handoff=ALR STATIC ENTRY HANDOFF: FAIL" in script
     assert "gimp gtk wayland opcode=1" in script
     assert "gimp gtk wayland size=12" in script
     assert "gimp gtk wayland request=wl_display.get_registry" in script

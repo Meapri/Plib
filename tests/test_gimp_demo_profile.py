@@ -116,10 +116,17 @@ def test_android_reports_materialized_gimp_version_probe():
     assert "gimp console version handoff=" in text
     assert "gimp core quit handoff=" in text
     assert "gimp core quit blocker=" in text
+    assert "gimp core quit timed out=" in text
+    assert "gimp core quit handoff exit=" in text
+    assert "gimp core quit handoff signal=" in text
+    assert "gimp core quit fault syscall=" in text
+    assert "gimp core quit path rewrite syscalls=" in text
     assert "gimp console batch quit handoff=" in text
     assert "gimp console batch quit exit=" in text
     assert "gimp console batch quit interpreter=plug-in-script-fu-eval" in text
     assert "gimp console batch quit blocker=" in text
+    assert "gimp console batch quit timed out=" in text
+    assert "gimp console batch quit fault syscall=" in text
     assert "gimp gtk wayland request=" in text
     assert "gimp gtk wayland server requests=" in text
     assert "gimp gtk wayland server response bytes=" in text
@@ -140,7 +147,12 @@ def test_alr_handoff_timeout_reaps_traced_gimp_style_processes():
     text = HANDOFF.read_text()
 
     assert "reap_after_forced_kill" in text
+    assert "wall_clock_timeout_expired" in text
+    assert "monotonic_elapsed_ms(handoff_started) >= result.timeout_ms" in text
+    assert "force_kill_and_reap" in text
     assert "result.timed_out = true" in text
+    assert "waited_ms" not in text
+    assert "::waitpid(child, &status, 0)" not in text
     assert "waited < 0 && !result.timed_out" in text
     assert "result.signal_number = SIGKILL" in text
 

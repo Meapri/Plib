@@ -1485,6 +1485,10 @@ bool emulate_android_seccomp_syscall(
     const bool known_optional_linux_syscall =
         syscall_number == 99 ||   // set_robust_list
         syscall_number == 293 ||  // rseq
+        syscall_number == 236 ||  // get_mempolicy
+        syscall_number == 237 ||  // set_mempolicy
+        syscall_number == 238 ||  // migrate_pages
+        syscall_number == 239 ||  // move_pages
         syscall_number == 435;    // clone3
     const bool identity_syscall =
         syscall_number == 143 ||  // setregid
@@ -1639,7 +1643,6 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
 
     int status = 0;
     pid_t waited = -1;
-    int waited_ms = 0;
     bool ptrace_entry_stop_seen = false;
     bool ptrace_fault_stop_seen = false;
 #if defined(__ANDROID__) && defined(__aarch64__)
@@ -1712,7 +1715,19 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
             ::usleep(1000);
         }
     };
+    auto wall_clock_timeout_expired = [&]() {
+        return monotonic_elapsed_ms(handoff_started) >= result.timeout_ms;
+    };
+    auto force_kill_and_reap = [&]() {
+        kill_live_traced_processes();
+        reap_after_forced_kill();
+    };
     do {
+        if (wall_clock_timeout_expired()) {
+            result.timed_out = true;
+            force_kill_and_reap();
+            break;
+        }
         int wait_options = WNOHANG;
 #if defined(__ANDROID__) && defined(__aarch64__) && defined(__WALL)
         if (trace_syscalls) {
@@ -1723,14 +1738,7 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
         if (waited == 0) {
             append_available_pipe_text(stdout_pipe[0], result.stdout_text);
             append_available_pipe_text(stderr_pipe[0], result.stderr_text);
-            if (waited_ms >= result.timeout_ms) {
-                result.timed_out = true;
-                kill_live_traced_processes();
-                reap_after_forced_kill();
-                break;
-            }
             ::usleep(1000);
-            waited_ms += 1;
         } else if (waited > 0 && WIFSTOPPED(status)) {
             append_available_pipe_text(stdout_pipe[0], result.stdout_text);
             append_available_pipe_text(stderr_pipe[0], result.stderr_text);
@@ -1742,10 +1750,7 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
                     !set_child_ptrace_options(child, ptrace_options) &&
                     result.error.empty()) {
                     result.error = errno_message("ptrace setoptions static entry handoff");
-                    kill_live_traced_processes();
-                    do {
-                        waited = ::waitpid(child, &status, 0);
-                    } while (waited < 0 && errno == EINTR);
+                    force_kill_and_reap();
                     break;
                 }
 #endif
@@ -1754,10 +1759,7 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
                     continue_child_ptrace(child);
                 if (!continued && result.error.empty()) {
                     result.error = errno_message("ptrace continue static entry handoff");
-                    kill_live_traced_processes();
-                    do {
-                        waited = ::waitpid(child, &status, 0);
-                    } while (waited < 0 && errno == EINTR);
+                    force_kill_and_reap();
                     break;
                 }
                 waited = 0;
@@ -1770,10 +1772,7 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
                 (void)set_child_ptrace_options(waited, ptrace_options);
                 if (!continue_child_syscall(waited) && result.error.empty()) {
                     result.error = errno_message("ptrace continue traced child stop");
-                    kill_live_traced_processes();
-                    do {
-                        waited = ::waitpid(child, &status, 0);
-                    } while (waited < 0 && errno == EINTR);
+                    force_kill_and_reap();
                     break;
                 }
                 waited = 0;
@@ -1800,10 +1799,7 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
                 }
                 if (!continue_child_syscall(waited) && result.error.empty()) {
                     result.error = errno_message("ptrace continue trace event");
-                    kill_live_traced_processes();
-                    do {
-                        waited = ::waitpid(child, &status, 0);
-                    } while (waited < 0 && errno == EINTR);
+                    force_kill_and_reap();
                     break;
                 }
                 waited = 0;
@@ -1830,10 +1826,7 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
                             !continue_child_syscall(waited) &&
                             result.error.empty()) {
                             result.error = errno_message("ptrace opportunistic exec continue");
-                            kill_live_traced_processes();
-                            do {
-                                waited = ::waitpid(child, &status, 0);
-                            } while (waited < 0 && errno == EINTR);
+                            force_kill_and_reap();
                             break;
                         }
                         waited = 0;
@@ -1898,10 +1891,7 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
                     continue_child_syscall(waited);
                 if (!continued && result.error.empty()) {
                     result.error = errno_message("ptrace syscall continue static entry handoff");
-                    kill_live_traced_processes();
-                    do {
-                        waited = ::waitpid(child, &status, 0);
-                    } while (waited < 0 && errno == EINTR);
+                    force_kill_and_reap();
                     break;
                 }
                 waited = 0;
@@ -1909,10 +1899,7 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
                 if (!continue_child_syscall(waited, stop_signal == SIGCHLD ? SIGCHLD : 0) &&
                     result.error.empty()) {
                     result.error = errno_message("ptrace continue signal stop");
-                    kill_live_traced_processes();
-                    do {
-                        waited = ::waitpid(child, &status, 0);
-                    } while (waited < 0 && errno == EINTR);
+                    force_kill_and_reap();
                     break;
                 }
                 waited = 0;
@@ -1920,10 +1907,7 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
             } else if (!trace_syscalls && stop_signal == SIGCHLD) {
                 if (!continue_child_ptrace(waited, SIGCHLD) && result.error.empty()) {
                     result.error = errno_message("ptrace continue SIGCHLD stop");
-                    kill_live_traced_processes();
-                    do {
-                        waited = ::waitpid(child, &status, 0);
-                    } while (waited < 0 && errno == EINTR);
+                    force_kill_and_reap();
                     break;
                 }
                 waited = 0;
@@ -1937,10 +1921,7 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
                         continue_child_ptrace(waited);
                     if (!continued && result.error.empty()) {
                         result.error = errno_message("ptrace continue emulated static entry syscall");
-                        kill_live_traced_processes();
-                        do {
-                            waited = ::waitpid(child, &status, 0);
-                        } while (waited < 0 && errno == EINTR);
+                        force_kill_and_reap();
                         break;
                     }
                     waited = 0;
@@ -1949,10 +1930,7 @@ StaticEntryHandoffResult maybe_run_static_entry_handoff(
                 ptrace_fault_stop_seen = true;
                 result.child_signaled = true;
                 result.signal_number = stop_signal;
-                kill_live_traced_processes();
-                do {
-                    waited = ::waitpid(child, &status, 0);
-                } while (waited < 0 && errno == EINTR);
+                force_kill_and_reap();
                 break;
             }
         } else if (waited > 0) {
