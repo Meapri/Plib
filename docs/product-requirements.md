@@ -247,6 +247,7 @@ After GLES is stable, add a host Vulkan renderer and a guest Vulkan ICD/proxy. T
 - Python and Node startup pass.
 - Git basic command pass.
 - Simple GUI app renders through Android Surface.
+- By V118, a simple Linux/glibc GUI app demo launches inside the Android APK without root and visibly presents through the Plib Android Surface/GPU bridge. Full desktop/toolkit compatibility is not required for this gate.
 
 ### Level 6: Real App Track
 

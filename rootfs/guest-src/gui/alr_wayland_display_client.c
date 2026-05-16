@@ -269,6 +269,56 @@ static int emit_wayland_wire_subset(int fd, size_t pool_bytes) {
     return 1;
 }
 
+static void put_u32_le(unsigned char* bytes, size_t offset, uint32_t value) {
+    bytes[offset + 0u] = (unsigned char)(value & 0xffu);
+    bytes[offset + 1u] = (unsigned char)((value >> 8u) & 0xffu);
+    bytes[offset + 2u] = (unsigned char)((value >> 16u) & 0xffu);
+    bytes[offset + 3u] = (unsigned char)((value >> 24u) & 0xffu);
+}
+
+static int append_wayland_binary_request(
+    unsigned char* bytes,
+    size_t capacity,
+    size_t* offset,
+    uint32_t object_id,
+    uint16_t opcode,
+    uint16_t size
+) {
+    if (size < 8u || (size % 4u) != 0u || *offset + size > capacity) return 0;
+    const size_t start = *offset;
+    memset(bytes + start, 0, size);
+    put_u32_le(bytes, start, object_id);
+    put_u32_le(bytes, start + 4u, ((uint32_t)size << 16u) | (uint32_t)opcode);
+    *offset += size;
+    return 1;
+}
+
+static int emit_wayland_binary_subset(int fd) {
+    unsigned char bytes[512];
+    size_t offset = 0;
+    memset(bytes, 0, sizeof(bytes));
+    if (!append_wayland_binary_request(bytes, sizeof(bytes), &offset, 1, 1, 12)) return 0;
+    if (!append_wayland_binary_request(bytes, sizeof(bytes), &offset, 2, 0, 40)) return 0;
+    if (!append_wayland_binary_request(bytes, sizeof(bytes), &offset, 3, 0, 12)) return 0;
+    if (!append_wayland_binary_request(bytes, sizeof(bytes), &offset, 2, 0, 32)) return 0;
+    if (!append_wayland_binary_request(bytes, sizeof(bytes), &offset, 4, 0, 20)) return 0;
+    if (!append_wayland_binary_request(bytes, sizeof(bytes), &offset, 30, 0, 36)) return 0;
+    for (int seq = 0; seq < 3; ++seq) {
+        if (!append_wayland_binary_request(bytes, sizeof(bytes), &offset, 10, 1, 20)) return 0;
+        if (!append_wayland_binary_request(bytes, sizeof(bytes), &offset, 10, 9, 24)) return 0;
+        if (!append_wayland_binary_request(bytes, sizeof(bytes), &offset, 10, 6, 8)) return 0;
+    }
+    char header[160];
+    snprintf(
+        header,
+        sizeof(header),
+        "ALR_WL_BINARY_STREAM bytes=%zu messages=15 checksum=%08x wire=wayland-binary-v1 endian=little\n",
+        offset,
+        fnv1a32(bytes, offset)
+    );
+    return write_all(fd, header) && write_all_bytes(fd, bytes, offset);
+}
+
 int main(void) {
     const char* display = env_or_default("WAYLAND_DISPLAY", "wayland-0");
     const char* runtime_dir = env_or_default("XDG_RUNTIME_DIR", "/tmp");
@@ -357,6 +407,7 @@ int main(void) {
     }
 
     char line[512];
+    if (!emit_wayland_binary_subset(fd)) return 24;
     snprintf(line, sizeof(line), "ALR_WL_CONNECT display=%s runtime=%s transport=unix-abstract-wayland\n", display, runtime_dir);
     if (!write_all(fd, line)) return 3;
     if (!write_all(fd, "ALR_WL_REGISTRY global=wl_compositor version=4 id=1\n")) return 4;

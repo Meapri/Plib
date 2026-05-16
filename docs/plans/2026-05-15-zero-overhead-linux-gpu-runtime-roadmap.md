@@ -1678,11 +1678,64 @@ ordered wire-header subset trace. This gives the next batch a concrete target:
 replace textual `ALR_WL_WIRE` summaries with binary request decoding without
 losing the already-verified AHardwareBuffer and Surface evidence path.
 
+Latest V99 Wayland binary-decode evidence:
+
+```text
+build: 0.4.99-wayland-binary-decode
+versionCode=99
+versionName=0.4.99-wayland-binary-decode
+rootfs_version=bookworm-slim-2026-05-wayland-binary-v99
+rootfs sha256=4df118e1666e36c78dd7f4854ed25b7f02a38796ee30b3ef13114d4c167a3853
+rootfs size bytes=35300352
+WAYLAND DISPLAY SOCKET AVAILABLE: PASS
+WAYLAND DISPLAY COMMIT SURFACE EXECUTION: PASS
+wayland display wire messages=15
+wayland display binary messages=15
+wayland display binary bytes=308
+wayland display binary subset ready=true
+ALR_WL_DISPLAY_ACK ... binary_messages=15 binary_header_ready=true binary_subset_ready=true ...
+WAYLAND AHARDWAREBUFFER SURFACE COMPOSITOR EXECUTION: PASS
+wayland ahardwarebuffer surface buffer pool mode=slot-reuse
+wayland ahardwarebuffer surface buffer pool reuses=3
+wayland ahardwarebuffer surface sampled frames=6
+wayland ahardwarebuffer surface presented frames=6
+wayland ahardwarebuffer surface hardware render=true
+```
+
+V99 converts the v98 ordered wire summary into an actual raw request-byte
+decoder for the current registry/compositor/shm/surface subset. This is still a
+bounded clean-room subset, but it removes one layer of fake text protocol from
+the Wayland path and gives later versions a real parser boundary to grow.
+
+Android verifier:
+
+```text
+Android v99 Wayland binary decode verification passed.
+```
+
+Implementation compression window:
+
+- v99-v118 are the forced completion window. No more small evidence-only
+  versions: every remaining version must close one runtime capability or merge
+  several related tasks into one shipping implementation.
+- V118 is accepted only if a simple Linux/glibc GUI application demo launches
+  without root on Android and visibly presents through the Plib Android
+  Surface/GPU bridge. It may be a constrained fixture or tiny toolkit app; it
+  does not need to prove full desktop compatibility.
+- Graphics must move from replay/probe evidence into continuous guest commits,
+  real Wayland client compatibility, and Android-native Vulkan/GLES paths.
+- Execution must move from scattered smoke probes into a practical preload/fd
+  broker backend with package-manager, procfs, identity, and child-process
+  coverage that can run real app launchers without defaulting to PRoot.
+- The final versions in this window must spend their budget on integration,
+  correctness, and measured overhead against PRoot/proroot-class baselines, not
+  on more isolated protocol demonstrations.
+
 Next implementation batch:
 
-1. Convert the v98 `ALR_WL_WIRE` summary stream into a real bounded binary Wayland request decoder for the same registry/compositor/shm/surface subset.
-2. Replace the replay-based pool proof with real continuous guest commits and long-lived buffer reuse across Surface callbacks.
+1. Replace the replay-based pool proof with real continuous guest commits and long-lived buffer reuse across Surface callbacks.
+2. Add the simple Linux/glibc GUI demo track now, not at the end: a small guest app should use the real binary Wayland subset and draw into the Android Surface path.
 3. Replace the loader-info smoke with the real Khronos Vulkan loader or a stricter ABI-compatible loader subset.
 4. Add a small real toolkit fixture target, likely a tiny GTK/Qt-independent Wayland protocol smoke before pulling in a larger GUI stack.
 5. Start measuring compositor-path CPU/GPU cost against PRoot image transport and the existing Vulkan Surface clear path.
-6. Keep growing adb verification around visual present, fence state, and package-version evidence so device regressions stay cheap while implementation is moving quickly.
+6. Keep growing adb verification around visual present, fence state, package-version evidence, and the V118 GUI demo gate so device regressions stay cheap while implementation is moving quickly.

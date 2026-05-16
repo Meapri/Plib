@@ -59,6 +59,7 @@ Success criteria:
 - Android app owns a `SurfaceView`/`TextureView`.
 - Host renderer draws a test frame from native code.
 - Linux-side GUI bridge design selected.
+- V118 demo gate: launch one simple Linux/glibc GUI app without root and present it visibly through the Android Surface/GPU bridge, even if the supported protocol/toolkit subset is still narrow.
 
 ## PoC 5: OpenGL hardware acceleration
 

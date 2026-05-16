@@ -9,7 +9,7 @@ PAYLOAD = ROOT / "app" / "src" / "main" / "assets" / "rootfs" / "payloads" / "ti
 def test_android_assets_include_rootfs_manifest_and_payload():
     assert MANIFEST.is_file()
     assert PAYLOAD.is_file()
-    assert PAYLOAD.stat().st_size == 35296256
+    assert PAYLOAD.stat().st_size == 35300352
 
 
 def test_android_asset_manifest_matches_host_manifest():
@@ -337,6 +337,8 @@ def test_tiny_rootfs_contains_local_deb_install_smoke_package():
         assert b"ALR_WL_SHM_POOL_FD" in wayland_display
         assert b"ALR_WL_BUFFER_ATTACH" in wayland_display
         assert b"ALR_WL_WIRE" in wayland_display
+        assert b"ALR_WL_BINARY_STREAM" in wayland_display
+        assert b"wayland-binary-v1" in wayland_display
         assert b"wl_display.get_registry" in wayland_display
         assert b"wl_registry.bind" in wayland_display
         assert b"wl_compositor.create_surface" in wayland_display

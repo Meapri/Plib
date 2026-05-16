@@ -28,12 +28,12 @@ class MainActivity : Activity() {
 
         val rootfsManifest = RootfsManifest(
             name = "debian-arm64",
-            version = "bookworm-slim-2026-05-wayland-wire-v98",
+            version = "bookworm-slim-2026-05-wayland-binary-v99",
             assets = listOf(
                 RootfsAsset(
                     path = "tiny-rootfs.tar",
-                    sha256 = "3be38a2787dc7e4c0e825500a23cce08810879e91b9e24256bed6ef8a56648f3",
-                    sizeBytes = 35296256,
+                    sha256 = "4df118e1666e36c78dd7f4854ed25b7f02a38796ee30b3ef13114d4c167a3853",
+                    sizeBytes = 35300352,
                 ),
             ),
         )
@@ -733,6 +733,9 @@ class MainActivity : Activity() {
                 alrInstalledPackageWaylandDisplayBridgeResult.ackLines.first().contains("wire_messages=15") &&
                 alrInstalledPackageWaylandDisplayBridgeResult.ackLines.first().contains("wire_subset_ready=true") &&
                 alrInstalledPackageWaylandDisplayBridgeResult.ackLines.first().contains("wire_surface_lifecycle=true") &&
+                alrInstalledPackageWaylandDisplayBridgeResult.ackLines.first().contains("binary_messages=15") &&
+                alrInstalledPackageWaylandDisplayBridgeResult.ackLines.first().contains("binary_header_ready=true") &&
+                alrInstalledPackageWaylandDisplayBridgeResult.ackLines.first().contains("binary_subset_ready=true") &&
                 alrInstalledPackageWaylandDisplayBridgeResult.ackLines.first().contains("backing=host-ahardwarebuffer") &&
                 alrInstalledPackageWaylandDisplayBridgeResult.ackLines.first().contains("dirty_rects=3") &&
                 alrInstalledPackageWaylandDisplayBridgeResult.ackLines.first().contains("dirty_bytes=172800") &&
@@ -870,7 +873,7 @@ class MainActivity : Activity() {
                 "vulkan-loader:${if (alrInstalledPackageVulkanLoaderInfoPassed) "PASS" else "FAIL"}," +
                 "vulkan-loader-unix:${if (alrInstalledPackageVulkanUnixLoaderInfoPassed) "PASS" else "FAIL"}"
 
-        val executionSummary = "build: 0.4.98-wayland-wire-subset" +
+        val executionSummary = "build: 0.4.99-wayland-binary-decode" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -1739,7 +1742,7 @@ class MainActivity : Activity() {
         Log.i(
             "ALR_DEVICE_EVIDENCE",
             listOf(
-                "build: 0.4.98-wayland-wire-subset",
+                "build: 0.4.99-wayland-binary-decode",
                 "WAYLAND DISPLAY SOCKET AVAILABLE: ${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}",
                 "WAYLAND DISPLAY COMMIT SURFACE EXECUTION: ${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}",
                 "ANDROID HOST AHARDWAREBUFFER EXECUTION: ${if (hostHardwareBufferPassed) "PASS" else "FAIL"}",
@@ -1766,6 +1769,9 @@ class MainActivity : Activity() {
                 "wayland display wire messages=${alrInstalledPackageWaylandDisplayBridgeResult.rawLines.count { it.startsWith("ALR_WL_WIRE ") }}",
                 "wayland display wire subset ready=${alrInstalledPackageWaylandDisplayBridgeResult.ackLines.firstOrNull()?.contains("wire_subset_ready=true") == true}",
                 "wayland display wire surface lifecycle=${alrInstalledPackageWaylandDisplayBridgeResult.ackLines.firstOrNull()?.contains("wire_surface_lifecycle=true") == true}",
+                "wayland display binary messages=${alrInstalledPackageWaylandDisplayBridgeResult.rawLines.count { it.startsWith("ALR_WL_BINARY_MESSAGE ") }}",
+                "wayland display binary bytes=${tokenValue(alrInstalledPackageWaylandDisplayBridgeResult.rawLines.firstOrNull { it.startsWith("ALR_WL_BINARY_STREAM ") }.orEmpty(), "bytes") ?: "0"}",
+                "wayland display binary subset ready=${alrInstalledPackageWaylandDisplayBridgeResult.ackLines.firstOrNull()?.contains("binary_subset_ready=true") == true}",
                 "wayland display ahardwarebuffer backed frames=${alrInstalledPackageWaylandDisplayBridgeResult.commands.count { it.backing == "host-ahardwarebuffer" }}/${alrInstalledPackageWaylandDisplayBridgeResult.expectedFrames}",
                 "wayland display dirty rect frames=${alrInstalledPackageWaylandDisplayBridgeResult.commands.count { it.partialUpdate }}/${alrInstalledPackageWaylandDisplayBridgeResult.expectedFrames}",
                 "wayland display dirty rect bytes=${alrInstalledPackageWaylandDisplayBridgeResult.commands.sumOf { it.dirtyBytes }}",
@@ -1848,7 +1854,7 @@ class MainActivity : Activity() {
                     Log.i(
                         "ALR_SURFACE_EVIDENCE",
                         listOf(
-                            "build: 0.4.98-wayland-wire-subset",
+                            "build: 0.4.99-wayland-binary-decode",
                             "WAYLAND DISPLAY SOCKET AVAILABLE: ${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}",
                             "WAYLAND DISPLAY COMMIT SURFACE EXECUTION: ${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}",
                             "ANDROID HOST AHARDWAREBUFFER EXECUTION: ${if (hostHardwareBufferPassed) "PASS" else "FAIL"}",
@@ -1893,6 +1899,9 @@ class MainActivity : Activity() {
                             "wayland display wire messages=${alrInstalledPackageWaylandDisplayBridgeResult.rawLines.count { it.startsWith("ALR_WL_WIRE ") }}",
                             "wayland display wire subset ready=${alrInstalledPackageWaylandDisplayBridgeResult.ackLines.firstOrNull()?.contains("wire_subset_ready=true") == true}",
                             "wayland display wire surface lifecycle=${alrInstalledPackageWaylandDisplayBridgeResult.ackLines.firstOrNull()?.contains("wire_surface_lifecycle=true") == true}",
+                            "wayland display binary messages=${alrInstalledPackageWaylandDisplayBridgeResult.rawLines.count { it.startsWith("ALR_WL_BINARY_MESSAGE ") }}",
+                            "wayland display binary bytes=${tokenValue(alrInstalledPackageWaylandDisplayBridgeResult.rawLines.firstOrNull { it.startsWith("ALR_WL_BINARY_STREAM ") }.orEmpty(), "bytes") ?: "0"}",
+                            "wayland display binary subset ready=${alrInstalledPackageWaylandDisplayBridgeResult.ackLines.firstOrNull()?.contains("binary_subset_ready=true") == true}",
                             "wayland display dirty rect bytes=${alrInstalledPackageWaylandDisplayBridgeResult.commands.sumOf { it.dirtyBytes }}",
                             "wayland display partial upload ratio pct=${partialUploadRatioPct(alrInstalledPackageWaylandDisplayBridgeResult.commands)}",
                             surfaceReport.lineStartingWith("surface wayland frames rendered="),
@@ -1976,6 +1985,13 @@ class MainActivity : Activity() {
         val verified: Boolean,
         val bytes: Int,
         val checksum: Long,
+    )
+
+    private data class WaylandBinaryMessage(
+        val index: Int,
+        val objectId: Int,
+        val opcode: Int,
+        val size: Int,
     )
 
     private data class WaylandAttachState(
@@ -2948,6 +2964,25 @@ class MainActivity : Activity() {
                         fdPayloads.forEach { fdPayload ->
                             rawLines += "ALR_WL_FD_PAYLOAD index=${fdPayload.index} verified=${fdPayload.verified} bytes=${fdPayload.bytes} checksum=${"%08x".format(fdPayload.checksum)} transport=scm-rights-memfd layout=triple-buffer"
                         }
+                        val firstLine = readAsciiLine(input, 256)
+                        val binaryHeader = firstLine?.takeIf { it.startsWith("ALR_WL_BINARY_STREAM ") }
+                        val binaryMessages = if (binaryHeader != null) {
+                            rawLines += binaryHeader
+                            val binaryBytes = tokenValue(binaryHeader, "bytes")?.toIntOrNull()?.coerceIn(0, 4096) ?: 0
+                            val expectedChecksum = tokenValue(binaryHeader, "checksum")?.toLongOrNull(16) ?: 0L
+                            val payload = readExactBytes(input, binaryBytes)
+                            val checksum = fnv1a32(payload)
+                            val decoded = decodeWaylandBinaryMessages(payload)
+                            val checksumVerified = payload.size == binaryBytes && checksum == expectedChecksum
+                            rawLines += "ALR_WL_BINARY_DECODE bytes=${payload.size} messages=${decoded.size} checksum=${"%08x".format(checksum)} checksum_verified=$checksumVerified decoded=${decoded.isNotEmpty()} wire=wayland-binary-v1"
+                            decoded.forEach { message ->
+                                rawLines += "ALR_WL_BINARY_MESSAGE index=${message.index} object=${message.objectId} opcode=${message.opcode} size=${message.size}"
+                            }
+                            decoded
+                        } else {
+                            if (firstLine != null) rawLines += firstLine
+                            emptyList()
+                        }
                         val reader = input.bufferedReader()
                         while (true) {
                             val line = reader.readLine() ?: break
@@ -2995,6 +3030,15 @@ class MainActivity : Activity() {
                                     tokenValue(line, "wire") == "wayland-header-v1" &&
                                     tokenValue(line, "endian") == "little"
                             }
+                        val binaryHeaderReady = binaryHeader != null &&
+                            tokenValue(binaryHeader, "messages")?.toIntOrNull() == expectedWire.size &&
+                            tokenValue(binaryHeader, "wire") == "wayland-binary-v1" &&
+                            tokenValue(binaryHeader, "endian") == "little"
+                        val binaryDecodeReady = binaryMessages.size == expectedWire.size &&
+                            binaryMessages.zip(expectedWire).all { (message, expected) ->
+                                message.opcode == expected.second && message.size == expected.third
+                            } &&
+                            rawLines.any { it.startsWith("ALR_WL_BINARY_DECODE ") && it.contains("checksum_verified=true") }
                         val wireSurfaceLifecycle = wireLines.count { tokenValue(it, "name") == "wl_surface.attach" } == 3 &&
                             wireLines.count { tokenValue(it, "name") == "wl_surface.damage_buffer" } == 3 &&
                             wireLines.count { tokenValue(it, "name") == "wl_surface.commit" } == 3
@@ -3031,7 +3075,7 @@ class MainActivity : Activity() {
                             } && fdPayloads.size == 3 && fdPayloadCount == 3 && fdPayloadBytes == 691200
                         val lossless = commits == 3
                         val ahbStateReady = ahbBackedAttaches == 3 && dirtyRectDamages == 3 && partialUpdates == 3 && dirtyBytes == 172800
-                        val ack = "ALR_WL_DISPLAY_ACK display=$displayName commits=$commits expected=3 lossless=$lossless payloads=$payloads payload_bytes=$payloadBytes payload_verified=$payloadVerified fd_payloads=$fdPayloadCount fd_payload_bytes=$fdPayloadBytes fd_payload_verified=$fdPayloadVerified fd_received=${fdPayloads.size} layout=triple-buffer transport=unix-abstract-wayland-scm-rights wire_messages=${wireLines.size} wire_subset_ready=$wireSubsetReady wire_surface_lifecycle=$wireSurfaceLifecycle backing=host-ahardwarebuffer ahb_backed=$ahbBackedAttaches dirty_rects=$dirtyRectDamages dirty_bytes=$dirtyBytes partial_updates=$partialUpdates ahb_state_ready=$ahbStateReady zero_copy_candidate=true"
+                        val ack = "ALR_WL_DISPLAY_ACK display=$displayName commits=$commits expected=3 lossless=$lossless payloads=$payloads payload_bytes=$payloadBytes payload_verified=$payloadVerified fd_payloads=$fdPayloadCount fd_payload_bytes=$fdPayloadBytes fd_payload_verified=$fdPayloadVerified fd_received=${fdPayloads.size} layout=triple-buffer transport=unix-abstract-wayland-scm-rights wire_messages=${wireLines.size} wire_subset_ready=$wireSubsetReady wire_surface_lifecycle=$wireSurfaceLifecycle binary_messages=${binaryMessages.size} binary_header_ready=$binaryHeaderReady binary_subset_ready=$binaryDecodeReady backing=host-ahardwarebuffer ahb_backed=$ahbBackedAttaches dirty_rects=$dirtyRectDamages dirty_bytes=$dirtyBytes partial_updates=$partialUpdates ahb_state_ready=$ahbStateReady zero_copy_candidate=true"
                         ackLines += ack
                         socket.getOutputStream().write((ack + "\n").toByteArray())
                         socket.getOutputStream().flush()
@@ -3862,6 +3906,9 @@ class MainActivity : Activity() {
             "\nwayland display wire messages=${displayResult.rawLines.count { it.startsWith("ALR_WL_WIRE ") }}" +
             "\nwayland display wire subset ready=${displayResult.ackLines.firstOrNull()?.contains("wire_subset_ready=true") == true}" +
             "\nwayland display wire surface lifecycle=${displayResult.ackLines.firstOrNull()?.contains("wire_surface_lifecycle=true") == true}" +
+            "\nwayland display binary messages=${displayResult.rawLines.count { it.startsWith("ALR_WL_BINARY_MESSAGE ") }}" +
+            "\nwayland display binary bytes=${tokenValue(displayResult.rawLines.firstOrNull { it.startsWith("ALR_WL_BINARY_STREAM ") }.orEmpty(), "bytes") ?: "0"}" +
+            "\nwayland display binary subset ready=${displayResult.ackLines.firstOrNull()?.contains("binary_subset_ready=true") == true}" +
             "\nwayland display ahardwarebuffer backed frames=${displayResult.commands.count { it.backing == "host-ahardwarebuffer" }}/${displayResult.expectedFrames}" +
             "\nwayland display dirty rect frames=${displayResult.commands.count { it.partialUpdate }}/${displayResult.expectedFrames}" +
             "\nwayland display dirty rect bytes=${displayResult.commands.sumOf { it.dirtyBytes }}" +
@@ -3873,6 +3920,47 @@ class MainActivity : Activity() {
 
     private fun String.lineStartingWith(prefix: String): String =
         lineSequence().firstOrNull { it.startsWith(prefix) } ?: "missing"
+
+    private fun readAsciiLine(input: InputStream, maxBytes: Int): String? {
+        val output = ByteArrayOutputStream()
+        while (output.size() < maxBytes) {
+            val next = input.read()
+            if (next < 0) break
+            if (next == '\n'.code) break
+            output.write(next)
+        }
+        if (output.size() == 0) return null
+        return output.toString(Charsets.UTF_8.name()).trimEnd('\r')
+    }
+
+    private fun readExactBytes(input: InputStream, expectedBytes: Int): ByteArray {
+        if (expectedBytes <= 0 || expectedBytes > 4096) return ByteArray(0)
+        val output = ByteArray(expectedBytes)
+        var offset = 0
+        while (offset < expectedBytes) {
+            val count = input.read(output, offset, expectedBytes - offset)
+            if (count <= 0) break
+            offset += count
+        }
+        return if (offset == expectedBytes) output else output.copyOf(offset)
+    }
+
+    private fun decodeWaylandBinaryMessages(bytes: ByteArray): List<WaylandBinaryMessage> {
+        val messages = mutableListOf<WaylandBinaryMessage>()
+        var offset = 0
+        var index = 0
+        while (offset + 8 <= bytes.size && messages.size < 32) {
+            val objectId = readU32Le(bytes, offset)
+            val header = readU32Le(bytes, offset + 4)
+            val opcode = header and 0xffff
+            val size = (header ushr 16) and 0xffff
+            if (objectId <= 0 || size < 8 || size % 4 != 0 || offset + size > bytes.size) break
+            messages += WaylandBinaryMessage(index, objectId, opcode, size)
+            offset += size
+            index += 1
+        }
+        return messages.takeIf { offset == bytes.size } ?: emptyList()
+    }
 
     private fun readAllBounded(input: InputStream, maxBytes: Int): ByteArray {
         val output = ByteArrayOutputStream()
@@ -3888,6 +3976,12 @@ class MainActivity : Activity() {
 
     private fun readU16Le(bytes: ByteArray, offset: Int): Int =
         (bytes[offset].toInt() and 0xff) or ((bytes[offset + 1].toInt() and 0xff) shl 8)
+
+    private fun readU32Le(bytes: ByteArray, offset: Int): Int =
+        (bytes[offset].toInt() and 0xff) or
+            ((bytes[offset + 1].toInt() and 0xff) shl 8) or
+            ((bytes[offset + 2].toInt() and 0xff) shl 16) or
+            ((bytes[offset + 3].toInt() and 0xff) shl 24)
 
     private fun writeU16Le(bytes: ByteArray, offset: Int, value: Int) {
         bytes[offset] = (value and 0xff).toByte()

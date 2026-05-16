@@ -989,10 +989,31 @@ ALR_WL_WIRE object=10 opcode=9 size=24 name=wl_surface.damage_buffer ...
 ALR_WL_WIRE object=10 opcode=6 size=8 name=wl_surface.commit ...
 ```
 
+Build `0.4.99-wayland-binary-decode` upgrades that same subset from textual
+headers into a raw binary request stream. Android consumes the binary block
+directly from the display socket, verifies the declared FNV-1a checksum, decodes
+object/opcode/size boundaries, and keeps the already-proven high-level
+`ALR_WL_*`, AHardwareBuffer, EGLImage, and Android Surface paths live in the
+same run.
+
+Expected V99 binary evidence:
+
+```text
+wayland display wire messages=15
+wayland display binary messages=15
+wayland display binary bytes=308
+wayland display binary subset ready=true
+ALR_WL_DISPLAY_ACK ... binary_messages=15 binary_header_ready=true binary_subset_ready=true ...
+ALR_WL_BINARY_STREAM bytes=308 messages=15 checksum=<hex> wire=wayland-binary-v1 endian=little
+ALR_WL_BINARY_DECODE bytes=308 messages=15 checksum=<hex> checksum_verified=true decoded=true wire=wayland-binary-v1
+ALR_WL_BINARY_MESSAGE index=0 object=1 opcode=1 size=12
+ALR_WL_BINARY_MESSAGE index=14 object=10 opcode=6 size=8
+```
+
 ## Open Questions
 
 - Can the V90 file-backed payload bridge move fully behind the v96 host-buffer path without keeping memfd payloads as mandatory fallback evidence?
 - Which target devices return sync FDs for this AHardwareBuffer lock/unlock path, and where do we need EGL fence objects instead?
-- How much of the v98 wire subset should become a real binary decoder before using an existing compositor/proxy component?
+- Which next Wayland subset should be decoded after the v99 registry/compositor/shm/surface binary request path?
 - Should X11 support begin with image transport, GLX proxy research, or Xvfb/VNC comparison?
 - Which Vulkan subset is small enough to be credible but useful enough to guide the ICD design?

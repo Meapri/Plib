@@ -1563,6 +1563,37 @@ wayland ahardwarebuffer surface presented frames=6
 wayland ahardwarebuffer surface hardware render=true
 ```
 
+### V99 Wayland Binary Request Decode
+
+Build `0.4.99-wayland-binary-decode` keeps the v98 textual `ALR_WL_WIRE`
+records as human-readable diagnostics, but adds a bounded raw binary Wayland
+request stream before the display lifecycle records. The stream uses the real
+Wayland request header layout for the current subset: little-endian object id,
+little-endian `(size << 16) | opcode`, then request payload bytes. Android reads
+the declared byte count, verifies the checksum, decodes every message boundary,
+and only ACKs `binary_subset_ready=true` when the decoded request sequence still
+matches the registry/compositor/shm/surface lifecycle.
+
+```text
+build: 0.4.99-wayland-binary-decode
+versionCode=99
+versionName=0.4.99-wayland-binary-decode
+rootfs_version=bookworm-slim-2026-05-wayland-binary-v99
+rootfs sha256=4df118e1666e36c78dd7f4854ed25b7f02a38796ee30b3ef13114d4c167a3853
+rootfs size bytes=35300352
+WAYLAND DISPLAY SOCKET AVAILABLE: PASS
+WAYLAND DISPLAY COMMIT SURFACE EXECUTION: PASS
+wayland display wire messages=15
+wayland display binary messages=15
+wayland display binary bytes=308
+wayland display binary subset ready=true
+alr installed package wayland display ipc ack raw=... binary_messages=15 binary_header_ready=true binary_subset_ready=true ...
+WAYLAND AHARDWAREBUFFER SURFACE COMPOSITOR EXECUTION: PASS
+wayland ahardwarebuffer surface buffer pool reuses=3
+wayland ahardwarebuffer surface presented frames=6
+wayland ahardwarebuffer surface hardware render=true
+```
+
 Report:
 
 ```text

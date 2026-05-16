@@ -70,6 +70,8 @@ def test_rootfs_contains_guest_gpu_ipc_client_and_gles_shim():
         assert b"transport=shared-file" in wayland_display
         assert b"scm-rights-memfd" in wayland_display
         assert b"layout=triple-buffer" in wayland_display
+        assert b"ALR_WL_BINARY_STREAM" in wayland_display
+        assert b"wayland-binary-v1" in wayland_display
 
 
 def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
@@ -192,6 +194,15 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "wayland display wire messages=" in text
     assert "wayland display wire subset ready=" in text
     assert "wayland display wire surface lifecycle=" in text
+    assert "wayland display binary messages=" in text
+    assert "wayland display binary bytes=" in text
+    assert "wayland display binary subset ready=" in text
+    assert "ALR_WL_BINARY_STREAM" in text
+    assert "ALR_WL_BINARY_DECODE" in text
+    assert "ALR_WL_BINARY_MESSAGE" in text
+    assert "binary_messages=${binaryMessages.size}" in text
+    assert "binary_header_ready=$binaryHeaderReady" in text
+    assert "binary_subset_ready=$binaryDecodeReady" in text
     assert "wayland display ahardwarebuffer backed frames=" in text
     assert "wayland display dirty rect frames=" in text
     assert "wayland display dirty rect bytes=" in text
@@ -235,14 +246,18 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "alr installed package vulkan proxy stdout" in text
 
 
-def test_v98_adb_verifier_checks_wayland_wire_subset_evidence():
-    script = (ROOT / "scripts/verify-android-v98-wayland-wire-subset.sh").read_text()
+def test_v99_adb_verifier_checks_wayland_binary_decode_evidence():
+    script = (ROOT / "scripts/verify-android-v99-wayland-binary-decode.sh").read_text()
     text = MAIN.read_text()
     runner = RUNNER.read_text()
+    display_source = (ROOT / "rootfs/guest-src/gui/alr_wayland_display_client.c").read_text()
     assert "WAYLAND AHARDWAREBUFFER SURFACE COMPOSITOR EXECUTION: PASS" in script
     assert "wayland display wire messages=15" in script
     assert "wayland display wire subset ready=true" in script
     assert "wayland display wire surface lifecycle=true" in script
+    assert "wayland display binary messages=15" in script
+    assert "wayland display binary bytes=308" in script
+    assert "wayland display binary subset ready=true" in script
     assert "wayland ahardwarebuffer surface compositor=egl-image-texture-to-android-surface" in script
     assert "wayland ahardwarebuffer surface replay passes=2" in script
     assert "wayland ahardwarebuffer surface total frame submissions=6" in script
@@ -253,7 +268,11 @@ def test_v98_adb_verifier_checks_wayland_wire_subset_evidence():
     assert "wayland ahardwarebuffer surface fence pacing mode=reuse-slot-fence-handoff" in script
     assert "wayland ahardwarebuffer surface sync fence accounting=ok" in script
     assert "surface vulkan hardware render=true" in script
-    assert "versionName=0.4.98-wayland-wire-subset" in script
+    assert "versionName=0.4.99-wayland-binary-decode" in script
+    assert "ALR_WL_BINARY_STREAM bytes=%zu messages=15 checksum=%08x wire=wayland-binary-v1 endian=little" in display_source
+    assert "emit_wayland_binary_subset" in display_source
+    assert "append_wayland_binary_request" in display_source
+    assert "put_u32_le" in display_source
     assert "alr installed package vulkan icd surface clear request" in text
     assert "alr installed package vulkan icd surface clear accepted" in text
     assert "alr installed package vulkan icd stdout" in text
