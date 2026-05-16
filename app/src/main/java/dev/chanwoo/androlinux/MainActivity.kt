@@ -2705,7 +2705,61 @@ class MainActivity : Activity() {
         val waylandSeatRequestNames: List<String> = emptyList(),
         val waylandKeyboardKeymapSentCount: Int = 0,
         val waylandDebugSummary: String = "",
+        val waylandBufferSummary: String = "",
+        val waylandCommitSummary: String = "",
+        val waylandRoleSummary: String = "",
     )
+
+    private data class MinimalWaylandShmPoolState(
+        val objectId: Int,
+        var sizeBytes: Int,
+    )
+
+    private data class MinimalWaylandBufferState(
+        val objectId: Int,
+        val poolId: Int,
+        val offset: Int,
+        val width: Int,
+        val height: Int,
+        val stride: Int,
+        val format: Int,
+    ) {
+        val byteSize: Int
+            get() = (stride.coerceAtLeast(0) * height.coerceAtLeast(0)).coerceAtLeast(0)
+
+        fun summary(): String =
+            "id=$objectId pool=$poolId ${width}x$height stride=$stride format=$format bytes=$byteSize"
+    }
+
+    private data class MinimalWaylandSurfaceState(
+        val objectId: Int,
+        var role: String = "",
+        var title: String = "",
+        var pendingBufferId: Int = 0,
+        var pendingX: Int = 0,
+        var pendingY: Int = 0,
+        var damageX: Int = 0,
+        var damageY: Int = 0,
+        var damageWidth: Int = 0,
+        var damageHeight: Int = 0,
+        var commitCount: Int = 0,
+    )
+
+    private data class MinimalWaylandCommitState(
+        val seq: Int,
+        val surfaceId: Int,
+        val bufferId: Int,
+        val x: Int,
+        val y: Int,
+        val width: Int,
+        val height: Int,
+        val stride: Int,
+        val bytes: Int,
+        val role: String,
+    ) {
+        fun summary(): String =
+            "seq=$seq surface=$surfaceId buffer=$bufferId role=${role.ifBlank { "none" }} ${width}x$height stride=$stride bytes=$bytes at=$x,$y"
+    }
 
     private data class GuestFdPayloadVerification(
         val index: Int,
@@ -3786,6 +3840,9 @@ class MainActivity : Activity() {
         var waylandShellRoleRequestCount = 0
         var waylandSeatRequestNames = emptyList<String>()
         var waylandKeyboardKeymapSentCount = 0
+        var waylandBufferSummary = ""
+        var waylandCommitSummary = ""
+        var waylandRoleSummary = ""
         var server: LocalServerSocket? = null
         val listenSocket = try {
             LocalSocket().also { socket ->
@@ -3825,6 +3882,9 @@ class MainActivity : Activity() {
                             waylandShellRoleRequestCount = stats.shellRoleRequestCount
                             waylandSeatRequestNames = stats.seatRequestNames
                             waylandKeyboardKeymapSentCount = stats.keyboardKeymapSentCount
+                            waylandBufferSummary = stats.bufferSummary
+                            waylandCommitSummary = stats.commitSummary
+                            waylandRoleSummary = stats.roleSummary
                         }
                     }
                 } catch (error: SocketTimeoutException) {
@@ -3894,6 +3954,9 @@ class MainActivity : Activity() {
             waylandSeatRequestNames = waylandSeatRequestNames,
             waylandKeyboardKeymapSentCount = waylandKeyboardKeymapSentCount,
             waylandDebugSummary = waylandDebugSummary,
+            waylandBufferSummary = waylandBufferSummary,
+            waylandCommitSummary = waylandCommitSummary,
+            waylandRoleSummary = waylandRoleSummary,
         )
     }
 
@@ -3916,6 +3979,9 @@ class MainActivity : Activity() {
         val shellRoleRequestCount: Int,
         val seatRequestNames: List<String>,
         val keyboardKeymapSentCount: Int,
+        val bufferSummary: String,
+        val commitSummary: String,
+        val roleSummary: String,
     )
 
     private data class WaylandServerResponse(
@@ -3941,6 +4007,10 @@ class MainActivity : Activity() {
         val bindInterfaces = mutableListOf<String>()
         val seatRequestNames = mutableListOf<String>()
         val boundOutputIds = mutableListOf<Int>()
+        val shmPools = mutableMapOf<Int, MinimalWaylandShmPoolState>()
+        val buffers = mutableMapOf<Int, MinimalWaylandBufferState>()
+        val surfaces = mutableMapOf<Int, MinimalWaylandSurfaceState>()
+        val commits = mutableListOf<MinimalWaylandCommitState>()
         val keyboardKeymapFile = prepareWaylandKeyboardKeymapFile()
         var requestCount = 0
         var responseBytes = 0
@@ -4000,6 +4070,10 @@ class MainActivity : Activity() {
                 objectInterfaces = objectInterfaces,
                 globals = globals,
                 boundOutputIds = boundOutputIds,
+                shmPools = shmPools,
+                buffers = buffers,
+                surfaces = surfaces,
+                commits = commits,
                 nextSerial = { serial++ },
                 keyboardKeymapFile = keyboardKeymapFile,
             )
@@ -4035,6 +4109,16 @@ class MainActivity : Activity() {
                 it == "xdg_surface_v5.set_title" ||
                 it == "xdg_surface_v5.set_app_id"
         }
+        val bufferSummary = buffers.values
+            .sortedBy { it.objectId }
+            .joinToString("|") { it.summary() }
+        val commitSummary = commits.takeLast(8).joinToString("|") { it.summary() }
+        val roleSummary = surfaces.values
+            .sortedBy { it.objectId }
+            .filter { it.role.isNotBlank() || it.title.isNotBlank() || it.commitCount > 0 }
+            .joinToString("|") {
+                "surface=${it.objectId} role=${it.role.ifBlank { "none" }} title=${it.title.ifBlank { "none" }} commits=${it.commitCount}"
+            }
         return WaylandServerStats(
             requestCount = requestCount,
             responseBytes = responseBytes,
@@ -4054,6 +4138,9 @@ class MainActivity : Activity() {
             shellRoleRequestCount = shellRoleRequestCount,
             seatRequestNames = seatRequestNames,
             keyboardKeymapSentCount = keyboardKeymapSentCount,
+            bufferSummary = bufferSummary,
+            commitSummary = commitSummary,
+            roleSummary = roleSummary,
         )
     }
 
@@ -4467,6 +4554,10 @@ class MainActivity : Activity() {
         objectInterfaces: MutableMap<Int, String>,
         globals: List<MinimalWaylandGlobal>,
         boundOutputIds: MutableList<Int>,
+        shmPools: MutableMap<Int, MinimalWaylandShmPoolState>,
+        buffers: MutableMap<Int, MinimalWaylandBufferState>,
+        surfaces: MutableMap<Int, MinimalWaylandSurfaceState>,
+        commits: MutableList<MinimalWaylandCommitState>,
         nextSerial: () -> Int,
         keyboardKeymapFile: File,
     ): List<WaylandServerResponse> {
@@ -4501,6 +4592,7 @@ class MainActivity : Activity() {
         if (interfaceName == "wl_compositor" && opcode == 0 && payload.size >= 4) {
             val surfaceId = readLe32(payload, 0)
             objectInterfaces[surfaceId] = "wl_surface"
+            surfaces[surfaceId] = MinimalWaylandSurfaceState(surfaceId)
             return boundOutputIds.firstOrNull()
                 ?.let { outputId -> listOf(waylandObjectEvent(surfaceId, opcode = 0, eventObjectId = outputId).asWaylandResponse()) }
                 ?: emptyList()
@@ -4522,12 +4614,27 @@ class MainActivity : Activity() {
         }
         if (interfaceName == "wl_shm" && opcode == 0 && payload.size >= 8) {
             val poolId = readLe32(payload, 0)
+            val sizeBytes = readLe32(payload, 4)
             objectInterfaces[poolId] = "wl_shm_pool"
+            shmPools[poolId] = MinimalWaylandShmPoolState(poolId, sizeBytes)
             return emptyList()
         }
-        if (interfaceName == "wl_shm_pool" && opcode == 0 && payload.size >= 4) {
+        if (interfaceName == "wl_shm_pool" && opcode == 0 && payload.size >= 24) {
             val bufferId = readLe32(payload, 0)
             objectInterfaces[bufferId] = "wl_buffer"
+            buffers[bufferId] = MinimalWaylandBufferState(
+                objectId = bufferId,
+                poolId = objectId,
+                offset = readLe32(payload, 4),
+                width = readLe32(payload, 8),
+                height = readLe32(payload, 12),
+                stride = readLe32(payload, 16),
+                format = readLe32(payload, 20),
+            )
+            return emptyList()
+        }
+        if (interfaceName == "wl_shm_pool" && opcode == 2 && payload.size >= 4) {
+            shmPools[objectId]?.sizeBytes = readLe32(payload, 0)
             return emptyList()
         }
         if (interfaceName == "wl_seat" && opcode == 0 && payload.size >= 4) {
@@ -4621,13 +4728,62 @@ class MainActivity : Activity() {
         }
         if (interfaceName == "gtk_shell1" && opcode == 0 && payload.size >= 8) {
             val gtkSurfaceId = readLe32(payload, 0)
+            val surfaceId = readLe32(payload, 4)
             objectInterfaces[gtkSurfaceId] = "gtk_surface1"
+            surfaces.getOrPut(surfaceId) { MinimalWaylandSurfaceState(surfaceId) }.role = "gtk_surface1"
             return emptyList()
         }
         if (interfaceName == "wl_surface" && opcode == 3 && payload.size >= 4) {
             val callbackId = readLe32(payload, 0)
             objectInterfaces[callbackId] = "wl_callback"
             return listOf(waylandCallbackDone(callbackId, nextSerial()).asWaylandResponse())
+        }
+        if (interfaceName == "wl_surface" && opcode == 1 && payload.size >= 12) {
+            surfaces.getOrPut(objectId) { MinimalWaylandSurfaceState(objectId) }.apply {
+                pendingBufferId = readLe32(payload, 0)
+                pendingX = readLe32(payload, 4)
+                pendingY = readLe32(payload, 8)
+            }
+            return emptyList()
+        }
+        if (interfaceName == "wl_surface" && opcode == 2 && payload.size >= 16) {
+            surfaces.getOrPut(objectId) { MinimalWaylandSurfaceState(objectId) }.apply {
+                damageX = readLe32(payload, 0)
+                damageY = readLe32(payload, 4)
+                damageWidth = readLe32(payload, 8)
+                damageHeight = readLe32(payload, 12)
+            }
+            return emptyList()
+        }
+        if (interfaceName == "wl_surface" && opcode == 6) {
+            val surface = surfaces.getOrPut(objectId) { MinimalWaylandSurfaceState(objectId) }
+            surface.commitCount += 1
+            val buffer = buffers[surface.pendingBufferId]
+            if (buffer != null) {
+                commits += MinimalWaylandCommitState(
+                    seq = commits.size + 1,
+                    surfaceId = objectId,
+                    bufferId = buffer.objectId,
+                    x = surface.pendingX,
+                    y = surface.pendingY,
+                    width = buffer.width,
+                    height = buffer.height,
+                    stride = buffer.stride,
+                    bytes = buffer.byteSize,
+                    role = surface.role,
+                )
+                return listOf(waylandEmptyEvent(buffer.objectId, opcode = 0).asWaylandResponse())
+            }
+            return emptyList()
+        }
+        if (interfaceName == "wl_surface" && opcode == 9 && payload.size >= 16) {
+            surfaces.getOrPut(objectId) { MinimalWaylandSurfaceState(objectId) }.apply {
+                damageX = readLe32(payload, 0)
+                damageY = readLe32(payload, 4)
+                damageWidth = readLe32(payload, 8)
+                damageHeight = readLe32(payload, 12)
+            }
+            return emptyList()
         }
         if (interfaceName == "xdg_wm_base" && opcode == 1 && payload.size >= 4) {
             val positionerId = readLe32(payload, 0)
@@ -4636,7 +4792,9 @@ class MainActivity : Activity() {
         }
         if (interfaceName == "xdg_wm_base" && opcode == 2 && payload.size >= 8) {
             val xdgSurfaceId = readLe32(payload, 0)
+            val surfaceId = readLe32(payload, 4)
             objectInterfaces[xdgSurfaceId] = "xdg_surface"
+            surfaces.getOrPut(surfaceId) { MinimalWaylandSurfaceState(surfaceId) }.role = "xdg_surface"
             return emptyList()
         }
         if (interfaceName == "zxdg_shell_v6" && opcode == 1 && payload.size >= 4) {
@@ -4646,12 +4804,16 @@ class MainActivity : Activity() {
         }
         if (interfaceName == "zxdg_shell_v6" && opcode == 2 && payload.size >= 8) {
             val xdgSurfaceId = readLe32(payload, 0)
+            val surfaceId = readLe32(payload, 4)
             objectInterfaces[xdgSurfaceId] = "zxdg_surface_v6"
+            surfaces.getOrPut(surfaceId) { MinimalWaylandSurfaceState(surfaceId) }.role = "zxdg_surface_v6"
             return emptyList()
         }
         if (interfaceName == "xdg_shell" && opcode == 2 && payload.size >= 8) {
             val xdgSurfaceId = readLe32(payload, 0)
+            val surfaceId = readLe32(payload, 4)
             objectInterfaces[xdgSurfaceId] = "xdg_surface_v5"
+            surfaces.getOrPut(surfaceId) { MinimalWaylandSurfaceState(surfaceId) }.role = "xdg_surface_v5"
             return listOf(waylandXdgV5SurfaceConfigure(xdgSurfaceId, nextSerial()).asWaylandResponse())
         }
         if (interfaceName == "xdg_surface" && opcode == 1 && payload.size >= 4) {
