@@ -760,6 +760,7 @@ class NativeCommandRunner(
                 "GDK_BACKEND" to "wayland",
                 "WAYLAND_DISPLAY" to File(rootfsDir, "tmp/alr-gimp-gtk-0").absolutePath,
                 "WAYLAND_DEBUG" to "1",
+                "PYTHONUNBUFFERED" to "1",
                 "XDG_RUNTIME_DIR" to File(rootfsDir, "tmp").absolutePath,
                 "HOME" to File(rootfsDir, "tmp").absolutePath,
                 "USER" to "android",
@@ -774,7 +775,7 @@ class NativeCommandRunner(
             "/usr/bin/python3",
             listOf(
                 "-c",
-                "import gi; gi.require_version('Gtk','3.0'); from gi.repository import Gtk,GLib; Gtk.init([]); w=Gtk.Window(); w.set_default_size(320,200); w.set_title('ALR GTK Wayland'); w.show_all(); w.present(); GLib.timeout_add(1400, Gtk.main_quit); Gtk.main(); print('ALR_GIMP3_GTK_WAYLAND_WINDOW_PROBE ok realized=%s mapped=%s' % (w.get_realized(), w.get_mapped()))",
+                "import sys,gi\n\ndef mark(s):\n    sys.stderr.write('ALR_GTK_STAGE %s\\n' % s); sys.stderr.flush()\nmark('start'); gi.require_version('Gtk','3.0'); from gi.repository import Gtk,GLib; mark('imported'); Gtk.init([]); mark('init'); w=Gtk.Window(); mark('window'); w.set_default_size(320,200); w.set_title('ALR GTK Wayland'); mark('configured'); w.show_all(); mark('show_all'); w.present(); mark('present'); GLib.timeout_add(1400, Gtk.main_quit); mark('before_main'); Gtk.main(); mark('after_main'); print('ALR_GIMP3_GTK_WAYLAND_WINDOW_PROBE ok realized=%s mapped=%s' % (w.get_realized(), w.get_mapped()), flush=True)",
             ),
             timeoutMs = 20000,
             pathRewrite = true,
@@ -784,6 +785,7 @@ class NativeCommandRunner(
                 "GDK_BACKEND" to "wayland",
                 "WAYLAND_DISPLAY" to File(rootfsDir, "tmp/alr-gimp-gtk-window-0").absolutePath,
                 "WAYLAND_DEBUG" to "1",
+                "PYTHONUNBUFFERED" to "1",
                 "XDG_RUNTIME_DIR" to File(rootfsDir, "tmp").absolutePath,
                 "HOME" to File(rootfsDir, "tmp").absolutePath,
                 "USER" to "android",
@@ -792,13 +794,16 @@ class NativeCommandRunner(
             ),
         )
 
-    fun runAlrRuntimeTrampolineGimp3GdkSurfaceWaylandPythonProbe(rootfsDir: File): NativeCommandResult =
+    fun runAlrRuntimeTrampolineGimp3GdkSurfaceWaylandPythonProbe(
+        rootfsDir: File,
+        socketLeaf: String = "alr-gimp-gdk-surface-0",
+    ): NativeCommandResult =
         runAlrRuntimeTrampolineGlibcRootfsProgram(
             rootfsDir,
             "/usr/bin/python3",
             listOf(
                 "-c",
-                "import gi; gi.require_version('Gtk','3.0'); from gi.repository import Gtk,Gdk,GLib; Gtk.init([]); d=Gdk.Display.get_default(); w=Gtk.Window(); w.set_default_size(320,200); w.set_title('ALR GDK Surface'); a=Gtk.DrawingArea();\ndef draw(widget,cr):\n    cr.set_source_rgb(0.05,0.18,0.32); cr.paint(); cr.set_source_rgb(0.9,0.45,0.12); cr.rectangle(24,24,160,96); cr.fill(); return False\n\ndef tick():\n    a.queue_draw(); w.queue_draw(); d.flush(); return True\na.connect('draw',draw); w.add(a); w.realize(); w.show_all(); w.present(); GLib.timeout_add(60, tick); GLib.timeout_add(1800, Gtk.main_quit); Gtk.main(); print('ALR_GIMP3_GDK_SURFACE_WAYLAND_PROBE ok realized=%s mapped=%s display=%s' % (w.get_realized(), w.get_mapped(), d.get_name()))",
+                "import sys,gi\n\ndef mark(s):\n    sys.stderr.write('ALR_GDK_STAGE %s\\n' % s); sys.stderr.flush()\nmark('start'); gi.require_version('Gtk','3.0'); from gi.repository import Gtk,Gdk,GLib; mark('imported'); Gtk.init([]); mark('init'); d=Gdk.Display.get_default(); mark('display'); w=Gtk.Window(); mark('window'); w.set_default_size(320,200); w.set_title('ALR GDK Surface'); a=Gtk.DrawingArea();\ndef draw(widget,cr):\n    cr.set_source_rgb(0.05,0.18,0.32); cr.paint(); cr.set_source_rgb(0.9,0.45,0.12); cr.rectangle(24,24,160,96); cr.fill(); return False\n\ndef tick():\n    a.queue_draw(); w.queue_draw(); d.flush(); return True\na.connect('draw',draw); w.add(a); mark('added'); w.realize(); mark('realized'); w.show_all(); mark('show_all'); w.present(); mark('present'); GLib.timeout_add(60, tick); GLib.timeout_add(1800, Gtk.main_quit); mark('before_main'); Gtk.main(); mark('after_main'); print('ALR_GIMP3_GDK_SURFACE_WAYLAND_PROBE ok realized=%s mapped=%s display=%s' % (w.get_realized(), w.get_mapped(), d.get_name()), flush=True)",
             ),
             timeoutMs = 22000,
             pathRewrite = true,
@@ -806,8 +811,9 @@ class NativeCommandRunner(
             pathRewriteIdleSyscallLimit = 25000,
             extraGuestEnvironment = preloadPathFastPathEnvironment(rootfsDir) + mapOf(
                 "GDK_BACKEND" to "wayland",
-                "WAYLAND_DISPLAY" to File(rootfsDir, "tmp/alr-gimp-gdk-surface-0").absolutePath,
+                "WAYLAND_DISPLAY" to File(rootfsDir, "tmp/$socketLeaf").absolutePath,
                 "WAYLAND_DEBUG" to "1",
+                "PYTHONUNBUFFERED" to "1",
                 "XDG_RUNTIME_DIR" to File(rootfsDir, "tmp").absolutePath,
                 "HOME" to File(rootfsDir, "tmp").absolutePath,
                 "USER" to "android",

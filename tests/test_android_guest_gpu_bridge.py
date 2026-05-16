@@ -296,6 +296,7 @@ def test_v104_adb_verifier_checks_gimp3_wayland_evidence():
     assert "full gimp probe mode=fast-scout" in script
     assert "GIMP GTK WAYLAND PROBE EXECUTION: PASS" in script
     assert "GIMP GTK WINDOW WAYLAND PROBE EXECUTION: PASS" in script
+    assert "GIMP GDK XDG-ONLY WAYLAND PROBE EXECUTION: PASS" in script
     assert "GIMP GUI QUIT WAYLAND PROBE EXECUTION: PASS" in script
     assert "GIMP GUI WAYLAND PROBE EXECUTION:" in script
     assert "GIMP GUI WAYLAND BLOCKER: PRE_WAYLAND_CONNECT" in script
@@ -333,9 +334,15 @@ def test_v104_adb_verifier_checks_gimp3_wayland_evidence():
     assert f"gimp gtk window wayland server request trace={expanded_gdk_trace}" in script
     assert f"gimp gtk window wayland server bind trace={expanded_gdk_binds}" in script
     assert "gimp gtk window wayland server last request=wl_display.sync" in script
+    assert "gimp gtk window wayland debug summary=" in script
+    assert "stage_tail=GTK_STAGE:start>GTK_STAGE:imported>GTK_STAGE:init>GTK_STAGE:window>GTK_STAGE:configured" in script
     assert "gimp gtk window wayland handoff=ALR STATIC ENTRY HANDOFF: FAIL" in script
     assert "GIMP GDK SURFACE WAYLAND PROBE EXECUTION: PASS" in script
     assert f"gimp gdk surface wayland server request trace={expanded_gdk_trace}" in script
+    xdg_only_trace = "wl_display.get_registry,wl_display.sync,wl_registry.bind:wl_compositor,wl_registry.bind:wl_shm,wl_registry.bind:wl_output,wl_display.sync,wl_registry.bind:wl_data_device_manager,wl_shm.create_pool,wl_shm_pool.resize,wl_shm_pool.resize,wl_shm_pool.resize,wl_registry.bind:wl_seat,wl_compositor.create_surface,wl_data_device_manager.get_data_device,wl_compositor.create_surface,wl_display.sync"
+    assert f"gimp gdk xdg-only wayland server request trace={xdg_only_trace}" in script
+    assert "gimp gdk xdg-only wayland server globals=wl_compositor,wl_shm,xdg_wm_base,wl_seat,wl_output,wl_data_device_manager" in script
+    assert "gimp gdk xdg-only wayland debug summary=global_xdg=true global_gtk_shell=false global_legacy=false" in script
     assert "gimp gui quit wayland connected=true" in script
     assert "gimp gui quit wayland request=wl_display.get_registry" in script
     assert "gimp gui quit wayland handoff=ALR STATIC ENTRY HANDOFF: FAIL" in script
@@ -352,6 +359,7 @@ def test_v104_adb_verifier_checks_gimp3_wayland_evidence():
     assert "gimp gtk wayland server surfaces created=2" in script
     assert "gimp gtk wayland server data devices=1" in script
     assert "gimp gtk wayland server shell roles=" in script
+    assert "gimp gtk wayland debug summary=global_xdg=true" in script
     assert "gimp gtk window wayland server surfaces created=2" in script
     assert "gimp gdk surface wayland server surfaces created=2" in script
     assert "gimp gtk wayland handoff=ALR STATIC ENTRY HANDOFF: PASS" in script

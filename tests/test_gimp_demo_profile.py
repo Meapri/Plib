@@ -99,6 +99,9 @@ def test_android_reports_materialized_gimp_version_probe():
     assert "runAlrRuntimeTrampolineGimp3GdkSurfaceWaylandPythonProbe" in runner
     assert "Gtk.main()" in runner
     assert "GLib.timeout_add" in runner
+    assert "ALR_GTK_STAGE" in runner
+    assert "ALR_GDK_STAGE" in runner
+    assert '"PYTHONUNBUFFERED" to "1"' in runner
     assert '"GIMP3_DIRECTORY" to "/tmp/alr-gimp3"' in runner
     assert '"GIMP3_CACHEDIR" to "/tmp/alr-gimp3-cache"' in runner
     assert "runAlrRuntimeTrampolineGimp3GtkWaylandPythonProbe" in runner
@@ -116,6 +119,7 @@ def test_android_reports_materialized_gimp_version_probe():
     assert "GIMP GTK WAYLAND PROBE EXECUTION:" in text
     assert "GIMP GTK WINDOW WAYLAND PROBE EXECUTION:" in text
     assert "GIMP GDK SURFACE WAYLAND PROBE EXECUTION:" in text
+    assert "GIMP GDK XDG-ONLY WAYLAND PROBE EXECUTION:" in text
     assert "GIMP GUI QUIT WAYLAND PROBE EXECUTION:" in text
     assert "GIMP GUI WAYLAND PROBE EXECUTION:" in text
     assert "GIMP GUI WAYLAND BLOCKER:" in text
@@ -147,6 +151,7 @@ def test_android_reports_materialized_gimp_version_probe():
     assert "gimp gtk wayland server shell roles=" in text
     assert "gimp gtk wayland server surface commits=" in text
     assert "gimp gtk wayland server keyboard keymaps=" in text
+    assert "gimp gtk wayland debug summary=" in text
     assert "minimalWaylandGlobals" in text
     assert "waylandRegistryGlobal" in text
     assert '"wl_shm_pool" -> when (opcode)' in text
@@ -161,12 +166,24 @@ def test_android_reports_materialized_gimp_version_probe():
     assert "MinimalWaylandGlobal(9, \"zxdg_shell_v6\", 1)" in text
     assert "MinimalWaylandGlobal(10, \"wl_shell\", 1)" in text
     assert "MinimalWaylandGlobal(11, \"xdg_shell\", 1)" in text
+    assert "MinimalWaylandGlobal(12, \"wp_viewporter\", 1)" in text
+    assert "MinimalWaylandGlobal(16, \"zwp_linux_dmabuf_v1\", 4)" in text
+    assert "MinimalWaylandGlobal(17, \"xdg_decoration_manager_v1\", 1)" in text
+    assert '"wp_viewporter" -> when (opcode)' in text
+    assert '"wp_fractional_scale_manager_v1" -> when (opcode)' in text
+    assert '"zwp_linux_dmabuf_v1" -> when (opcode)' in text
+    assert '"xdg_decoration_manager_v1" -> when (opcode)' in text
+    assert "waylandDmabufModifierEvent" in text
+    assert "waylandI32PairEvent" in text
     assert "wl_seat.get_keyboard" in text
     assert "waylandKeyboardKeymap" in text
     assert "ParcelFileDescriptor.open" in text
     assert "boundOutputIds" in text
     assert "waylandObjectEvent(surfaceId, opcode = 0" in text
-    assert "waylandObjectEvent(dataDeviceId, opcode = 4" in text
+    assert "waylandObjectEvent(dataDeviceId, opcode = 5" in text
+    assert "xdgOnlyWaylandGlobals" in text
+    assert "summarizeWaylandDebug" in text
+    assert "protocol_error=" in text
     assert "socket.ancillaryFileDescriptors" in text
     assert "waylandFdSizeBytes" in text
     assert "gimp gtk window wayland server request trace=" in text
@@ -189,6 +206,10 @@ def test_android_reports_materialized_gimp_version_probe():
     assert "gimp gdk surface wayland server shell roles=" in text
     assert "gimp gdk surface wayland server surface attaches=" in text
     assert "gimp gdk surface wayland server surface commits=" in text
+    assert "gimp gdk surface wayland debug summary=" in text
+    assert "gimp gdk xdg-only wayland server request trace=" in text
+    assert "gimp gdk xdg-only wayland server bind trace=" in text
+    assert "gimp gdk xdg-only wayland debug summary=" in text
     assert "gimp gdk surface wayland handoff=" in text
     assert "gimp gui quit wayland request=" in text
     assert "gimp gui quit wayland server globals=" in text
