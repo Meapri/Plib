@@ -966,10 +966,33 @@ wayland ahardwarebuffer surface sync fence accounting=ok
 wayland ahardwarebuffer surface hardware render=true
 ```
 
+Build `0.4.98-wayland-wire-subset` starts replacing the text-only display
+contract with Wayland wire grammar evidence. The guest still sends the
+high-level `ALR_WL_*` records so the existing probes remain comparable, but it
+also emits a bounded ordered `ALR_WL_WIRE` stream. Each wire record carries
+`object`, `opcode`, `size`, the combined little-endian Wayland header word, the
+interface request name, and a compact argument summary. Android validates that
+the wire stream covers registry bind, compositor surface creation, shm pool and
+buffer creation, and three attach/damage/commit surface lifecycles.
+
+Expected V98 wire evidence:
+
+```text
+wayland display wire messages=15
+wayland display wire subset ready=true
+wayland display wire surface lifecycle=true
+ALR_WL_DISPLAY_ACK ... wire_messages=15 wire_subset_ready=true wire_surface_lifecycle=true ...
+ALR_WL_WIRE object=1 opcode=1 size=12 name=wl_display.get_registry ...
+ALR_WL_WIRE object=3 opcode=0 size=12 name=wl_compositor.create_surface ...
+ALR_WL_WIRE object=30 opcode=0 size=36 name=wl_shm_pool.create_buffer ...
+ALR_WL_WIRE object=10 opcode=9 size=24 name=wl_surface.damage_buffer ...
+ALR_WL_WIRE object=10 opcode=6 size=8 name=wl_surface.commit ...
+```
+
 ## Open Questions
 
 - Can the V90 file-backed payload bridge move fully behind the v96 host-buffer path without keeping memfd payloads as mandatory fallback evidence?
 - Which target devices return sync FDs for this AHardwareBuffer lock/unlock path, and where do we need EGL fence objects instead?
-- How much Wayland protocol is worth implementing before using an existing compositor/proxy component?
+- How much of the v98 wire subset should become a real binary decoder before using an existing compositor/proxy component?
 - Should X11 support begin with image transport, GLX proxy research, or Xvfb/VNC comparison?
 - Which Vulkan subset is small enough to be credible but useful enough to guide the ICD design?

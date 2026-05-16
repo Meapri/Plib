@@ -189,6 +189,9 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "wayland display shared payload bytes=" in text
     assert "wayland display fd payload frames=" in text
     assert "wayland display fd payload bytes=" in text
+    assert "wayland display wire messages=" in text
+    assert "wayland display wire subset ready=" in text
+    assert "wayland display wire surface lifecycle=" in text
     assert "wayland display ahardwarebuffer backed frames=" in text
     assert "wayland display dirty rect frames=" in text
     assert "wayland display dirty rect bytes=" in text
@@ -232,11 +235,14 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "alr installed package vulkan proxy stdout" in text
 
 
-def test_v97_adb_verifier_checks_wayland_ahardwarebuffer_pool_evidence():
-    script = (ROOT / "scripts/verify-android-v97-wayland-ahb-pool.sh").read_text()
+def test_v98_adb_verifier_checks_wayland_wire_subset_evidence():
+    script = (ROOT / "scripts/verify-android-v98-wayland-wire-subset.sh").read_text()
     text = MAIN.read_text()
     runner = RUNNER.read_text()
     assert "WAYLAND AHARDWAREBUFFER SURFACE COMPOSITOR EXECUTION: PASS" in script
+    assert "wayland display wire messages=15" in script
+    assert "wayland display wire subset ready=true" in script
+    assert "wayland display wire surface lifecycle=true" in script
     assert "wayland ahardwarebuffer surface compositor=egl-image-texture-to-android-surface" in script
     assert "wayland ahardwarebuffer surface replay passes=2" in script
     assert "wayland ahardwarebuffer surface total frame submissions=6" in script
@@ -247,7 +253,7 @@ def test_v97_adb_verifier_checks_wayland_ahardwarebuffer_pool_evidence():
     assert "wayland ahardwarebuffer surface fence pacing mode=reuse-slot-fence-handoff" in script
     assert "wayland ahardwarebuffer surface sync fence accounting=ok" in script
     assert "surface vulkan hardware render=true" in script
-    assert "versionName=0.4.97-wayland-ahb-pool" in script
+    assert "versionName=0.4.98-wayland-wire-subset" in script
     assert "alr installed package vulkan icd surface clear request" in text
     assert "alr installed package vulkan icd surface clear accepted" in text
     assert "alr installed package vulkan icd stdout" in text
@@ -601,6 +607,15 @@ def test_guest_gui_client_sources_support_unix_socket_transport():
     assert "ALR_WL_CONNECT display=%s runtime=%s transport=unix-abstract-wayland" in display_source
     assert "ALR_WL_REGISTRY global=wl_compositor" in display_source
     assert "ALR_WL_SURFACE_CREATE id=10 compositor=1" in display_source
+    assert "ALR_WL_WIRE object=%u opcode=%u size=%u header=0x%08x name=%s" in display_source
+    assert "emit_wayland_wire_subset" in display_source
+    assert "wl_display.get_registry" in display_source
+    assert "wl_registry.bind" in display_source
+    assert "wl_compositor.create_surface" in display_source
+    assert "wl_shm.create_pool" in display_source
+    assert "wl_shm_pool.create_buffer" in display_source
+    assert "wl_surface.damage_buffer" in display_source
+    assert "wl_surface.commit" in display_source
     assert "ALR_WL_BUFFER_CREATE id=20 width=%d height=%d stride=%d format=argb8888 payload=shared-file" in display_source
     assert "ALR_WL_SHM_POOL_CREATE id=30 path=%s bytes=%zu checksum=%08x buffers=%d layout=triple-buffer-file" in display_source
     assert "ALR_WL_SHM_POOL_FD id=%d fd_index=%d bytes=%zu checksum=%08x transport=scm-rights-memfd layout=triple-buffer" in display_source

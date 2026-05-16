@@ -224,6 +224,51 @@ static int send_fd_preamble(int socket_fd, const int* payload_fds, size_t payloa
     return sendmsg(socket_fd, &msg, 0) == 1;
 }
 
+static int emit_wayland_wire_line(
+    int fd,
+    uint32_t object_id,
+    uint16_t opcode,
+    uint16_t size,
+    const char* name,
+    const char* args
+) {
+    char line[512];
+    const uint32_t header_word = ((uint32_t)size << 16u) | (uint32_t)opcode;
+    snprintf(
+        line,
+        sizeof(line),
+        "ALR_WL_WIRE object=%u opcode=%u size=%u header=0x%08x name=%s args=%s wire=wayland-header-v1 endian=little\n",
+        object_id,
+        (unsigned int)opcode,
+        (unsigned int)size,
+        header_word,
+        name,
+        args
+    );
+    return write_all(fd, line);
+}
+
+static int emit_wayland_wire_subset(int fd, size_t pool_bytes) {
+    char args[192];
+    if (!emit_wayland_wire_line(fd, 1, 1, 12, "wl_display.get_registry", "new_id=2")) return 0;
+    if (!emit_wayland_wire_line(fd, 2, 0, 40, "wl_registry.bind", "name=1 interface=wl_compositor version=4 new_id=3")) return 0;
+    if (!emit_wayland_wire_line(fd, 3, 0, 12, "wl_compositor.create_surface", "new_id=10")) return 0;
+    if (!emit_wayland_wire_line(fd, 2, 0, 32, "wl_registry.bind", "name=2 interface=wl_shm version=1 new_id=4")) return 0;
+    snprintf(args, sizeof(args), "new_id=30 fd=0 size=%zu", pool_bytes);
+    if (!emit_wayland_wire_line(fd, 4, 0, 20, "wl_shm.create_pool", args)) return 0;
+    if (!emit_wayland_wire_line(fd, 30, 0, 36, "wl_shm_pool.create_buffer", "new_id=20 x=0 y=0 width=320 height=180 stride=1280 format=argb8888")) return 0;
+    if (!emit_wayland_wire_line(fd, 10, 1, 20, "wl_surface.attach", "buffer=20 x=0 y=0")) return 0;
+    if (!emit_wayland_wire_line(fd, 10, 9, 24, "wl_surface.damage_buffer", "x=0 y=0 width=160 height=90")) return 0;
+    if (!emit_wayland_wire_line(fd, 10, 6, 8, "wl_surface.commit", "seq=1")) return 0;
+    if (!emit_wayland_wire_line(fd, 10, 1, 20, "wl_surface.attach", "buffer=20 x=0 y=0")) return 0;
+    if (!emit_wayland_wire_line(fd, 10, 9, 24, "wl_surface.damage_buffer", "x=80 y=45 width=160 height=90")) return 0;
+    if (!emit_wayland_wire_line(fd, 10, 6, 8, "wl_surface.commit", "seq=2")) return 0;
+    if (!emit_wayland_wire_line(fd, 10, 1, 20, "wl_surface.attach", "buffer=20 x=0 y=0")) return 0;
+    if (!emit_wayland_wire_line(fd, 10, 9, 24, "wl_surface.damage_buffer", "x=160 y=90 width=160 height=90")) return 0;
+    if (!emit_wayland_wire_line(fd, 10, 6, 8, "wl_surface.commit", "seq=3")) return 0;
+    return 1;
+}
+
 int main(void) {
     const char* display = env_or_default("WAYLAND_DISPLAY", "wayland-0");
     const char* runtime_dir = env_or_default("XDG_RUNTIME_DIR", "/tmp");
@@ -319,6 +364,7 @@ int main(void) {
     if (!write_all(fd, "ALR_WL_BIND name=wl_compositor id=1 version=4\n")) return 6;
     if (!write_all(fd, "ALR_WL_SURFACE_CREATE id=10 compositor=1\n")) return 7;
     if (!write_all(fd, "ALR_WL_BIND name=wl_shm id=2 version=1\n")) return 8;
+    if (!emit_wayland_wire_subset(fd, payload_bytes[0] * frame_count)) return 23;
     if (!write_all(fd, "ALR_WL_AHB_BACKING_ADVERTISE version=1 allocator=android-host format=R8G8B8A8_UNORM usage=cpu-read-write+gpu-sampled+gpu-color-output max_buffers=3 dirty_rect=true\n")) return 21;
     snprintf(
         line,

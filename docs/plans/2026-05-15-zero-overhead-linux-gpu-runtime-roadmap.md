@@ -1650,9 +1650,37 @@ hold resident `AHardwareBuffer`/EGLImage/texture objects, reuse all three slots
 on a second presentation pass, and feed slot-local fence FDs into the next
 dirty-rect lock whenever the device returns them.
 
+Latest V98 Wayland wire-subset evidence:
+
+```text
+build: 0.4.98-wayland-wire-subset
+versionCode=98
+versionName=0.4.98-wayland-wire-subset
+rootfs_version=bookworm-slim-2026-05-wayland-wire-v98
+rootfs sha256=3be38a2787dc7e4c0e825500a23cce08810879e91b9e24256bed6ef8a56648f3
+rootfs size bytes=35296256
+WAYLAND DISPLAY SOCKET AVAILABLE: PASS
+WAYLAND DISPLAY COMMIT SURFACE EXECUTION: PASS
+wayland display wire messages=15
+wayland display wire subset ready=true
+wayland display wire surface lifecycle=true
+WAYLAND DISPLAY AHARDWAREBUFFER BACKING EXECUTION: PASS
+WAYLAND AHARDWAREBUFFER SURFACE COMPOSITOR EXECUTION: PASS
+wayland ahardwarebuffer surface buffer pool mode=slot-reuse
+wayland ahardwarebuffer surface buffer pool reuses=3
+wayland ahardwarebuffer surface sampled frames=6
+wayland ahardwarebuffer surface presented frames=6
+wayland ahardwarebuffer surface hardware render=true
+```
+
+V98 keeps the existing high-level Wayland bridge stable while introducing an
+ordered wire-header subset trace. This gives the next batch a concrete target:
+replace textual `ALR_WL_WIRE` summaries with binary request decoding without
+losing the already-verified AHardwareBuffer and Surface evidence path.
+
 Next implementation batch:
 
-1. Expand the minimal Wayland bridge from ALR_WL text records to a stricter subset of real Wayland wire opcodes for registry, compositor, shm, surface, and buffer lifetimes.
+1. Convert the v98 `ALR_WL_WIRE` summary stream into a real bounded binary Wayland request decoder for the same registry/compositor/shm/surface subset.
 2. Replace the replay-based pool proof with real continuous guest commits and long-lived buffer reuse across Surface callbacks.
 3. Replace the loader-info smoke with the real Khronos Vulkan loader or a stricter ABI-compatible loader subset.
 4. Add a small real toolkit fixture target, likely a tiny GTK/Qt-independent Wayland protocol smoke before pulling in a larger GUI stack.

@@ -28,12 +28,12 @@ class MainActivity : Activity() {
 
         val rootfsManifest = RootfsManifest(
             name = "debian-arm64",
-            version = "bookworm-slim-2026-05-wayland-ahb-dirty-v95",
+            version = "bookworm-slim-2026-05-wayland-wire-v98",
             assets = listOf(
                 RootfsAsset(
                     path = "tiny-rootfs.tar",
-                    sha256 = "20493ea66546a74bfe79e384b7461f25891fa0474ab9fc6ea8226128873b75ac",
-                    sizeBytes = 35293184,
+                    sha256 = "3be38a2787dc7e4c0e825500a23cce08810879e91b9e24256bed6ef8a56648f3",
+                    sizeBytes = 35296256,
                 ),
             ),
         )
@@ -701,6 +701,10 @@ class MainActivity : Activity() {
                 rootfsInstalledWaylandDisplayClientFile.canExecute() &&
                 alrInstalledPackageWaylandDisplayBridgeResult.rawLines.any { it.startsWith("ALR_WL_CONNECT ") && it.contains("display=alr-wayland-0") } &&
                 alrInstalledPackageWaylandDisplayBridgeResult.rawLines.any { it.startsWith("ALR_WL_REGISTRY global=wl_compositor") } &&
+                alrInstalledPackageWaylandDisplayBridgeResult.rawLines.count { it.startsWith("ALR_WL_WIRE ") } == 15 &&
+                alrInstalledPackageWaylandDisplayBridgeResult.rawLines.any { it.startsWith("ALR_WL_WIRE ") && it.contains("name=wl_display.get_registry") && it.contains("size=12") } &&
+                alrInstalledPackageWaylandDisplayBridgeResult.rawLines.any { it.startsWith("ALR_WL_WIRE ") && it.contains("name=wl_compositor.create_surface") && it.contains("object=3") } &&
+                alrInstalledPackageWaylandDisplayBridgeResult.rawLines.count { it.startsWith("ALR_WL_WIRE ") && it.contains("name=wl_surface.commit") } == 3 &&
                 alrInstalledPackageWaylandDisplayBridgeResult.rawLines.any { it.startsWith("ALR_WL_AHB_BACKING_ADVERTISE ") && it.contains("dirty_rect=true") } &&
                 alrInstalledPackageWaylandDisplayBridgeResult.rawLines.any { it.startsWith("ALR_WL_SHM_POOL_CREATE ") } &&
                 alrInstalledPackageWaylandDisplayBridgeResult.rawLines.any { it.startsWith("ALR_WL_SHM_POOL_FD ") && it.contains("transport=scm-rights-memfd") } &&
@@ -726,6 +730,9 @@ class MainActivity : Activity() {
                 alrInstalledPackageWaylandDisplayBridgeResult.ackLines.first().contains("fd_received=3") &&
                 alrInstalledPackageWaylandDisplayBridgeResult.ackLines.first().contains("layout=triple-buffer") &&
                 alrInstalledPackageWaylandDisplayBridgeResult.ackLines.first().contains("transport=unix-abstract-wayland-scm-rights") &&
+                alrInstalledPackageWaylandDisplayBridgeResult.ackLines.first().contains("wire_messages=15") &&
+                alrInstalledPackageWaylandDisplayBridgeResult.ackLines.first().contains("wire_subset_ready=true") &&
+                alrInstalledPackageWaylandDisplayBridgeResult.ackLines.first().contains("wire_surface_lifecycle=true") &&
                 alrInstalledPackageWaylandDisplayBridgeResult.ackLines.first().contains("backing=host-ahardwarebuffer") &&
                 alrInstalledPackageWaylandDisplayBridgeResult.ackLines.first().contains("dirty_rects=3") &&
                 alrInstalledPackageWaylandDisplayBridgeResult.ackLines.first().contains("dirty_bytes=172800") &&
@@ -863,7 +870,7 @@ class MainActivity : Activity() {
                 "vulkan-loader:${if (alrInstalledPackageVulkanLoaderInfoPassed) "PASS" else "FAIL"}," +
                 "vulkan-loader-unix:${if (alrInstalledPackageVulkanUnixLoaderInfoPassed) "PASS" else "FAIL"}"
 
-        val executionSummary = "build: 0.4.97-wayland-ahb-pool" +
+        val executionSummary = "build: 0.4.98-wayland-wire-subset" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -1732,7 +1739,7 @@ class MainActivity : Activity() {
         Log.i(
             "ALR_DEVICE_EVIDENCE",
             listOf(
-                "build: 0.4.97-wayland-ahb-pool",
+                "build: 0.4.98-wayland-wire-subset",
                 "WAYLAND DISPLAY SOCKET AVAILABLE: ${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}",
                 "WAYLAND DISPLAY COMMIT SURFACE EXECUTION: ${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}",
                 "ANDROID HOST AHARDWAREBUFFER EXECUTION: ${if (hostHardwareBufferPassed) "PASS" else "FAIL"}",
@@ -1756,6 +1763,9 @@ class MainActivity : Activity() {
                 "wayland display shared payload bytes=${alrInstalledPackageWaylandDisplayBridgeResult.commands.sumOf { it.payloadBytes }}",
                 "wayland display fd payload frames=${alrInstalledPackageWaylandDisplayBridgeResult.commands.count { it.fdPayloadVerified }}/${alrInstalledPackageWaylandDisplayBridgeResult.expectedFrames}",
                 "wayland display fd payload bytes=${alrInstalledPackageWaylandDisplayBridgeResult.commands.sumOf { it.fdPayloadBytes }}",
+                "wayland display wire messages=${alrInstalledPackageWaylandDisplayBridgeResult.rawLines.count { it.startsWith("ALR_WL_WIRE ") }}",
+                "wayland display wire subset ready=${alrInstalledPackageWaylandDisplayBridgeResult.ackLines.firstOrNull()?.contains("wire_subset_ready=true") == true}",
+                "wayland display wire surface lifecycle=${alrInstalledPackageWaylandDisplayBridgeResult.ackLines.firstOrNull()?.contains("wire_surface_lifecycle=true") == true}",
                 "wayland display ahardwarebuffer backed frames=${alrInstalledPackageWaylandDisplayBridgeResult.commands.count { it.backing == "host-ahardwarebuffer" }}/${alrInstalledPackageWaylandDisplayBridgeResult.expectedFrames}",
                 "wayland display dirty rect frames=${alrInstalledPackageWaylandDisplayBridgeResult.commands.count { it.partialUpdate }}/${alrInstalledPackageWaylandDisplayBridgeResult.expectedFrames}",
                 "wayland display dirty rect bytes=${alrInstalledPackageWaylandDisplayBridgeResult.commands.sumOf { it.dirtyBytes }}",
@@ -1838,7 +1848,7 @@ class MainActivity : Activity() {
                     Log.i(
                         "ALR_SURFACE_EVIDENCE",
                         listOf(
-                            "build: 0.4.97-wayland-ahb-pool",
+                            "build: 0.4.98-wayland-wire-subset",
                             "WAYLAND DISPLAY SOCKET AVAILABLE: ${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}",
                             "WAYLAND DISPLAY COMMIT SURFACE EXECUTION: ${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}",
                             "ANDROID HOST AHARDWAREBUFFER EXECUTION: ${if (hostHardwareBufferPassed) "PASS" else "FAIL"}",
@@ -1880,6 +1890,9 @@ class MainActivity : Activity() {
                             "wayland display shared payload bytes=${alrInstalledPackageWaylandDisplayBridgeResult.commands.sumOf { it.payloadBytes }}",
                             "wayland display fd payload frames=${alrInstalledPackageWaylandDisplayBridgeResult.commands.count { it.fdPayloadVerified }}/${alrInstalledPackageWaylandDisplayBridgeResult.expectedFrames}",
                             "wayland display fd payload bytes=${alrInstalledPackageWaylandDisplayBridgeResult.commands.sumOf { it.fdPayloadBytes }}",
+                            "wayland display wire messages=${alrInstalledPackageWaylandDisplayBridgeResult.rawLines.count { it.startsWith("ALR_WL_WIRE ") }}",
+                            "wayland display wire subset ready=${alrInstalledPackageWaylandDisplayBridgeResult.ackLines.firstOrNull()?.contains("wire_subset_ready=true") == true}",
+                            "wayland display wire surface lifecycle=${alrInstalledPackageWaylandDisplayBridgeResult.ackLines.firstOrNull()?.contains("wire_surface_lifecycle=true") == true}",
                             "wayland display dirty rect bytes=${alrInstalledPackageWaylandDisplayBridgeResult.commands.sumOf { it.dirtyBytes }}",
                             "wayland display partial upload ratio pct=${partialUploadRatioPct(alrInstalledPackageWaylandDisplayBridgeResult.commands)}",
                             surfaceReport.lineStartingWith("surface wayland frames rendered="),
@@ -2956,6 +2969,35 @@ class MainActivity : Activity() {
                             .filter { it.startsWith("ALR_WL_BUFFER_ATTACH ") }
                             .mapNotNull { tokenValue(it, "dirty_bytes")?.toIntOrNull() }
                             .sum()
+                        val wireLines = rawLines.filter { it.startsWith("ALR_WL_WIRE ") }
+                        val expectedWire = listOf(
+                            Triple("wl_display.get_registry", 1, 12),
+                            Triple("wl_registry.bind", 0, 40),
+                            Triple("wl_compositor.create_surface", 0, 12),
+                            Triple("wl_registry.bind", 0, 32),
+                            Triple("wl_shm.create_pool", 0, 20),
+                            Triple("wl_shm_pool.create_buffer", 0, 36),
+                            Triple("wl_surface.attach", 1, 20),
+                            Triple("wl_surface.damage_buffer", 9, 24),
+                            Triple("wl_surface.commit", 6, 8),
+                            Triple("wl_surface.attach", 1, 20),
+                            Triple("wl_surface.damage_buffer", 9, 24),
+                            Triple("wl_surface.commit", 6, 8),
+                            Triple("wl_surface.attach", 1, 20),
+                            Triple("wl_surface.damage_buffer", 9, 24),
+                            Triple("wl_surface.commit", 6, 8),
+                        )
+                        val wireSubsetReady = wireLines.size == expectedWire.size &&
+                            wireLines.zip(expectedWire).all { (line, expected) ->
+                                tokenValue(line, "name") == expected.first &&
+                                    tokenValue(line, "opcode")?.toIntOrNull() == expected.second &&
+                                    tokenValue(line, "size")?.toIntOrNull() == expected.third &&
+                                    tokenValue(line, "wire") == "wayland-header-v1" &&
+                                    tokenValue(line, "endian") == "little"
+                            }
+                        val wireSurfaceLifecycle = wireLines.count { tokenValue(it, "name") == "wl_surface.attach" } == 3 &&
+                            wireLines.count { tokenValue(it, "name") == "wl_surface.damage_buffer" } == 3 &&
+                            wireLines.count { tokenValue(it, "name") == "wl_surface.commit" } == 3
                         val payloadBytes = rawLines
                             .asSequence()
                             .filter { it.startsWith("ALR_WL_BUFFER_ATTACH ") }
@@ -2989,7 +3031,7 @@ class MainActivity : Activity() {
                             } && fdPayloads.size == 3 && fdPayloadCount == 3 && fdPayloadBytes == 691200
                         val lossless = commits == 3
                         val ahbStateReady = ahbBackedAttaches == 3 && dirtyRectDamages == 3 && partialUpdates == 3 && dirtyBytes == 172800
-                        val ack = "ALR_WL_DISPLAY_ACK display=$displayName commits=$commits expected=3 lossless=$lossless payloads=$payloads payload_bytes=$payloadBytes payload_verified=$payloadVerified fd_payloads=$fdPayloadCount fd_payload_bytes=$fdPayloadBytes fd_payload_verified=$fdPayloadVerified fd_received=${fdPayloads.size} layout=triple-buffer transport=unix-abstract-wayland-scm-rights backing=host-ahardwarebuffer ahb_backed=$ahbBackedAttaches dirty_rects=$dirtyRectDamages dirty_bytes=$dirtyBytes partial_updates=$partialUpdates ahb_state_ready=$ahbStateReady zero_copy_candidate=true"
+                        val ack = "ALR_WL_DISPLAY_ACK display=$displayName commits=$commits expected=3 lossless=$lossless payloads=$payloads payload_bytes=$payloadBytes payload_verified=$payloadVerified fd_payloads=$fdPayloadCount fd_payload_bytes=$fdPayloadBytes fd_payload_verified=$fdPayloadVerified fd_received=${fdPayloads.size} layout=triple-buffer transport=unix-abstract-wayland-scm-rights wire_messages=${wireLines.size} wire_subset_ready=$wireSubsetReady wire_surface_lifecycle=$wireSurfaceLifecycle backing=host-ahardwarebuffer ahb_backed=$ahbBackedAttaches dirty_rects=$dirtyRectDamages dirty_bytes=$dirtyBytes partial_updates=$partialUpdates ahb_state_ready=$ahbStateReady zero_copy_candidate=true"
                         ackLines += ack
                         socket.getOutputStream().write((ack + "\n").toByteArray())
                         socket.getOutputStream().flush()
@@ -3817,6 +3859,9 @@ class MainActivity : Activity() {
             "\nwayland display socket name=alr-wayland-0" +
             "\nwayland display transport unix=true" +
             "\nwayland display surface commits=${displayResult.commands.size}/${displayResult.expectedFrames}" +
+            "\nwayland display wire messages=${displayResult.rawLines.count { it.startsWith("ALR_WL_WIRE ") }}" +
+            "\nwayland display wire subset ready=${displayResult.ackLines.firstOrNull()?.contains("wire_subset_ready=true") == true}" +
+            "\nwayland display wire surface lifecycle=${displayResult.ackLines.firstOrNull()?.contains("wire_surface_lifecycle=true") == true}" +
             "\nwayland display ahardwarebuffer backed frames=${displayResult.commands.count { it.backing == "host-ahardwarebuffer" }}/${displayResult.expectedFrames}" +
             "\nwayland display dirty rect frames=${displayResult.commands.count { it.partialUpdate }}/${displayResult.expectedFrames}" +
             "\nwayland display dirty rect bytes=${displayResult.commands.sumOf { it.dirtyBytes }}" +

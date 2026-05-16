@@ -1533,6 +1533,36 @@ wayland ahardwarebuffer surface sync fence accounting=ok
 wayland ahardwarebuffer surface hardware render=true
 ```
 
+### V98 Wayland Wire-Subset Trace
+
+Build `0.4.98-wayland-wire-subset` adds a stricter clean-room Wayland wire
+trace beside the existing `ALR_WL_*` compatibility records. The guest display
+client now emits bounded `ALR_WL_WIRE` records using the real Wayland message
+shape: object id, opcode, size/opcode header word, and ordered arguments for
+`wl_display.get_registry`, `wl_registry.bind`, `wl_compositor.create_surface`,
+`wl_shm.create_pool`, `wl_shm_pool.create_buffer`, `wl_surface.attach`,
+`wl_surface.damage_buffer`, and `wl_surface.commit`. Android validates the
+ordered wire subset before ACKing `wire_subset_ready=true`.
+
+```text
+build: 0.4.98-wayland-wire-subset
+versionCode=98
+versionName=0.4.98-wayland-wire-subset
+rootfs_version=bookworm-slim-2026-05-wayland-wire-v98
+rootfs sha256=3be38a2787dc7e4c0e825500a23cce08810879e91b9e24256bed6ef8a56648f3
+rootfs size bytes=35296256
+WAYLAND DISPLAY SOCKET AVAILABLE: PASS
+WAYLAND DISPLAY COMMIT SURFACE EXECUTION: PASS
+wayland display wire messages=15
+wayland display wire subset ready=true
+wayland display wire surface lifecycle=true
+alr installed package wayland display ipc ack raw=... wire_messages=15 wire_subset_ready=true wire_surface_lifecycle=true ...
+WAYLAND AHARDWAREBUFFER SURFACE COMPOSITOR EXECUTION: PASS
+wayland ahardwarebuffer surface buffer pool reuses=3
+wayland ahardwarebuffer surface presented frames=6
+wayland ahardwarebuffer surface hardware render=true
+```
+
 Report:
 
 ```text
