@@ -151,9 +151,20 @@ def test_android_reports_materialized_gimp_version_probe():
     assert "gimp gtk wayland server shell roles=" in text
     assert "gimp gtk wayland server surface commits=" in text
     assert "gimp gtk wayland server keyboard keymaps=" in text
+    assert "gimp gtk wayland server callback dones=" in text
+    assert "gimp gtk wayland server delete ids=" in text
+    assert "gimp gtk wayland server buffer samples=" in text
     assert "gimp gtk wayland debug summary=" in text
     assert "minimalWaylandGlobals" in text
     assert "waylandRegistryGlobal" in text
+    assert "waylandDisplayDeleteId" in text
+    assert "sampleMinimalWaylandBuffer" in text
+    assert "ParcelFileDescriptor.dup" in text
+    assert "Os.pread" in text
+    assert "sample_rgb=" in text
+    assert "callbackDone = true" in text
+    assert "deleteId = true" in text
+    assert "isWaylandDestroyOrReleaseRequest" in text
     assert '"wl_shm_pool" -> when (opcode)' in text
     assert '"wl_seat" -> when (opcode)' in text
     assert '"wl_data_device_manager" -> when (opcode)' in text
@@ -196,6 +207,9 @@ def test_android_reports_materialized_gimp_version_probe():
     assert "gimp gtk window wayland server surface commits=" in text
     assert "gimp gtk window wayland server seat trace=" in text
     assert "gimp gtk window wayland server keyboard keymaps=" in text
+    assert "gimp gtk window wayland server callback dones=" in text
+    assert "gimp gtk window wayland server delete ids=" in text
+    assert "gimp gtk window wayland server buffer samples=" in text
     assert "gimp gtk window wayland handoff=" in text
     assert "gimp gdk surface wayland server request trace=" in text
     assert "gimp gdk surface wayland server bind trace=" in text
@@ -206,9 +220,15 @@ def test_android_reports_materialized_gimp_version_probe():
     assert "gimp gdk surface wayland server shell roles=" in text
     assert "gimp gdk surface wayland server surface attaches=" in text
     assert "gimp gdk surface wayland server surface commits=" in text
+    assert "gimp gdk surface wayland server callback dones=" in text
+    assert "gimp gdk surface wayland server delete ids=" in text
+    assert "gimp gdk surface wayland server buffer samples=" in text
     assert "gimp gdk surface wayland debug summary=" in text
     assert "gimp gdk xdg-only wayland server request trace=" in text
     assert "gimp gdk xdg-only wayland server bind trace=" in text
+    assert "gimp gdk xdg-only wayland server callback dones=" in text
+    assert "gimp gdk xdg-only wayland server delete ids=" in text
+    assert "gimp gdk xdg-only wayland server buffer samples=" in text
     assert "gimp gdk xdg-only wayland debug summary=" in text
     assert "gimp gdk surface wayland handoff=" in text
     assert "gimp gui quit wayland request=" in text
@@ -222,11 +242,17 @@ def test_android_reports_materialized_gimp_version_probe():
     assert "gimp gui quit wayland server shell roles=" in text
     assert "gimp gui quit wayland server surface commits=" in text
     assert "gimp gui quit wayland server keyboard keymaps=" in text
+    assert "gimp gui quit wayland server callback dones=" in text
+    assert "gimp gui quit wayland server delete ids=" in text
+    assert "gimp gui quit wayland server buffer samples=" in text
     assert "gimp gui wayland request=" in text
     assert "gimp gui wayland server fd count=" in text
     assert "gimp gui wayland server shm pool buffers=" in text
     assert "gimp gui wayland server surface commits=" in text
     assert "gimp gui wayland server keyboard keymaps=" in text
+    assert "gimp gui wayland server callback dones=" in text
+    assert "gimp gui wayland server delete ids=" in text
+    assert "gimp gui wayland server buffer samples=" in text
     assert "GIMP DEMO BUNDLE LOCK:" in text
     assert "rootfs /usr/bin/gimp exists=" in text
     assert "rootfs gimp demo materialized exists=" in text

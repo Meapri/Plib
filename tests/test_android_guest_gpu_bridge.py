@@ -356,6 +356,9 @@ def test_v104_adb_verifier_checks_gimp3_wayland_evidence():
     assert "gimp gtk wayland server requests=" in script
     assert "gimp gtk wayland server response bytes=" in script
     assert f"gimp gtk wayland server globals={expanded_gdk_globals}" in script
+    assert "gimp gtk wayland server callback dones=" in script
+    assert "gimp gtk wayland server delete ids=" in script
+    assert "gimp gtk wayland server buffer samples=" in script
     assert "gimp gtk wayland server surfaces created=2" in script
     assert "gimp gtk wayland server data devices=1" in script
     assert "gimp gtk wayland server shell roles=" in script

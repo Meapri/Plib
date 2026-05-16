@@ -1162,6 +1162,8 @@ class MainActivity : Activity() {
             "\ngimp gtk wayland server requests=${gimpGtkWaylandProbeResult.waylandRequestCount}" +
             "\ngimp gtk wayland server response bytes=${gimpGtkWaylandProbeResult.waylandResponseBytes}" +
             "\ngimp gtk wayland server globals=${gimpGtkWaylandProbeResult.waylandGlobals.joinToString(",")}" +
+            "\ngimp gtk wayland server callback dones=${gimpGtkWaylandProbeResult.waylandCallbackDoneSentCount}" +
+            "\ngimp gtk wayland server delete ids=${gimpGtkWaylandProbeResult.waylandDeleteIdSentCount}" +
             "\ngimp gtk wayland error=${gimpGtkWaylandProbeResult.error ?: "none"}" +
             "\ngimp gtk wayland handoff=${gimpGtkWaylandProbeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
             "\ngimp gtk wayland stdout=${gimpGtkWaylandProbeResult.clientResult.stdout.alrHandoffStdoutText().forEvidenceLog()}" +
@@ -1177,6 +1179,8 @@ class MainActivity : Activity() {
             "\ngimp gui wayland server requests=${gimpGuiWaylandProbeResult.waylandRequestCount}" +
             "\ngimp gui wayland server response bytes=${gimpGuiWaylandProbeResult.waylandResponseBytes}" +
             "\ngimp gui wayland server globals=${gimpGuiWaylandProbeResult.waylandGlobals.joinToString(",")}" +
+            "\ngimp gui wayland server callback dones=${gimpGuiWaylandProbeResult.waylandCallbackDoneSentCount}" +
+            "\ngimp gui wayland server delete ids=${gimpGuiWaylandProbeResult.waylandDeleteIdSentCount}" +
             "\ngimp gui wayland error=${gimpGuiWaylandProbeResult.error ?: "none"}" +
             "\ngimp gui wayland blocker=$gimpGuiWaylandBlocker" +
             "\ngimp gui wayland handoff=${gimpGuiWaylandProbeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
@@ -1938,6 +1942,8 @@ class MainActivity : Activity() {
                 "gimp gtk wayland server requests=${gimpGtkWaylandProbeResult.waylandRequestCount}",
                 "gimp gtk wayland server response bytes=${gimpGtkWaylandProbeResult.waylandResponseBytes}",
                 "gimp gtk wayland server globals=${gimpGtkWaylandProbeResult.waylandGlobals.joinToString(",")}",
+                "gimp gtk wayland server callback dones=${gimpGtkWaylandProbeResult.waylandCallbackDoneSentCount}",
+                "gimp gtk wayland server delete ids=${gimpGtkWaylandProbeResult.waylandDeleteIdSentCount}",
                 "gimp gtk wayland error=${gimpGtkWaylandProbeResult.error ?: "none"}",
                 "gimp gtk wayland handoff=${gimpGtkWaylandProbeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}",
                 "gimp gtk wayland stdout=${gimpGtkWaylandProbeResult.clientResult.stdout.alrHandoffStdoutText().forEvidenceLog()}",
@@ -1953,6 +1959,8 @@ class MainActivity : Activity() {
                 "gimp gui wayland server requests=${gimpGuiWaylandProbeResult.waylandRequestCount}",
                 "gimp gui wayland server response bytes=${gimpGuiWaylandProbeResult.waylandResponseBytes}",
                 "gimp gui wayland server globals=${gimpGuiWaylandProbeResult.waylandGlobals.joinToString(",")}",
+                "gimp gui wayland server callback dones=${gimpGuiWaylandProbeResult.waylandCallbackDoneSentCount}",
+                "gimp gui wayland server delete ids=${gimpGuiWaylandProbeResult.waylandDeleteIdSentCount}",
                 "gimp gui wayland error=${gimpGuiWaylandProbeResult.error ?: "none"}",
                 "gimp gui wayland blocker=$gimpGuiWaylandBlocker",
                 "gimp gui wayland handoff=${gimpGuiWaylandProbeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}",
@@ -2405,6 +2413,12 @@ class MainActivity : Activity() {
             "gimp gtk wayland server surface commits=${gimpGtkWaylandProbeResult.waylandSurfaceCommitCount}",
             "gimp gtk wayland server seat trace=${gimpGtkWaylandProbeResult.waylandSeatRequestNames.joinToString(",")}",
             "gimp gtk wayland server keyboard keymaps=${gimpGtkWaylandProbeResult.waylandKeyboardKeymapSentCount}",
+            "gimp gtk wayland server callback dones=${gimpGtkWaylandProbeResult.waylandCallbackDoneSentCount}",
+            "gimp gtk wayland server delete ids=${gimpGtkWaylandProbeResult.waylandDeleteIdSentCount}",
+            "gimp gtk wayland server buffer summary=${gimpGtkWaylandProbeResult.waylandBufferSummary}",
+            "gimp gtk wayland server commit summary=${gimpGtkWaylandProbeResult.waylandCommitSummary}",
+            "gimp gtk wayland server buffer samples=${gimpGtkWaylandProbeResult.waylandBufferSampleSummary}",
+            "gimp gtk wayland server role summary=${gimpGtkWaylandProbeResult.waylandRoleSummary}",
             "gimp gtk wayland debug summary=${gimpGtkWaylandProbeResult.waylandDebugSummary}",
             "gimp gtk wayland error=${gimpGtkWaylandProbeResult.error ?: "none"}",
             "gimp gtk wayland handoff=${gimpGtkWaylandProbeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}",
@@ -2437,6 +2451,12 @@ class MainActivity : Activity() {
             "gimp gtk window wayland server surface commits=${gimpGtkWindowWaylandProbeResult.waylandSurfaceCommitCount}",
             "gimp gtk window wayland server seat trace=${gimpGtkWindowWaylandProbeResult.waylandSeatRequestNames.joinToString(",")}",
             "gimp gtk window wayland server keyboard keymaps=${gimpGtkWindowWaylandProbeResult.waylandKeyboardKeymapSentCount}",
+            "gimp gtk window wayland server callback dones=${gimpGtkWindowWaylandProbeResult.waylandCallbackDoneSentCount}",
+            "gimp gtk window wayland server delete ids=${gimpGtkWindowWaylandProbeResult.waylandDeleteIdSentCount}",
+            "gimp gtk window wayland server buffer summary=${gimpGtkWindowWaylandProbeResult.waylandBufferSummary}",
+            "gimp gtk window wayland server commit summary=${gimpGtkWindowWaylandProbeResult.waylandCommitSummary}",
+            "gimp gtk window wayland server buffer samples=${gimpGtkWindowWaylandProbeResult.waylandBufferSampleSummary}",
+            "gimp gtk window wayland server role summary=${gimpGtkWindowWaylandProbeResult.waylandRoleSummary}",
             "gimp gtk window wayland debug summary=${gimpGtkWindowWaylandProbeResult.waylandDebugSummary}",
             "gimp gtk window wayland error=${gimpGtkWindowWaylandProbeResult.error ?: "none"}",
             "gimp gtk window wayland handoff=${gimpGtkWindowWaylandProbeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}",
@@ -2469,6 +2489,12 @@ class MainActivity : Activity() {
             "gimp gdk surface wayland server surface commits=${gimpGdkSurfaceWaylandProbeResult.waylandSurfaceCommitCount}",
             "gimp gdk surface wayland server seat trace=${gimpGdkSurfaceWaylandProbeResult.waylandSeatRequestNames.joinToString(",")}",
             "gimp gdk surface wayland server keyboard keymaps=${gimpGdkSurfaceWaylandProbeResult.waylandKeyboardKeymapSentCount}",
+            "gimp gdk surface wayland server callback dones=${gimpGdkSurfaceWaylandProbeResult.waylandCallbackDoneSentCount}",
+            "gimp gdk surface wayland server delete ids=${gimpGdkSurfaceWaylandProbeResult.waylandDeleteIdSentCount}",
+            "gimp gdk surface wayland server buffer summary=${gimpGdkSurfaceWaylandProbeResult.waylandBufferSummary}",
+            "gimp gdk surface wayland server commit summary=${gimpGdkSurfaceWaylandProbeResult.waylandCommitSummary}",
+            "gimp gdk surface wayland server buffer samples=${gimpGdkSurfaceWaylandProbeResult.waylandBufferSampleSummary}",
+            "gimp gdk surface wayland server role summary=${gimpGdkSurfaceWaylandProbeResult.waylandRoleSummary}",
             "gimp gdk surface wayland debug summary=${gimpGdkSurfaceWaylandProbeResult.waylandDebugSummary}",
             "gimp gdk surface wayland error=${gimpGdkSurfaceWaylandProbeResult.error ?: "none"}",
             "gimp gdk surface wayland handoff=${gimpGdkSurfaceWaylandProbeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}",
@@ -2484,6 +2510,9 @@ class MainActivity : Activity() {
             "gimp gdk xdg-only wayland server shell roles=${gimpGdkXdgOnlyWaylandProbeResult.waylandShellRoleRequestCount}",
             "gimp gdk xdg-only wayland server surface attaches=${gimpGdkXdgOnlyWaylandProbeResult.waylandSurfaceAttachCount}",
             "gimp gdk xdg-only wayland server surface commits=${gimpGdkXdgOnlyWaylandProbeResult.waylandSurfaceCommitCount}",
+            "gimp gdk xdg-only wayland server callback dones=${gimpGdkXdgOnlyWaylandProbeResult.waylandCallbackDoneSentCount}",
+            "gimp gdk xdg-only wayland server delete ids=${gimpGdkXdgOnlyWaylandProbeResult.waylandDeleteIdSentCount}",
+            "gimp gdk xdg-only wayland server buffer samples=${gimpGdkXdgOnlyWaylandProbeResult.waylandBufferSampleSummary}",
             "gimp gdk xdg-only wayland debug summary=${gimpGdkXdgOnlyWaylandProbeResult.waylandDebugSummary}",
             "gimp gdk xdg-only wayland error=${gimpGdkXdgOnlyWaylandProbeResult.error ?: "none"}",
             "gimp gdk xdg-only wayland handoff=${gimpGdkXdgOnlyWaylandProbeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}",
@@ -2515,6 +2544,9 @@ class MainActivity : Activity() {
             "gimp gui quit wayland server surface commits=${gimpGuiQuitWaylandProbeResult.waylandSurfaceCommitCount}",
             "gimp gui quit wayland server seat trace=${gimpGuiQuitWaylandProbeResult.waylandSeatRequestNames.joinToString(",")}",
             "gimp gui quit wayland server keyboard keymaps=${gimpGuiQuitWaylandProbeResult.waylandKeyboardKeymapSentCount}",
+            "gimp gui quit wayland server callback dones=${gimpGuiQuitWaylandProbeResult.waylandCallbackDoneSentCount}",
+            "gimp gui quit wayland server delete ids=${gimpGuiQuitWaylandProbeResult.waylandDeleteIdSentCount}",
+            "gimp gui quit wayland server buffer samples=${gimpGuiQuitWaylandProbeResult.waylandBufferSampleSummary}",
             "gimp gui quit wayland error=${gimpGuiQuitWaylandProbeResult.error ?: "none"}",
             "gimp gui quit wayland handoff=${gimpGuiQuitWaylandProbeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}",
             "gimp gui quit wayland stdout=${gimpGuiQuitWaylandProbeResult.clientResult.stdout.alrHandoffStdoutText().forEvidenceLog()}",
@@ -2546,6 +2578,9 @@ class MainActivity : Activity() {
             "gimp gui wayland server surface commits=${gimpGuiWaylandProbeResult.waylandSurfaceCommitCount}",
             "gimp gui wayland server seat trace=${gimpGuiWaylandProbeResult.waylandSeatRequestNames.joinToString(",")}",
             "gimp gui wayland server keyboard keymaps=${gimpGuiWaylandProbeResult.waylandKeyboardKeymapSentCount}",
+            "gimp gui wayland server callback dones=${gimpGuiWaylandProbeResult.waylandCallbackDoneSentCount}",
+            "gimp gui wayland server delete ids=${gimpGuiWaylandProbeResult.waylandDeleteIdSentCount}",
+            "gimp gui wayland server buffer samples=${gimpGuiWaylandProbeResult.waylandBufferSampleSummary}",
             "gimp gui wayland error=${gimpGuiWaylandProbeResult.error ?: "none"}",
             "gimp gui wayland blocker=$gimpGuiWaylandBlocker",
             "gimp gui wayland handoff=${gimpGuiWaylandProbeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}",
@@ -2704,16 +2739,28 @@ class MainActivity : Activity() {
         val waylandShellRoleRequestCount: Int = 0,
         val waylandSeatRequestNames: List<String> = emptyList(),
         val waylandKeyboardKeymapSentCount: Int = 0,
+        val waylandCallbackDoneSentCount: Int = 0,
+        val waylandDeleteIdSentCount: Int = 0,
         val waylandDebugSummary: String = "",
         val waylandBufferSummary: String = "",
         val waylandCommitSummary: String = "",
+        val waylandBufferSampleSummary: String = "",
         val waylandRoleSummary: String = "",
     )
 
     private data class MinimalWaylandShmPoolState(
         val objectId: Int,
         var sizeBytes: Int,
-    )
+        var fd: ParcelFileDescriptor? = null,
+    ) {
+        fun close() {
+            fd?.close()
+            fd = null
+        }
+
+        fun summary(): String =
+            "id=$objectId bytes=$sizeBytes fd_backed=${fd != null}"
+    }
 
     private data class MinimalWaylandBufferState(
         val objectId: Int,
@@ -2756,10 +2803,21 @@ class MainActivity : Activity() {
         val stride: Int,
         val bytes: Int,
         val role: String,
+        val sampleBytes: Int = 0,
+        val sampleChecksum: Long = 0,
+        val sampleNonZeroBytes: Int = 0,
+        val sampleRgb: String = "none",
     ) {
         fun summary(): String =
-            "seq=$seq surface=$surfaceId buffer=$bufferId role=${role.ifBlank { "none" }} ${width}x$height stride=$stride bytes=$bytes at=$x,$y"
+            "seq=$seq surface=$surfaceId buffer=$bufferId role=${role.ifBlank { "none" }} ${width}x$height stride=$stride bytes=$bytes at=$x,$y sample_bytes=$sampleBytes sample_checksum=$sampleChecksum sample_nonzero=$sampleNonZeroBytes sample_rgb=$sampleRgb"
     }
+
+    private data class MinimalWaylandBufferSample(
+        val bytesRead: Int = 0,
+        val checksum: Long = 0,
+        val nonZeroBytes: Int = 0,
+        val rgb: String = "none",
+    )
 
     private data class GuestFdPayloadVerification(
         val index: Int,
@@ -3840,8 +3898,11 @@ class MainActivity : Activity() {
         var waylandShellRoleRequestCount = 0
         var waylandSeatRequestNames = emptyList<String>()
         var waylandKeyboardKeymapSentCount = 0
+        var waylandCallbackDoneSentCount = 0
+        var waylandDeleteIdSentCount = 0
         var waylandBufferSummary = ""
         var waylandCommitSummary = ""
+        var waylandBufferSampleSummary = ""
         var waylandRoleSummary = ""
         var server: LocalServerSocket? = null
         val listenSocket = try {
@@ -3882,8 +3943,11 @@ class MainActivity : Activity() {
                             waylandShellRoleRequestCount = stats.shellRoleRequestCount
                             waylandSeatRequestNames = stats.seatRequestNames
                             waylandKeyboardKeymapSentCount = stats.keyboardKeymapSentCount
+                            waylandCallbackDoneSentCount = stats.callbackDoneSentCount
+                            waylandDeleteIdSentCount = stats.deleteIdSentCount
                             waylandBufferSummary = stats.bufferSummary
                             waylandCommitSummary = stats.commitSummary
+                            waylandBufferSampleSummary = stats.bufferSampleSummary
                             waylandRoleSummary = stats.roleSummary
                         }
                     }
@@ -3953,9 +4017,12 @@ class MainActivity : Activity() {
             waylandShellRoleRequestCount = waylandShellRoleRequestCount,
             waylandSeatRequestNames = waylandSeatRequestNames,
             waylandKeyboardKeymapSentCount = waylandKeyboardKeymapSentCount,
+            waylandCallbackDoneSentCount = waylandCallbackDoneSentCount,
+            waylandDeleteIdSentCount = waylandDeleteIdSentCount,
             waylandDebugSummary = waylandDebugSummary,
             waylandBufferSummary = waylandBufferSummary,
             waylandCommitSummary = waylandCommitSummary,
+            waylandBufferSampleSummary = waylandBufferSampleSummary,
             waylandRoleSummary = waylandRoleSummary,
         )
     }
@@ -3979,14 +4046,19 @@ class MainActivity : Activity() {
         val shellRoleRequestCount: Int,
         val seatRequestNames: List<String>,
         val keyboardKeymapSentCount: Int,
+        val callbackDoneSentCount: Int,
+        val deleteIdSentCount: Int,
         val bufferSummary: String,
         val commitSummary: String,
+        val bufferSampleSummary: String,
         val roleSummary: String,
     )
 
     private data class WaylandServerResponse(
         val bytes: ByteArray,
         val fds: List<ParcelFileDescriptor> = emptyList(),
+        val callbackDone: Boolean = false,
+        val deleteId: Boolean = false,
     )
 
     private data class WaylandString(
@@ -4018,6 +4090,8 @@ class MainActivity : Activity() {
         var receivedFdBytes = 0L
         var receivedFdVerifiedCount = 0
         var keyboardKeymapSentCount = 0
+        var callbackDoneSentCount = 0
+        var deleteIdSentCount = 0
         var serial = 1
         while (requestCount < 96) {
             val header = try {
@@ -4060,13 +4134,13 @@ class MainActivity : Activity() {
                         receivedFdBytes += fdBytes
                         receivedFdVerifiedCount += 1
                     }
-                    runCatching { Os.close(fd) }
                 }
             }
             val responses = buildMinimalWaylandResponses(
                 objectId = objectId,
                 opcode = opcode,
                 payload = payload,
+                receivedFds = receivedFds,
                 objectInterfaces = objectInterfaces,
                 globals = globals,
                 boundOutputIds = boundOutputIds,
@@ -4077,6 +4151,7 @@ class MainActivity : Activity() {
                 nextSerial = { serial++ },
                 keyboardKeymapFile = keyboardKeymapFile,
             )
+            receivedFds.forEach { fd -> runCatching { Os.close(fd) } }
             responses.forEach { response ->
                 if (response.fds.isNotEmpty()) {
                     socket.setFileDescriptorsForSend(response.fds.map { it.fileDescriptor }.toTypedArray())
@@ -4084,6 +4159,8 @@ class MainActivity : Activity() {
                 }
                 output.write(response.bytes)
                 responseBytes += response.bytes.size
+                if (response.callbackDone) callbackDoneSentCount += 1
+                if (response.deleteId) deleteIdSentCount += 1
                 response.fds.forEach { it.close() }
                 if (response.fds.isNotEmpty()) {
                     socket.setFileDescriptorsForSend(emptyArray())
@@ -4113,6 +4190,13 @@ class MainActivity : Activity() {
             .sortedBy { it.objectId }
             .joinToString("|") { it.summary() }
         val commitSummary = commits.takeLast(8).joinToString("|") { it.summary() }
+        val bufferSampleSummary = commits
+            .filter { it.sampleBytes > 0 }
+            .takeLast(8)
+            .joinToString("|") {
+                "seq=${it.seq} buffer=${it.bufferId} sample_bytes=${it.sampleBytes} checksum=${it.sampleChecksum} nonzero=${it.sampleNonZeroBytes} rgb=${it.sampleRgb}"
+            }
+        shmPools.values.forEach { it.close() }
         val roleSummary = surfaces.values
             .sortedBy { it.objectId }
             .filter { it.role.isNotBlank() || it.title.isNotBlank() || it.commitCount > 0 }
@@ -4138,8 +4222,11 @@ class MainActivity : Activity() {
             shellRoleRequestCount = shellRoleRequestCount,
             seatRequestNames = seatRequestNames,
             keyboardKeymapSentCount = keyboardKeymapSentCount,
+            callbackDoneSentCount = callbackDoneSentCount,
+            deleteIdSentCount = deleteIdSentCount,
             bufferSummary = bufferSummary,
             commitSummary = commitSummary,
+            bufferSampleSummary = bufferSampleSummary,
             roleSummary = roleSummary,
         )
     }
@@ -4551,6 +4638,7 @@ class MainActivity : Activity() {
         objectId: Int,
         opcode: Int,
         payload: ByteArray,
+        receivedFds: List<FileDescriptor>,
         objectInterfaces: MutableMap<Int, String>,
         globals: List<MinimalWaylandGlobal>,
         boundOutputIds: MutableList<Int>,
@@ -4570,7 +4658,17 @@ class MainActivity : Activity() {
         if (interfaceName == "wl_display" && opcode == 0 && payload.size >= 4) {
             val callbackId = readLe32(payload, 0)
             objectInterfaces[callbackId] = "wl_callback"
-            return listOf(waylandCallbackDone(callbackId, nextSerial()).asWaylandResponse())
+            objectInterfaces.remove(callbackId)
+            return waylandCallbackCompleteResponses(callbackId, nextSerial())
+        }
+        if (isWaylandDestroyOrReleaseRequest(interfaceName, opcode)) {
+            return deleteWaylandObjectResponses(
+                objectId = objectId,
+                objectInterfaces = objectInterfaces,
+                shmPools = shmPools,
+                buffers = buffers,
+                surfaces = surfaces,
+            )
         }
         if (interfaceName == "wl_registry" && opcode == 0 && payload.size >= 16) {
             val globalName = readLe32(payload, 0)
@@ -4616,7 +4714,10 @@ class MainActivity : Activity() {
             val poolId = readLe32(payload, 0)
             val sizeBytes = readLe32(payload, 4)
             objectInterfaces[poolId] = "wl_shm_pool"
-            shmPools[poolId] = MinimalWaylandShmPoolState(poolId, sizeBytes)
+            val poolFd = receivedFds.firstOrNull()?.let { fd ->
+                runCatching { ParcelFileDescriptor.dup(fd) }.getOrNull()
+            }
+            shmPools[poolId] = MinimalWaylandShmPoolState(poolId, sizeBytes, poolFd)
             return emptyList()
         }
         if (interfaceName == "wl_shm_pool" && opcode == 0 && payload.size >= 24) {
@@ -4736,7 +4837,8 @@ class MainActivity : Activity() {
         if (interfaceName == "wl_surface" && opcode == 3 && payload.size >= 4) {
             val callbackId = readLe32(payload, 0)
             objectInterfaces[callbackId] = "wl_callback"
-            return listOf(waylandCallbackDone(callbackId, nextSerial()).asWaylandResponse())
+            objectInterfaces.remove(callbackId)
+            return waylandCallbackCompleteResponses(callbackId, nextSerial())
         }
         if (interfaceName == "wl_surface" && opcode == 1 && payload.size >= 12) {
             surfaces.getOrPut(objectId) { MinimalWaylandSurfaceState(objectId) }.apply {
@@ -4760,6 +4862,7 @@ class MainActivity : Activity() {
             surface.commitCount += 1
             val buffer = buffers[surface.pendingBufferId]
             if (buffer != null) {
+                val sample = sampleMinimalWaylandBuffer(buffer, shmPools[buffer.poolId])
                 commits += MinimalWaylandCommitState(
                     seq = commits.size + 1,
                     surfaceId = objectId,
@@ -4771,6 +4874,10 @@ class MainActivity : Activity() {
                     stride = buffer.stride,
                     bytes = buffer.byteSize,
                     role = surface.role,
+                    sampleBytes = sample.bytesRead,
+                    sampleChecksum = sample.checksum,
+                    sampleNonZeroBytes = sample.nonZeroBytes,
+                    sampleRgb = sample.rgb,
                 )
                 return listOf(waylandEmptyEvent(buffer.objectId, opcode = 0).asWaylandResponse())
             }
@@ -4835,6 +4942,118 @@ class MainActivity : Activity() {
         return emptyList()
     }
 
+    private fun waylandCallbackCompleteResponses(callbackId: Int, serial: Int): List<WaylandServerResponse> =
+        listOf(
+            waylandCallbackDone(callbackId, serial).asWaylandResponse(callbackDone = true),
+            waylandDisplayDeleteId(callbackId).asWaylandResponse(deleteId = true),
+        )
+
+    private fun isWaylandDestroyOrReleaseRequest(interfaceName: String, opcode: Int): Boolean =
+        when (interfaceName) {
+            "wl_surface" -> opcode == 0
+            "wl_shm_pool" -> opcode == 1
+            "wl_buffer" -> opcode == 0
+            "wl_region" -> opcode == 0
+            "wl_subcompositor" -> opcode == 0
+            "wl_subsurface" -> opcode == 0
+            "wl_seat" -> opcode == 3
+            "wl_pointer" -> opcode == 1
+            "wl_keyboard" -> opcode == 0
+            "wl_touch" -> opcode == 0
+            "wl_data_source" -> opcode == 1
+            "wl_data_device" -> opcode == 2
+            "wp_viewporter" -> opcode == 0
+            "wp_viewport" -> opcode == 0
+            "xdg_activation_token_v1" -> opcode == 4
+            "zxdg_output_manager_v1" -> opcode == 0
+            "zxdg_output_v1" -> opcode == 0
+            "wp_fractional_scale_manager_v1" -> opcode == 0
+            "wp_fractional_scale_v1" -> opcode == 0
+            "zwp_linux_dmabuf_v1" -> opcode == 0
+            "zwp_linux_buffer_params_v1" -> opcode == 0
+            "xdg_decoration_manager_v1" -> opcode == 0
+            "zxdg_toplevel_decoration_v1" -> opcode == 0
+            "wp_cursor_shape_manager_v1" -> opcode == 0
+            "wp_cursor_shape_device_v1" -> opcode == 0
+            "zwp_pointer_gestures_v1" -> opcode == 2
+            "zwp_pointer_gesture_swipe_v1" -> opcode == 0
+            "zwp_pointer_gesture_pinch_v1" -> opcode == 0
+            "zwp_pointer_gesture_hold_v1" -> opcode == 0
+            "zwp_text_input_manager_v3" -> opcode == 0
+            "zwp_text_input_v3" -> opcode == 0
+            "xdg_wm_base" -> opcode == 0
+            "zxdg_shell_v6" -> opcode == 0
+            "xdg_shell" -> opcode == 0
+            "xdg_surface" -> opcode == 0
+            "xdg_toplevel" -> opcode == 0
+            "zxdg_surface_v6" -> opcode == 0
+            "zxdg_toplevel_v6" -> opcode == 0
+            "xdg_surface_v5" -> opcode == 0
+            else -> false
+        }
+
+    private fun deleteWaylandObjectResponses(
+        objectId: Int,
+        objectInterfaces: MutableMap<Int, String>,
+        shmPools: MutableMap<Int, MinimalWaylandShmPoolState>,
+        buffers: MutableMap<Int, MinimalWaylandBufferState>,
+        surfaces: MutableMap<Int, MinimalWaylandSurfaceState>,
+    ): List<WaylandServerResponse> {
+        objectInterfaces.remove(objectId)
+        shmPools.remove(objectId)?.close()
+        buffers.remove(objectId)
+        surfaces.remove(objectId)
+        return listOf(waylandDisplayDeleteId(objectId).asWaylandResponse(deleteId = true))
+    }
+
+    private fun sampleMinimalWaylandBuffer(
+        buffer: MinimalWaylandBufferState,
+        pool: MinimalWaylandShmPoolState?,
+    ): MinimalWaylandBufferSample {
+        val fd = pool?.fd?.fileDescriptor ?: return MinimalWaylandBufferSample()
+        val bytesToRead = buffer.byteSize.coerceAtMost(1024 * 1024)
+        if (bytesToRead <= 0) return MinimalWaylandBufferSample()
+        val bytes = ByteArray(bytesToRead)
+        val read = runCatching {
+            Os.pread(fd, bytes, 0, bytesToRead, buffer.offset.toLong())
+        }.getOrDefault(0)
+        if (read <= 0) return MinimalWaylandBufferSample()
+        var checksum = 0L
+        var nonZero = 0
+        var red = 0L
+        var green = 0L
+        var blue = 0L
+        var pixels = 0
+        for (index in 0 until read) {
+            val value = bytes[index].toInt() and 0xff
+            checksum = (checksum + value * (index + 1L)) and 0xffffffffL
+            if (value != 0) nonZero += 1
+        }
+        val pixelLimit = read - (read % 4)
+        var index = 0
+        while (index < pixelLimit) {
+            blue += (bytes[index].toInt() and 0xff).toLong()
+            green += (bytes[index + 1].toInt() and 0xff).toLong()
+            red += (bytes[index + 2].toInt() and 0xff).toLong()
+            pixels += 1
+            index += 4
+        }
+        val rgb = if (pixels > 0) {
+            val r = (red / pixels).toInt().coerceIn(0, 255)
+            val g = (green / pixels).toInt().coerceIn(0, 255)
+            val b = (blue / pixels).toInt().coerceIn(0, 255)
+            "%02x%02x%02x".format(r, g, b)
+        } else {
+            "none"
+        }
+        return MinimalWaylandBufferSample(
+            bytesRead = read,
+            checksum = checksum,
+            nonZeroBytes = nonZero,
+            rgb = rgb,
+        )
+    }
+
     private fun initialWaylandBindEvents(
         objectId: Int,
         interfaceName: String,
@@ -4869,8 +5088,11 @@ class MainActivity : Activity() {
             else -> emptyList()
         }
 
-    private fun ByteArray.asWaylandResponse(): WaylandServerResponse =
-        WaylandServerResponse(this)
+    private fun ByteArray.asWaylandResponse(
+        callbackDone: Boolean = false,
+        deleteId: Boolean = false,
+    ): WaylandServerResponse =
+        WaylandServerResponse(this, callbackDone = callbackDone, deleteId = deleteId)
 
     private fun prepareWaylandKeyboardKeymapFile(): File =
         File(cacheDir, "alr-wayland-keymap.xkb").apply {
@@ -4922,6 +5144,11 @@ class MainActivity : Activity() {
     private fun waylandCallbackDone(callbackId: Int, serial: Int): ByteArray =
         waylandMessage(callbackId, opcode = 0) {
             writeLe32(serial)
+        }
+
+    private fun waylandDisplayDeleteId(deletedId: Int): ByteArray =
+        waylandMessage(1, opcode = 1) {
+            writeLe32(deletedId)
         }
 
     private fun waylandShmFormat(objectId: Int, format: Int): ByteArray =
