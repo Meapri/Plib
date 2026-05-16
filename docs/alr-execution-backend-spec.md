@@ -1431,6 +1431,44 @@ surface vulkan present=ok
 surface vulkan hardware render=true
 ```
 
+V95 moves the AHardwareBuffer decision from a parallel evidence replay into the
+Wayland bridge state model. The guest display client now advertises
+`ALR_WL_AHB_BACKING_ADVERTISE`, marks each `ALR_WL_BUFFER_ATTACH` with
+`backing=host-ahardwarebuffer`, emits `ALR_WL_DAMAGE` dirty rectangles, and
+keeps the v92 memfd payloads as a verified fallback/control comparison. Android
+parses attach state by sequence number, requires three host-backed partial
+updates, ACKs `ahb_state_ready=true`, and sends the parsed dirty-rect metadata
+into the native `AHardwareBuffer` probe. The native side updates and verifies
+only the dirty rectangles, so the AHB write path accounts for 172800 dirty bytes
+instead of recopying all 691200 fallback payload bytes.
+
+```text
+build: 0.4.95-wayland-ahb-dirty-state
+versionCode=95
+versionName=0.4.95-wayland-ahb-dirty-state
+rootfs_version=bookworm-slim-2026-05-wayland-ahb-dirty-v95
+rootfs sha256=20493ea66546a74bfe79e384b7461f25891fa0474ab9fc6ea8226128873b75ac
+rootfs size bytes=35293184
+WAYLAND DISPLAY SOCKET AVAILABLE: PASS
+WAYLAND DISPLAY COMMIT SURFACE EXECUTION: PASS
+WAYLAND DISPLAY AHARDWAREBUFFER BACKING EXECUTION: PASS
+alr installed package wayland display ipc ack raw=... backing=host-ahardwarebuffer ahb_backed=3 dirty_rects=3 dirty_bytes=172800 partial_updates=3 ahb_state_ready=true zero_copy_candidate=true
+wayland display ahardwarebuffer backed frames=3/3
+wayland display dirty rect frames=3/3
+wayland display dirty rect bytes=172800
+wayland display partial upload ratio pct=25
+ahardwarebuffer source=wayland-display-commits
+ahardwarebuffer backing mode=host-ahardwarebuffer
+ahardwarebuffer dirty rect frames=3/3
+ahardwarebuffer dirty rect bytes=172800
+ahardwarebuffer partial upload ratio pct=25
+ahardwarebuffer visible payload bytes=172800
+ahardwarebuffer wayland state machine backing=true
+ahardwarebuffer wayland display backing=true
+surface vulkan present=ok
+surface vulkan hardware render=true
+```
+
 Report:
 
 ```text

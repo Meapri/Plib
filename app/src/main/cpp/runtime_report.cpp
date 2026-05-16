@@ -437,7 +437,38 @@ struct SurfaceFrameCommand {
     float green = 0.18F;
     float blue = 0.45F;
     std::string tag = "host-default";
+    std::string backing = "none";
+    int seq = 0;
+    int buffer_slot = -1;
+    int width = 320;
+    int height = 180;
+    int dirty_x = 0;
+    int dirty_y = 0;
+    int dirty_width = 320;
+    int dirty_height = 180;
+    int dirty_bytes = 320 * 180 * 4;
+    bool partial_update = false;
 };
+
+int parse_int_token(const std::string& text, const std::string& key, int fallback) {
+    const auto start = text.find(key);
+    if (start == std::string::npos) return fallback;
+    const auto value_start = start + key.size();
+    char* end = nullptr;
+    const long value = std::strtol(text.c_str() + value_start, &end, 10);
+    if (end == text.c_str() + value_start) return fallback;
+    return static_cast<int>(value);
+}
+
+std::string parse_surface_token(const std::string& text, const std::string& key, const std::string& fallback) {
+    const auto start = text.find(key);
+    if (start == std::string::npos) return fallback;
+    auto value_start = start + key.size();
+    auto value_end = text.find(' ', value_start);
+    if (value_end == std::string::npos) value_end = text.size();
+    if (value_end <= value_start) return fallback;
+    return text.substr(value_start, value_end - value_start);
+}
 
 std::vector<SurfaceFrameCommand> parse_surface_frames(const std::string& encoded) {
     std::vector<SurfaceFrameCommand> frames;
@@ -451,6 +482,20 @@ std::vector<SurfaceFrameCommand> parse_surface_frames(const std::string& encoded
             cmd.red = std::max(0.0F, std::min(1.0F, cmd.red));
             cmd.green = std::max(0.0F, std::min(1.0F, cmd.green));
             cmd.blue = std::max(0.0F, std::min(1.0F, cmd.blue));
+            cmd.seq = parse_int_token(line, "seq=", static_cast<int>(frames.size()) + 1);
+            cmd.backing = parse_surface_token(line, "backing=", cmd.backing);
+            cmd.buffer_slot = parse_int_token(line, "buffer_slot=", cmd.buffer_slot);
+            cmd.width = std::max(1, parse_int_token(line, "width=", cmd.width));
+            cmd.height = std::max(1, parse_int_token(line, "height=", cmd.height));
+            cmd.dirty_x = std::max(0, parse_int_token(line, "dirty_x=", cmd.dirty_x));
+            cmd.dirty_y = std::max(0, parse_int_token(line, "dirty_y=", cmd.dirty_y));
+            cmd.dirty_width = std::max(1, parse_int_token(line, "dirty_w=", cmd.dirty_width));
+            cmd.dirty_height = std::max(1, parse_int_token(line, "dirty_h=", cmd.dirty_height));
+            cmd.dirty_width = std::min(cmd.dirty_width, std::max(1, cmd.width - cmd.dirty_x));
+            cmd.dirty_height = std::min(cmd.dirty_height, std::max(1, cmd.height - cmd.dirty_y));
+            cmd.dirty_bytes = parse_int_token(line, "dirty_bytes=", cmd.dirty_width * cmd.dirty_height * 4);
+            cmd.partial_update = parse_surface_token(line, "partial=", "false") == "true" ||
+                parse_surface_token(line, "update=", "full") == "partial";
             frames.push_back(cmd);
         }
     }
@@ -1224,6 +1269,11 @@ std::string probe_android_hardware_buffer_bridge(const std::vector<SurfaceFrameC
     int cpu_written = 0;
     int cpu_verified = 0;
     uint32_t total_visible_bytes = 0;
+    uint32_t total_full_payload_bytes = 0;
+    uint32_t total_dirty_bytes = 0;
+    int dirty_rect_frames = 0;
+    int host_backed_frames = 0;
+    int partial_update_frames = 0;
 
     auto release_buffers = [&]() {
         for (auto* buffer : buffers) {
@@ -1276,16 +1326,23 @@ std::string probe_android_hardware_buffer_bridge(const std::vector<SurfaceFrameC
             return out.str();
         }
 
-        std::vector<uint8_t> compact;
-        compact.reserve(static_cast<size_t>(width) * height * 4u);
         const auto& frame = frames[static_cast<size_t>(index)];
+        const int dirty_x = std::clamp(frame.dirty_x, 0, static_cast<int>(width) - 1);
+        const int dirty_y = std::clamp(frame.dirty_y, 0, static_cast<int>(height) - 1);
+        const int dirty_w = std::clamp(frame.dirty_width, 1, static_cast<int>(width) - dirty_x);
+        const int dirty_h = std::clamp(frame.dirty_height, 1, static_cast<int>(height) - dirty_y);
+        const uint32_t dirty_bytes = static_cast<uint32_t>(dirty_w * dirty_h * 4);
+        const bool host_backed = frame.backing == "host-ahardwarebuffer";
+        const bool partial_update = host_backed && frame.partial_update && dirty_bytes < (width * height * 4u);
+        std::vector<uint8_t> compact;
+        compact.reserve(dirty_bytes);
         const uint8_t red = static_cast<uint8_t>(std::clamp(frame.red, 0.0F, 1.0F) * 255.0F);
         const uint8_t green = static_cast<uint8_t>(std::clamp(frame.green, 0.0F, 1.0F) * 255.0F);
         const uint8_t blue = static_cast<uint8_t>(std::clamp(frame.blue, 0.0F, 1.0F) * 255.0F);
         auto* base = static_cast<uint8_t*>(write_address);
-        for (uint32_t y = 0; y < height; ++y) {
+        for (int y = dirty_y; y < dirty_y + dirty_h; ++y) {
             auto* row = base + static_cast<size_t>(y) * actual.stride * 4u;
-            for (uint32_t x = 0; x < width; ++x) {
+            for (int x = dirty_x; x < dirty_x + dirty_w; ++x) {
                 row[x * 4u + 0u] = red;
                 row[x * 4u + 1u] = green;
                 row[x * 4u + 2u] = blue;
@@ -1310,6 +1367,11 @@ std::string probe_android_hardware_buffer_bridge(const std::vector<SurfaceFrameC
         ++cpu_written;
         expected_checksums[static_cast<size_t>(index)] = fnv1a32_bytes(compact.data(), compact.size());
         total_visible_bytes += static_cast<uint32_t>(compact.size());
+        total_full_payload_bytes += width * height * 4u;
+        total_dirty_bytes += dirty_bytes;
+        if (host_backed) ++host_backed_frames;
+        if (dirty_bytes > 0) ++dirty_rect_frames;
+        if (partial_update) ++partial_update_frames;
 
         void* read_address = nullptr;
         lock_result = AHardwareBuffer_lock(
@@ -1326,11 +1388,12 @@ std::string probe_android_hardware_buffer_bridge(const std::vector<SurfaceFrameC
             return out.str();
         }
         std::vector<uint8_t> readback;
-        readback.reserve(static_cast<size_t>(width) * height * 4u);
+        readback.reserve(dirty_bytes);
         auto* read_base = static_cast<uint8_t*>(read_address);
-        for (uint32_t y = 0; y < height; ++y) {
+        for (int y = dirty_y; y < dirty_y + dirty_h; ++y) {
             auto* row = read_base + static_cast<size_t>(y) * actual.stride * 4u;
-            readback.insert(readback.end(), row, row + static_cast<size_t>(width) * 4u);
+            const auto* begin = row + static_cast<size_t>(dirty_x) * 4u;
+            readback.insert(readback.end(), begin, begin + static_cast<size_t>(dirty_w) * 4u);
         }
         fence_fd = -1;
         const int read_unlock_result = AHardwareBuffer_unlock(buffer, &fence_fd);
@@ -1350,9 +1413,19 @@ std::string probe_android_hardware_buffer_bridge(const std::vector<SurfaceFrameC
         }
         out << "\nahardwarebuffer payload index=" << index
             << " tag=" << frame.tag
+            << " backing=" << frame.backing
             << " bytes=" << readback.size()
             << " checksum=" << hex_u32(read_checksum)
             << " verified=" << (verified ? "true" : "false");
+        out << "\nahardwarebuffer dirty rect index=" << index
+            << " seq=" << frame.seq
+            << " slot=" << frame.buffer_slot
+            << " x=" << dirty_x
+            << " y=" << dirty_y
+            << " w=" << dirty_w
+            << " h=" << dirty_h
+            << " bytes=" << dirty_bytes
+            << " partial=" << (partial_update ? "true" : "false");
     }
 
     EGLDisplay display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
@@ -1516,9 +1589,16 @@ std::string probe_android_hardware_buffer_bridge(const std::vector<SurfaceFrameC
     out << "\nahardwarebuffer cpu written buffers=" << cpu_written;
     out << "\nahardwarebuffer cpu verified buffers=" << cpu_verified;
     out << "\nahardwarebuffer egl imported buffers=" << egl_imported;
+    out << "\nahardwarebuffer backing mode=" << (host_backed_frames == buffer_count ? "host-ahardwarebuffer" : "host-probe");
+    out << "\nahardwarebuffer full payload bytes=" << total_full_payload_bytes;
+    out << "\nahardwarebuffer dirty rect frames=" << dirty_rect_frames << "/" << buffer_count;
+    out << "\nahardwarebuffer dirty rect bytes=" << total_dirty_bytes;
+    out << "\nahardwarebuffer partial update frames=" << partial_update_frames << "/" << buffer_count;
+    out << "\nahardwarebuffer partial upload ratio pct=" << (total_full_payload_bytes > 0 ? (total_dirty_bytes * 100u) / total_full_payload_bytes : 0u);
     out << "\nahardwarebuffer visible payload bytes=" << total_visible_bytes;
     out << "\nahardwarebuffer host managed triple buffer=" << (passed ? "true" : "false");
     out << "\nahardwarebuffer wayland display backing=" << (std::string(source) == "wayland-display-commits" && passed ? "true" : "false");
+    out << "\nahardwarebuffer wayland state machine backing=" << (std::string(source) == "wayland-display-commits" && passed && host_backed_frames == buffer_count && partial_update_frames == buffer_count ? "true" : "false");
     out << "\nahardwarebuffer egl image import=" << (egl_imported == buffer_count ? "ok" : "fail");
     out << "\nahardwarebuffer render elapsed us=" << elapsed_us;
     out << "\nahardwarebuffer execution=" << (passed ? "PASS" : "FAIL");

@@ -9,7 +9,7 @@ PAYLOAD = ROOT / "app" / "src" / "main" / "assets" / "rootfs" / "payloads" / "ti
 def test_android_assets_include_rootfs_manifest_and_payload():
     assert MANIFEST.is_file()
     assert PAYLOAD.is_file()
-    assert PAYLOAD.stat().st_size == 34561024
+    assert PAYLOAD.stat().st_size == 35293184
 
 
 def test_android_asset_manifest_matches_host_manifest():
@@ -336,10 +336,15 @@ def test_tiny_rootfs_contains_local_deb_install_smoke_package():
         assert b"ALR_WL_SHM_POOL_CREATE" in wayland_display
         assert b"ALR_WL_SHM_POOL_FD" in wayland_display
         assert b"ALR_WL_BUFFER_ATTACH" in wayland_display
+        assert b"ALR_WL_AHB_BACKING_ADVERTISE" in wayland_display
+        assert b"ALR_WL_DAMAGE" in wayland_display
         assert b"ALR_WAYLAND_PAYLOAD_DIR" in wayland_display
         assert b"transport=shared-file" in wayland_display
         assert b"scm-rights-memfd" in wayland_display
         assert b"layout=triple-buffer" in wayland_display
+        assert b"backing=host-ahardwarebuffer" in wayland_display
+        assert b"dirty_bytes=%zu" in wayland_display
+        assert b"update=partial" in wayland_display
         assert b"ALR_WL_DISPLAY_CLIENT ok" in wayland_display
         assert vulkan_discovery.startswith(b"\x7fELF")
         assert b"ALR_VK_DEVICE_RECORD" in vulkan_discovery

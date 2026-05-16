@@ -1553,11 +1553,46 @@ same parsed Wayland display commits are now replayed into host-owned
 make that backing mode part of the bridge state machine rather than a parallel
 verification pass.
 
+Latest V95 Wayland AHardwareBuffer dirty-state evidence:
+
+```text
+build: 0.4.95-wayland-ahb-dirty-state
+versionCode=95
+versionName=0.4.95-wayland-ahb-dirty-state
+rootfs_version=bookworm-slim-2026-05-wayland-ahb-dirty-v95
+rootfs sha256=20493ea66546a74bfe79e384b7461f25891fa0474ab9fc6ea8226128873b75ac
+rootfs size bytes=35293184
+WAYLAND DISPLAY SOCKET AVAILABLE: PASS
+WAYLAND DISPLAY COMMIT SURFACE EXECUTION: PASS
+WAYLAND DISPLAY AHARDWAREBUFFER BACKING EXECUTION: PASS
+alr installed package wayland display ipc ack raw=... backing=host-ahardwarebuffer ahb_backed=3 dirty_rects=3 dirty_bytes=172800 partial_updates=3 ahb_state_ready=true zero_copy_candidate=true
+wayland display ahardwarebuffer backed frames=3/3
+wayland display dirty rect frames=3/3
+wayland display dirty rect bytes=172800
+wayland display partial upload ratio pct=25
+ahardwarebuffer source=wayland-display-commits
+ahardwarebuffer backing mode=host-ahardwarebuffer
+ahardwarebuffer dirty rect frames=3/3
+ahardwarebuffer dirty rect bytes=172800
+ahardwarebuffer partial upload ratio pct=25
+ahardwarebuffer visible payload bytes=172800
+ahardwarebuffer wayland state machine backing=true
+surface vulkan present=ok
+surface vulkan hardware render=true
+```
+
+V95 finishes the two highest-priority items from the previous batch in one
+implementation pass. `ALR_WL_BUFFER_ATTACH` now directly selects
+`backing=host-ahardwarebuffer`, `ALR_WL_DAMAGE` carries dirty-rectangle state,
+Android validates that state before ACK, and the native host buffer path updates
+only the 25% dirty area while keeping the full v92 memfd payload stream as a
+fallback verifier.
+
 Next implementation batch:
 
-1. Move the v94 AHardwareBuffer backing pass into the Wayland bridge state machine so `ALR_WL_BUFFER_ATTACH` selects `backing=host-ahardwarebuffer` directly.
-2. Add dirty-rectangle metadata and host-side partial-upload accounting to compare v92 memfd copy count against v94 host-owned buffers.
-3. Expand the minimal Wayland bridge from ALR_WL text records to a stricter subset of real Wayland wire opcodes for registry, compositor, shm, surface, and buffer lifetimes.
+1. Expand the minimal Wayland bridge from ALR_WL text records to a stricter subset of real Wayland wire opcodes for registry, compositor, shm, surface, and buffer lifetimes.
+2. Replace the AHardwareBuffer CPU-fill probe with an EGL-rendered compositor pass that samples/imports the host-owned buffers and presents them through the visible Android Surface path.
+3. Add fence/sync FD accounting around AHardwareBuffer lock/unlock and EGL import so dirty updates can be paced without implicit CPU waits.
 4. Replace the loader-info smoke with the real Khronos Vulkan loader or a stricter ABI-compatible loader subset.
 5. Add a small real toolkit fixture target, likely a tiny GTK/Qt-independent Wayland protocol smoke before pulling in a larger GUI stack.
 6. Turn the current evidence logs into a reusable adb verification script so device regressions are cheaper to catch while implementation is moving quickly.

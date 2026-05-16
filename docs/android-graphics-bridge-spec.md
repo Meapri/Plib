@@ -877,6 +877,41 @@ ALR_WL_BUFFER_ATTACH surface=10 buffer=20 seq=1 path=... bytes=230400 checksum=.
 ALR_WL_SURFACE_COMMIT surface=10 buffer=20 seq=1 ... payload=... bytes=230400 checksum=... transport=shared-file
 ```
 
+Build `0.4.95-wayland-ahb-dirty-state` extends that same clean-room display
+path through the host-owned buffer decision. The current client still sends the
+v92 triple memfd payloads, but those payloads are now the verified fallback
+baseline; the active attach state declares `backing=host-ahardwarebuffer`, a
+buffer slot, and a dirty rectangle for every commit. Android verifies the
+`ALR_WL_DAMAGE` and `ALR_WL_BUFFER_ATTACH` state before acknowledging the stream
+with `ahb_state_ready=true`, then passes the parsed dirty rects to native code
+so the AHardwareBuffer probe writes only the changed rectangles.
+
+Current V95 backing records:
+
+```text
+ALR_WL_AHB_BACKING_ADVERTISE version=1 allocator=android-host format=R8G8B8A8_UNORM usage=cpu-read-write+gpu-sampled+gpu-color-output max_buffers=3 dirty_rect=true
+ALR_WL_DAMAGE surface=10 buffer=20 seq=1 x=0 y=0 width=160 height=90 bytes=57600 type=buffer-damage backing=host-ahardwarebuffer update=partial
+ALR_WL_BUFFER_ATTACH surface=10 buffer=20 seq=1 ... layout=triple-buffer backing=host-ahardwarebuffer buffer_slot=0 dirty_x=0 dirty_y=0 dirty_w=160 dirty_h=90 dirty_bytes=57600 update=partial
+ALR_WL_SURFACE_COMMIT surface=10 buffer=20 seq=1 ... backing=host-ahardwarebuffer buffer_slot=0 dirty_x=0 dirty_y=0 dirty_w=160 dirty_h=90 dirty_bytes=57600 update=partial
+ALR_WL_DISPLAY_ACK ... backing=host-ahardwarebuffer ahb_backed=3 dirty_rects=3 dirty_bytes=172800 partial_updates=3 ahb_state_ready=true zero_copy_candidate=true
+```
+
+Expected V95 evidence:
+
+```text
+WAYLAND DISPLAY AHARDWAREBUFFER BACKING EXECUTION: PASS
+wayland display ahardwarebuffer backed frames=3/3
+wayland display dirty rect frames=3/3
+wayland display dirty rect bytes=172800
+wayland display partial upload ratio pct=25
+ahardwarebuffer backing mode=host-ahardwarebuffer
+ahardwarebuffer wayland state machine backing=true
+ahardwarebuffer dirty rect frames=3/3
+ahardwarebuffer dirty rect bytes=172800
+ahardwarebuffer partial upload ratio pct=25
+ahardwarebuffer visible payload bytes=172800
+```
+
 ## Open Questions
 
 - Can the V90 file-backed payload bridge move to ashmem/memfd FD passing without relying on privileged APIs?

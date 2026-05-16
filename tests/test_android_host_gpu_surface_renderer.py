@@ -45,6 +45,10 @@ def test_native_ahardwarebuffer_probe_builds_host_managed_buffer_path():
     assert "glEGLImageTargetTexture2DOES" in text
     assert "ahardwarebuffer host managed triple buffer=" in text
     assert "ahardwarebuffer wayland display backing=" in text
+    assert "ahardwarebuffer wayland state machine backing=" in text
+    assert "ahardwarebuffer dirty rect frames=" in text
+    assert "ahardwarebuffer dirty rect bytes=" in text
+    assert "ahardwarebuffer partial upload ratio pct=" in text
     assert "ahardwarebuffer execution=" in text
     assert "wayland-display-commits" in text
 
@@ -83,6 +87,8 @@ def test_main_activity_owns_surface_view_and_appends_native_surface_report():
     assert 'hostHardwareBufferProbe.lineStartingWith("ahardwarebuffer execution=")' in text
     assert 'hostHardwareBufferProbe.lineStartingWith("ahardwarebuffer egl image import=")' in text
     assert 'waylandHardwareBufferBridgeProbe.lineStartingWith("ahardwarebuffer wayland display backing=")' in text
+    assert 'waylandHardwareBufferBridgeProbe.lineStartingWith("ahardwarebuffer dirty rect bytes=")' in text
+    assert "partialUploadRatioPct" in text
     assert "Android host AHardwareBuffer bridge probe" in text
     assert "Wayland display AHardwareBuffer backing probe" in text
     assert "ANDROID HOST VULKAN SURFACE EXECUTION:" in text

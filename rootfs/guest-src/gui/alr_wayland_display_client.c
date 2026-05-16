@@ -232,6 +232,10 @@ int main(void) {
     const int width = 320;
     const int height = 180;
     const int stride = width * 4;
+    const int dirty_x[3] = {0, 80, 160};
+    const int dirty_y[3] = {0, 45, 90};
+    const int dirty_w[3] = {160, 160, 160};
+    const int dirty_h[3] = {90, 90, 90};
     if (!ensure_runtime_dir(payload_dir)) {
         fprintf(stderr, "ALR_WL_DISPLAY_CLIENT payload dir failed dir=%s errno=%d\n", payload_dir, errno);
         return 11;
@@ -315,6 +319,7 @@ int main(void) {
     if (!write_all(fd, "ALR_WL_BIND name=wl_compositor id=1 version=4\n")) return 6;
     if (!write_all(fd, "ALR_WL_SURFACE_CREATE id=10 compositor=1\n")) return 7;
     if (!write_all(fd, "ALR_WL_BIND name=wl_shm id=2 version=1\n")) return 8;
+    if (!write_all(fd, "ALR_WL_AHB_BACKING_ADVERTISE version=1 allocator=android-host format=R8G8B8A8_UNORM usage=cpu-read-write+gpu-sampled+gpu-color-output max_buffers=3 dirty_rect=true\n")) return 21;
     snprintf(
         line,
         sizeof(line),
@@ -348,10 +353,23 @@ int main(void) {
     if (!write_all(fd, line)) return 14;
     for (int seq = 1; seq <= frame_count; ++seq) {
         const int index = seq - 1;
+        const size_t dirty_bytes = (size_t)dirty_w[index] * (size_t)dirty_h[index] * 4u;
         snprintf(
             line,
             sizeof(line),
-            "ALR_WL_BUFFER_ATTACH surface=10 buffer=20 seq=%d path=%s width=%d height=%d stride=%d bytes=%zu checksum=%08x fd_index=%d fd_bytes=%zu fd_checksum=%08x transport=shared-file+scm-rights-memfd layout=triple-buffer\n",
+            "ALR_WL_DAMAGE surface=10 buffer=20 seq=%d x=%d y=%d width=%d height=%d bytes=%zu type=buffer-damage backing=host-ahardwarebuffer update=partial\n",
+            seq,
+            dirty_x[index],
+            dirty_y[index],
+            dirty_w[index],
+            dirty_h[index],
+            dirty_bytes
+        );
+        if (!write_all(fd, line)) return 22;
+        snprintf(
+            line,
+            sizeof(line),
+            "ALR_WL_BUFFER_ATTACH surface=10 buffer=20 seq=%d path=%s width=%d height=%d stride=%d bytes=%zu checksum=%08x fd_index=%d fd_bytes=%zu fd_checksum=%08x transport=shared-file+scm-rights-memfd layout=triple-buffer backing=host-ahardwarebuffer buffer_slot=%d dirty_x=%d dirty_y=%d dirty_w=%d dirty_h=%d dirty_bytes=%zu update=partial\n",
             seq,
             payload_paths[index],
             width,
@@ -361,13 +379,19 @@ int main(void) {
             checksums[index],
             index,
             payload_bytes[index],
-            checksums[index]
+            checksums[index],
+            index,
+            dirty_x[index],
+            dirty_y[index],
+            dirty_w[index],
+            dirty_h[index],
+            dirty_bytes
         );
         if (!write_all(fd, line)) return 15;
         snprintf(
             line,
             sizeof(line),
-            "ALR_WL_SURFACE_COMMIT surface=10 buffer=20 seq=%d %.2f %.2f %.2f WAYLAND_DISPLAY-frame-%04d payload=%s bytes=%zu checksum=%08x fd_index=%d fd_bytes=%zu fd_checksum=%08x transport=shared-file+scm-rights-memfd layout=triple-buffer\n",
+            "ALR_WL_SURFACE_COMMIT surface=10 buffer=20 seq=%d %.2f %.2f %.2f WAYLAND_DISPLAY-frame-%04d payload=%s bytes=%zu checksum=%08x fd_index=%d fd_bytes=%zu fd_checksum=%08x transport=shared-file+scm-rights-memfd layout=triple-buffer backing=host-ahardwarebuffer buffer_slot=%d dirty_x=%d dirty_y=%d dirty_w=%d dirty_h=%d dirty_bytes=%zu update=partial\n",
             seq,
             payload_reds[index],
             payload_greens[index],
@@ -378,7 +402,13 @@ int main(void) {
             checksums[index],
             index,
             payload_bytes[index],
-            checksums[index]
+            checksums[index],
+            index,
+            dirty_x[index],
+            dirty_y[index],
+            dirty_w[index],
+            dirty_h[index],
+            dirty_bytes
         );
         if (!write_all(fd, line)) return 16;
     }

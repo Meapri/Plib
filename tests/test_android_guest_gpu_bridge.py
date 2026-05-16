@@ -189,14 +189,23 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "wayland display shared payload bytes=" in text
     assert "wayland display fd payload frames=" in text
     assert "wayland display fd payload bytes=" in text
+    assert "wayland display ahardwarebuffer backed frames=" in text
+    assert "wayland display dirty rect frames=" in text
+    assert "wayland display dirty rect bytes=" in text
+    assert "wayland display partial upload ratio pct=" in text
     assert "payload_verified=true" in text
     assert "fd_payload_verified=true" in text
     assert "fd_received=${fdPayloads.size}" in text
+    assert "ahb_state_ready=true" in text
+    assert "zero_copy_candidate=true" in text
     assert "layout=triple-buffer" in text
     assert "ANDROID HOST AHARDWAREBUFFER EXECUTION:" in text
     assert "WAYLAND DISPLAY AHARDWAREBUFFER BACKING EXECUTION:" in text
     assert "ahardwarebuffer host managed triple buffer=" in text
     assert "ahardwarebuffer wayland display backing=" in text
+    assert "ahardwarebuffer wayland state machine backing=" in text
+    assert "ahardwarebuffer dirty rect bytes=" in text
+    assert "ahardwarebuffer partial upload ratio pct=" in text
     assert "ahardwarebuffer egl image import=" in text
     assert "transport=unix-abstract-wayland-scm-rights" in text
     assert "gui bridge transport wayland unix vs tcp ratio pct=" in text
@@ -565,7 +574,10 @@ def test_guest_gui_client_sources_support_unix_socket_transport():
     assert "ALR_WL_BUFFER_CREATE id=20 width=%d height=%d stride=%d format=argb8888 payload=shared-file" in display_source
     assert "ALR_WL_SHM_POOL_CREATE id=30 path=%s bytes=%zu checksum=%08x buffers=%d layout=triple-buffer-file" in display_source
     assert "ALR_WL_SHM_POOL_FD id=%d fd_index=%d bytes=%zu checksum=%08x transport=scm-rights-memfd layout=triple-buffer" in display_source
+    assert "ALR_WL_AHB_BACKING_ADVERTISE version=1 allocator=android-host" in display_source
+    assert "ALR_WL_DAMAGE surface=10 buffer=20 seq=%d" in display_source
     assert "ALR_WL_BUFFER_ATTACH surface=10 buffer=20 seq=%d path=%s" in display_source
+    assert "backing=host-ahardwarebuffer buffer_slot=%d dirty_x=%d dirty_y=%d dirty_w=%d dirty_h=%d dirty_bytes=%zu update=partial" in display_source
     assert "send_fd_preamble" in display_source
     assert "create_memfd_payload" in display_source
     assert "SCM_RIGHTS" in display_source
