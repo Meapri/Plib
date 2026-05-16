@@ -287,9 +287,10 @@ def test_v104_adb_verifier_checks_gimp3_wayland_evidence():
     assert "simple gui demo glibc dynamic=" in text
     assert "simple gui demo android surface candidate=" in text
     assert "GIMP DEMO PROFILE EXECUTION: PASS" in script
+    assert "full gimp probe mode=skipped" in script
     assert "GIMP GTK WAYLAND PROBE EXECUTION: PASS" in script
     assert "GIMP GUI WAYLAND PROBE EXECUTION:" in script
-    assert "GIMP GUI WAYLAND BLOCKER:" in script
+    assert "GIMP GUI WAYLAND BLOCKER: FAST_VERIFIER_SKIPPED" in script
     assert "ALR_GIMP_DEMO_PROFILE_READY target=gimp" in script
     assert "ALR_GIMP_DEMO_PROFILE_ENV GDK_BACKEND=wayland WAYLAND_DISPLAY=alr-gimp-0 XDG_RUNTIME_DIR=/tmp" in script
     assert "ALR_GIMP_DEMO_BUNDLE_LOCK present=true suite=trixie package_count=313" in script
@@ -301,7 +302,12 @@ def test_v104_adb_verifier_checks_gimp3_wayland_evidence():
     assert "gimp gtk wayland opcode=1" in script
     assert "gimp gtk wayland size=12" in script
     assert "gimp gtk wayland request=wl_display.get_registry" in script
-    assert "gimp gui wayland blocker=" in script
+    assert "gimp gtk wayland server requests=" in script
+    assert "gimp gtk wayland server response bytes=" in script
+    assert "gimp gtk wayland server globals=wl_compositor,wl_shm,xdg_wm_base,wl_seat,wl_output" in script
+    assert "gimp gtk wayland handoff=ALR STATIC ENTRY HANDOFF: PASS" in script
+    assert "gimp gtk wayland stdout=ALR_GIMP3_GTK_WAYLAND_PROBE ok" in script
+    assert "gimp gui wayland blocker=fast-verifier-skipped" in script
     assert "versionName=0.4.104-gimp3-wayland" in script
     assert "ALR_WL_BINARY_STREAM bytes=%zu messages=%d checksum=%08x wire=wayland-binary-v1 endian=little" in display_source
     assert "ALR_WL_APP_STREAM_BEGIN frames=%d mode=%s" in display_source

@@ -1157,6 +1157,9 @@ class MainActivity : Activity() {
             "\ngimp gtk wayland size=${gimpGtkWaylandProbeResult.messageSize}" +
             "\ngimp gtk wayland request=${gimpGtkWaylandProbeResult.requestName}" +
             "\ngimp gtk wayland raw prefix=${gimpGtkWaylandProbeResult.rawPrefixHex}" +
+            "\ngimp gtk wayland server requests=${gimpGtkWaylandProbeResult.waylandRequestCount}" +
+            "\ngimp gtk wayland server response bytes=${gimpGtkWaylandProbeResult.waylandResponseBytes}" +
+            "\ngimp gtk wayland server globals=${gimpGtkWaylandProbeResult.waylandGlobals.joinToString(",")}" +
             "\ngimp gtk wayland error=${gimpGtkWaylandProbeResult.error ?: "none"}" +
             "\ngimp gtk wayland handoff=${gimpGtkWaylandProbeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
             "\ngimp gtk wayland stdout=${gimpGtkWaylandProbeResult.clientResult.stdout.alrHandoffStdoutText().forEvidenceLog()}" +
@@ -1169,6 +1172,9 @@ class MainActivity : Activity() {
             "\ngimp gui wayland size=${gimpGuiWaylandProbeResult.messageSize}" +
             "\ngimp gui wayland request=${gimpGuiWaylandProbeResult.requestName}" +
             "\ngimp gui wayland raw prefix=${gimpGuiWaylandProbeResult.rawPrefixHex}" +
+            "\ngimp gui wayland server requests=${gimpGuiWaylandProbeResult.waylandRequestCount}" +
+            "\ngimp gui wayland server response bytes=${gimpGuiWaylandProbeResult.waylandResponseBytes}" +
+            "\ngimp gui wayland server globals=${gimpGuiWaylandProbeResult.waylandGlobals.joinToString(",")}" +
             "\ngimp gui wayland error=${gimpGuiWaylandProbeResult.error ?: "none"}" +
             "\ngimp gui wayland blocker=$gimpGuiWaylandBlocker" +
             "\ngimp gui wayland handoff=${gimpGuiWaylandProbeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}" +
@@ -1927,6 +1933,9 @@ class MainActivity : Activity() {
                 "gimp gtk wayland size=${gimpGtkWaylandProbeResult.messageSize}",
                 "gimp gtk wayland request=${gimpGtkWaylandProbeResult.requestName}",
                 "gimp gtk wayland raw prefix=${gimpGtkWaylandProbeResult.rawPrefixHex}",
+                "gimp gtk wayland server requests=${gimpGtkWaylandProbeResult.waylandRequestCount}",
+                "gimp gtk wayland server response bytes=${gimpGtkWaylandProbeResult.waylandResponseBytes}",
+                "gimp gtk wayland server globals=${gimpGtkWaylandProbeResult.waylandGlobals.joinToString(",")}",
                 "gimp gtk wayland error=${gimpGtkWaylandProbeResult.error ?: "none"}",
                 "gimp gtk wayland handoff=${gimpGtkWaylandProbeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}",
                 "gimp gtk wayland stdout=${gimpGtkWaylandProbeResult.clientResult.stdout.alrHandoffStdoutText().forEvidenceLog()}",
@@ -1939,6 +1948,9 @@ class MainActivity : Activity() {
                 "gimp gui wayland size=${gimpGuiWaylandProbeResult.messageSize}",
                 "gimp gui wayland request=${gimpGuiWaylandProbeResult.requestName}",
                 "gimp gui wayland raw prefix=${gimpGuiWaylandProbeResult.rawPrefixHex}",
+                "gimp gui wayland server requests=${gimpGuiWaylandProbeResult.waylandRequestCount}",
+                "gimp gui wayland server response bytes=${gimpGuiWaylandProbeResult.waylandResponseBytes}",
+                "gimp gui wayland server globals=${gimpGuiWaylandProbeResult.waylandGlobals.joinToString(",")}",
                 "gimp gui wayland error=${gimpGuiWaylandProbeResult.error ?: "none"}",
                 "gimp gui wayland blocker=$gimpGuiWaylandBlocker",
                 "gimp gui wayland handoff=${gimpGuiWaylandProbeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}",
@@ -2285,6 +2297,9 @@ class MainActivity : Activity() {
             "gimp gtk wayland size=${gimpGtkWaylandProbeResult.messageSize}",
             "gimp gtk wayland request=${gimpGtkWaylandProbeResult.requestName}",
             "gimp gtk wayland raw prefix=${gimpGtkWaylandProbeResult.rawPrefixHex}",
+            "gimp gtk wayland server requests=${gimpGtkWaylandProbeResult.waylandRequestCount}",
+            "gimp gtk wayland server response bytes=${gimpGtkWaylandProbeResult.waylandResponseBytes}",
+            "gimp gtk wayland server globals=${gimpGtkWaylandProbeResult.waylandGlobals.joinToString(",")}",
             "gimp gtk wayland error=${gimpGtkWaylandProbeResult.error ?: "none"}",
             "gimp gtk wayland handoff=${gimpGtkWaylandProbeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}",
             "gimp gtk wayland stdout=${gimpGtkWaylandProbeResult.clientResult.stdout.alrHandoffStdoutText().forEvidenceLog()}",
@@ -2297,6 +2312,9 @@ class MainActivity : Activity() {
             "gimp gui wayland size=${gimpGuiWaylandProbeResult.messageSize}",
             "gimp gui wayland request=${gimpGuiWaylandProbeResult.requestName}",
             "gimp gui wayland raw prefix=${gimpGuiWaylandProbeResult.rawPrefixHex}",
+            "gimp gui wayland server requests=${gimpGuiWaylandProbeResult.waylandRequestCount}",
+            "gimp gui wayland server response bytes=${gimpGuiWaylandProbeResult.waylandResponseBytes}",
+            "gimp gui wayland server globals=${gimpGuiWaylandProbeResult.waylandGlobals.joinToString(",")}",
             "gimp gui wayland error=${gimpGuiWaylandProbeResult.error ?: "none"}",
             "gimp gui wayland blocker=$gimpGuiWaylandBlocker",
             "gimp gui wayland handoff=${gimpGuiWaylandProbeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}",
@@ -2330,6 +2348,7 @@ class MainActivity : Activity() {
                 stderr = "fast verifier skipped full GIMP GUI probe",
                 elapsedMs = 0,
             ),
+            waylandGlobals = minimalWaylandGlobalNames(),
         )
 
     private fun isWaylandRegistryProbe(result: GimpWaylandProbeResult): Boolean =
@@ -2400,6 +2419,9 @@ class MainActivity : Activity() {
         val rawPrefixHex: String,
         val error: String?,
         val clientResult: NativeCommandResult,
+        val waylandRequestCount: Int = 0,
+        val waylandResponseBytes: Int = 0,
+        val waylandGlobals: List<String> = emptyList(),
     )
 
     private data class GuestFdPayloadVerification(
@@ -3397,6 +3419,9 @@ class MainActivity : Activity() {
         val rawBytes = ByteArrayOutputStream()
         val errors = mutableListOf<String>()
         var connected = false
+        var waylandRequestCount = 0
+        var waylandResponseBytes = 0
+        var waylandGlobals = emptyList<String>()
         var server: LocalServerSocket? = null
         val listenSocket = try {
             LocalSocket().also { socket ->
@@ -3416,12 +3441,11 @@ class MainActivity : Activity() {
                         val accepted = srv.accept()
                         accepted.use { socket ->
                             connected = true
-                            socket.setSoTimeout(5000)
-                            val buffer = ByteArray(256)
-                            val read = socket.getInputStream().read(buffer)
-                            if (read > 0) {
-                                rawBytes.write(buffer, 0, read)
-                            }
+                            socket.setSoTimeout(2500)
+                            val stats = serveMinimalWaylandClient(socket, rawBytes)
+                            waylandRequestCount = stats.requestCount
+                            waylandResponseBytes = stats.responseBytes
+                            waylandGlobals = stats.globals
                         }
                     }
                 } catch (error: SocketTimeoutException) {
@@ -3470,7 +3494,298 @@ class MainActivity : Activity() {
             rawPrefixHex = bytes.hexPrefix(),
             error = errors.firstOrNull(),
             clientResult = clientResult,
+            waylandRequestCount = waylandRequestCount,
+            waylandResponseBytes = waylandResponseBytes,
+            waylandGlobals = waylandGlobals,
         )
+    }
+
+    private data class WaylandServerStats(
+        val requestCount: Int,
+        val responseBytes: Int,
+        val globals: List<String>,
+    )
+
+    private data class WaylandString(
+        val value: String,
+        val nextOffset: Int,
+    )
+
+    private fun serveMinimalWaylandClient(
+        socket: LocalSocket,
+        rawBytes: ByteArrayOutputStream,
+    ): WaylandServerStats {
+        val input = socket.getInputStream()
+        val output = socket.getOutputStream()
+        val objectInterfaces = mutableMapOf(1 to "wl_display")
+        val globals = minimalWaylandGlobals()
+        val globalNames = globals.map { it.interfaceName }
+        var requestCount = 0
+        var responseBytes = 0
+        var serial = 1
+        while (requestCount < 96) {
+            val header = try {
+                readExactlyOrNull(input, 8)
+            } catch (_: SocketTimeoutException) {
+                break
+            } ?: break
+            rawBytes.write(header)
+            val objectId = readLe32(header, 0)
+            val secondWord = readLe32(header, 4)
+            val opcode = secondWord and 0xffff
+            val size = (secondWord ushr 16) and 0xffff
+            if (size < 8 || size > 4096) break
+            val payload = try {
+                readExactlyOrNull(input, size - 8)
+            } catch (_: SocketTimeoutException) {
+                break
+            } ?: break
+            rawBytes.write(payload)
+            requestCount += 1
+            val responses = buildMinimalWaylandResponses(
+                objectId = objectId,
+                opcode = opcode,
+                payload = payload,
+                objectInterfaces = objectInterfaces,
+                globals = globals,
+                nextSerial = { serial++ },
+            )
+            responses.forEach { response ->
+                output.write(response)
+                responseBytes += response.size
+            }
+            if (responses.isNotEmpty()) output.flush()
+        }
+        return WaylandServerStats(
+            requestCount = requestCount,
+            responseBytes = responseBytes,
+            globals = globalNames,
+        )
+    }
+
+    private data class MinimalWaylandGlobal(
+        val name: Int,
+        val interfaceName: String,
+        val version: Int,
+    )
+
+    private fun minimalWaylandGlobals(): List<MinimalWaylandGlobal> =
+        listOf(
+            MinimalWaylandGlobal(1, "wl_compositor", 4),
+            MinimalWaylandGlobal(2, "wl_shm", 1),
+            MinimalWaylandGlobal(3, "xdg_wm_base", 1),
+            MinimalWaylandGlobal(4, "wl_seat", 5),
+            MinimalWaylandGlobal(5, "wl_output", 2),
+        )
+
+    private fun minimalWaylandGlobalNames(): List<String> =
+        minimalWaylandGlobals().map { it.interfaceName }
+
+    private fun buildMinimalWaylandResponses(
+        objectId: Int,
+        opcode: Int,
+        payload: ByteArray,
+        objectInterfaces: MutableMap<Int, String>,
+        globals: List<MinimalWaylandGlobal>,
+        nextSerial: () -> Int,
+    ): List<ByteArray> {
+        val interfaceName = objectInterfaces[objectId] ?: "unknown"
+        if (interfaceName == "wl_display" && opcode == 1 && payload.size >= 4) {
+            val registryId = readLe32(payload, 0)
+            objectInterfaces[registryId] = "wl_registry"
+            return globals.map { global -> waylandRegistryGlobal(registryId, global) }
+        }
+        if (interfaceName == "wl_display" && opcode == 0 && payload.size >= 4) {
+            val callbackId = readLe32(payload, 0)
+            objectInterfaces[callbackId] = "wl_callback"
+            return listOf(waylandCallbackDone(callbackId, nextSerial()))
+        }
+        if (interfaceName == "wl_registry" && opcode == 0 && payload.size >= 16) {
+            val globalName = readLe32(payload, 0)
+            val boundInterface = readWaylandString(payload, 4)
+            val version = if (payload.size >= boundInterface.nextOffset + 4) {
+                readLe32(payload, boundInterface.nextOffset)
+            } else {
+                1
+            }
+            val newIdOffset = boundInterface.nextOffset + 4
+            val newId = if (payload.size >= newIdOffset + 4) readLe32(payload, newIdOffset) else 0
+            if (newId > 0) objectInterfaces[newId] = boundInterface.value
+            return initialWaylandBindEvents(newId, boundInterface.value, version.coerceAtLeast(1), globalName, nextSerial)
+        }
+        if (interfaceName == "wl_compositor" && opcode == 0 && payload.size >= 4) {
+            val surfaceId = readLe32(payload, 0)
+            objectInterfaces[surfaceId] = "wl_surface"
+            return emptyList()
+        }
+        if (interfaceName == "wl_surface" && opcode == 3 && payload.size >= 4) {
+            val callbackId = readLe32(payload, 0)
+            objectInterfaces[callbackId] = "wl_callback"
+            return listOf(waylandCallbackDone(callbackId, nextSerial()))
+        }
+        if (interfaceName == "xdg_wm_base" && opcode == 1 && payload.size >= 4) {
+            val positionerId = readLe32(payload, 0)
+            objectInterfaces[positionerId] = "xdg_positioner"
+            return emptyList()
+        }
+        if (interfaceName == "xdg_wm_base" && opcode == 2 && payload.size >= 8) {
+            val xdgSurfaceId = readLe32(payload, 0)
+            objectInterfaces[xdgSurfaceId] = "xdg_surface"
+            return emptyList()
+        }
+        if (interfaceName == "xdg_surface" && opcode == 1 && payload.size >= 4) {
+            val toplevelId = readLe32(payload, 0)
+            objectInterfaces[toplevelId] = "xdg_toplevel"
+            return listOf(
+                waylandXdgToplevelConfigure(toplevelId),
+                waylandXdgSurfaceConfigure(objectId, nextSerial()),
+            )
+        }
+        return emptyList()
+    }
+
+    private fun initialWaylandBindEvents(
+        objectId: Int,
+        interfaceName: String,
+        version: Int,
+        globalName: Int,
+        nextSerial: () -> Int,
+    ): List<ByteArray> =
+        when (interfaceName) {
+            "wl_shm" -> listOf(
+                waylandShmFormat(objectId, 0),
+                waylandShmFormat(objectId, 1),
+            )
+            "wl_seat" -> buildList {
+                add(waylandFixedU32Event(objectId, opcode = 0, value = 0))
+                if (version >= 2) add(waylandStringEvent(objectId, opcode = 1, value = "alr-seat"))
+            }
+            "wl_output" -> buildList {
+                add(waylandOutputGeometry(objectId))
+                add(waylandOutputMode(objectId))
+                if (version >= 2) add(waylandEmptyEvent(objectId, opcode = 2))
+                if (version >= 2) add(waylandFixedU32Event(objectId, opcode = 3, value = 1))
+            }
+            "xdg_wm_base" -> listOf(waylandFixedU32Event(objectId, opcode = 0, value = nextSerial()))
+            else -> emptyList()
+        }
+
+    private fun waylandRegistryGlobal(registryId: Int, global: MinimalWaylandGlobal): ByteArray {
+        val nameBytes = waylandStringBytes(global.interfaceName)
+        return waylandMessage(registryId, opcode = 0) {
+            writeLe32(global.name)
+            write(nameBytes)
+            writeLe32(global.version)
+        }
+    }
+
+    private fun waylandCallbackDone(callbackId: Int, serial: Int): ByteArray =
+        waylandMessage(callbackId, opcode = 0) {
+            writeLe32(serial)
+        }
+
+    private fun waylandShmFormat(objectId: Int, format: Int): ByteArray =
+        waylandMessage(objectId, opcode = 0) {
+            writeLe32(format)
+        }
+
+    private fun waylandFixedU32Event(objectId: Int, opcode: Int, value: Int): ByteArray =
+        waylandMessage(objectId, opcode = opcode) {
+            writeLe32(value)
+        }
+
+    private fun waylandEmptyEvent(objectId: Int, opcode: Int): ByteArray =
+        waylandMessage(objectId, opcode = opcode) {}
+
+    private fun waylandStringEvent(objectId: Int, opcode: Int, value: String): ByteArray =
+        waylandMessage(objectId, opcode = opcode) {
+            write(waylandStringBytes(value))
+        }
+
+    private fun waylandOutputGeometry(objectId: Int): ByteArray =
+        waylandMessage(objectId, opcode = 0) {
+            writeLe32(0)
+            writeLe32(0)
+            writeLe32(340)
+            writeLe32(190)
+            writeLe32(0)
+            write(waylandStringBytes("Android"))
+            write(waylandStringBytes("ALR virtual output"))
+            writeLe32(0)
+        }
+
+    private fun waylandOutputMode(objectId: Int): ByteArray =
+        waylandMessage(objectId, opcode = 1) {
+            writeLe32(3)
+            writeLe32(1280)
+            writeLe32(720)
+            writeLe32(60000)
+        }
+
+    private fun waylandXdgToplevelConfigure(objectId: Int): ByteArray =
+        waylandMessage(objectId, opcode = 0) {
+            writeLe32(640)
+            writeLe32(480)
+            writeLe32(0)
+        }
+
+    private fun waylandXdgSurfaceConfigure(objectId: Int, serial: Int): ByteArray =
+        waylandMessage(objectId, opcode = 0) {
+            writeLe32(serial)
+        }
+
+    private fun waylandMessage(
+        objectId: Int,
+        opcode: Int,
+        writePayload: ByteArrayOutputStream.() -> Unit,
+    ): ByteArray {
+        val payload = ByteArrayOutputStream().apply(writePayload).toByteArray()
+        val size = 8 + payload.size
+        return ByteArrayOutputStream().apply {
+            writeLe32(objectId)
+            writeLe32((size shl 16) or (opcode and 0xffff))
+            write(payload)
+        }.toByteArray()
+    }
+
+    private fun waylandStringBytes(value: String): ByteArray {
+        val bytes = value.toByteArray()
+        val lengthWithNul = bytes.size + 1
+        val paddedLength = ((lengthWithNul + 3) / 4) * 4
+        return ByteArrayOutputStream().apply {
+            writeLe32(lengthWithNul)
+            write(bytes)
+            repeat(paddedLength - bytes.size) { write(0) }
+        }.toByteArray()
+    }
+
+    private fun readWaylandString(bytes: ByteArray, offset: Int): WaylandString {
+        if (bytes.size < offset + 4) return WaylandString("", offset)
+        val lengthWithNul = readLe32(bytes, offset).coerceAtLeast(0)
+        val textStart = offset + 4
+        val textEnd = (textStart + lengthWithNul - 1).coerceIn(textStart, bytes.size)
+        val paddedEnd = textStart + ((lengthWithNul + 3) / 4) * 4
+        val value = bytes.copyOfRange(textStart, textEnd).toString(Charsets.UTF_8)
+        return WaylandString(value, paddedEnd.coerceAtMost(bytes.size))
+    }
+
+    private fun readExactlyOrNull(input: InputStream, byteCount: Int): ByteArray? {
+        if (byteCount == 0) return ByteArray(0)
+        val buffer = ByteArray(byteCount)
+        var offset = 0
+        while (offset < byteCount) {
+            val read = input.read(buffer, offset, byteCount - offset)
+            if (read < 0) return null
+            offset += read
+        }
+        return buffer
+    }
+
+    private fun ByteArrayOutputStream.writeLe32(value: Int) {
+        write(value and 0xff)
+        write((value ushr 8) and 0xff)
+        write((value ushr 16) and 0xff)
+        write((value ushr 24) and 0xff)
     }
 
     private fun runInstalledPackageWaylandDisplayBridge(

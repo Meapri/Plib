@@ -1093,16 +1093,18 @@ Build `0.4.104-gimp3-wayland` moves the GIMP target to Debian trixie arm64
 GIMP 3.0.4 and makes Wayland the only intended GUI backend for the GIMP demo
 profile. The simple GUI demo remains the current full Android Surface rendering
 source, while GIMP now has layered Wayland ingress evidence: Android creates a
-filesystem Unix socket for a GTK/PyGObject Wayland probe and a separate socket
-for full GIMP, then reports the full-GIMP blocker independently.
+filesystem Unix socket for a GTK/PyGObject Wayland probe, serves a minimal
+clean-room registry/sync response, and keeps a separate deep full-GIMP probe
+switch for the slower GUI startup investigation.
 
 Expected V104 GIMP 3 Wayland evidence:
 
 ```text
 GIMP DEMO PROFILE EXECUTION: PASS
+full gimp probe mode=skipped
 GIMP GTK WAYLAND PROBE EXECUTION: PASS
 GIMP GUI WAYLAND PROBE EXECUTION:
-GIMP GUI WAYLAND BLOCKER:
+GIMP GUI WAYLAND BLOCKER: FAST_VERIFIER_SKIPPED
 GIMP DEMO BUNDLE LOCK: PASS
 ALR_GIMP_DEMO_PROFILE_ENV GDK_BACKEND=wayland WAYLAND_DISPLAY=alr-gimp-0 XDG_RUNTIME_DIR=/tmp
 ALR_GIMP_DEMO_BUNDLE_LOCK present=true suite=trixie package_count=313
@@ -1113,7 +1115,12 @@ gimp gtk wayland object=1
 gimp gtk wayland opcode=1
 gimp gtk wayland size=12
 gimp gtk wayland request=wl_display.get_registry
-gimp gui wayland blocker=
+gimp gtk wayland server requests=10
+gimp gtk wayland server response bytes=316
+gimp gtk wayland server globals=wl_compositor,wl_shm,xdg_wm_base,wl_seat,wl_output
+gimp gtk wayland handoff=ALR STATIC ENTRY HANDOFF: PASS
+gimp gtk wayland stdout=ALR_GIMP3_GTK_WAYLAND_PROBE ok
+gimp gui wayland blocker=fast-verifier-skipped
 wayland ahardwarebuffer surface hardware render=true
 surface vulkan hardware render=true
 ```

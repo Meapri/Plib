@@ -1693,10 +1693,12 @@ GIMP package version in `gimp-demo-materialized.txt`.
 
 V104 also splits the GIMP 3 Wayland gate into two Android-side filesystem
 Unix-domain probes. The GTK/PyGObject probe at `$rootfs/tmp/alr-gimp-gtk-0`
-proves that the trixie GTK3 stack can enter Wayland and emit the little-endian
-`wl_display.get_registry` header through ALR. The full GIMP probe at
-`$rootfs/tmp/alr-gimp-0` remains a separate evidence line so the current blocker
-is visible instead of being hidden behind the version check.
+now talks to a tiny clean-room Wayland responder rather than a passive socket:
+Android advertises `wl_compositor`, `wl_shm`, `xdg_wm_base`, `wl_seat`, and
+`wl_output`, answers the initial `wl_display.sync`, and lets GTK finish
+`Gtk.init([])` through ALR. The full GIMP probe at `$rootfs/tmp/alr-gimp-0`
+remains a separate deep evidence line so the current blocker is visible instead
+of being hidden behind the version check.
 
 ```text
 build: 0.4.104-gimp3-wayland
@@ -1706,9 +1708,10 @@ rootfs_version=trixie-slim-2026-05-gimp3-wayland-v104
 rootfs_sha256=9ed659c149510393662754f2508805f84edef5721a49539c26fe820481fcd75e
 rootfs_size=1365166080
 GIMP DEMO PROFILE EXECUTION: PASS
+full gimp probe mode=skipped
 GIMP GTK WAYLAND PROBE EXECUTION: PASS
 GIMP GUI WAYLAND PROBE EXECUTION:
-GIMP GUI WAYLAND BLOCKER:
+GIMP GUI WAYLAND BLOCKER: FAST_VERIFIER_SKIPPED
 GIMP DEMO BUNDLE LOCK: PASS
 ALR_GIMP_DEMO_PROFILE_ENV GDK_BACKEND=wayland WAYLAND_DISPLAY=alr-gimp-0 XDG_RUNTIME_DIR=/tmp
 ALR_GIMP_DEMO_BUNDLE_LOCK present=true suite=trixie package_count=313
@@ -1719,7 +1722,12 @@ gimp gtk wayland object=1
 gimp gtk wayland opcode=1
 gimp gtk wayland size=12
 gimp gtk wayland request=wl_display.get_registry
-gimp gui wayland blocker=
+gimp gtk wayland server requests=10
+gimp gtk wayland server response bytes=316
+gimp gtk wayland server globals=wl_compositor,wl_shm,xdg_wm_base,wl_seat,wl_output
+gimp gtk wayland handoff=ALR STATIC ENTRY HANDOFF: PASS
+gimp gtk wayland stdout=ALR_GIMP3_GTK_WAYLAND_PROBE ok
+gimp gui wayland blocker=fast-verifier-skipped
 ```
 
 Report:
