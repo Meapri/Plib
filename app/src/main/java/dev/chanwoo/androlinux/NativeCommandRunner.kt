@@ -621,44 +621,102 @@ class NativeCommandRunner(
         )
 
     fun runAlrRuntimeTrampolineInstalledPackageGimpGuiWaylandProbe(rootfsDir: File): NativeCommandResult =
-        runAlrRuntimeTrampolineGlibcRootfsProgram(
-            rootfsDir,
-            "/usr/bin/gimp",
-            listOf("--new-instance", "--no-data", "--no-fonts", "--no-splash"),
+        runAlrRuntimeTrampolineGimp3ProgramProbe(
+            rootfsDir = rootfsDir,
+            program = "/usr/bin/gimp",
+            arguments = listOf("--new-instance", "--no-data", "--no-fonts", "--no-splash"),
+            waylandSocketLeaf = "alr-gimp-0",
             timeoutMs = 90000,
-            pathRewrite = true,
             pathRewriteLimit = 250000,
             pathRewriteIdleSyscallLimit = 50000,
-            extraGuestEnvironment = preloadPathFastPathEnvironment(rootfsDir) + mapOf(
-                "GDK_BACKEND" to "wayland",
-                "WAYLAND_DISPLAY" to File(rootfsDir, "tmp/alr-gimp-0").absolutePath,
-                "XDG_RUNTIME_DIR" to File(rootfsDir, "tmp").absolutePath,
-                "HOME" to File(rootfsDir, "tmp").absolutePath,
-                "USER" to "android",
-                "LOGNAME" to "android",
-                "NO_AT_BRIDGE" to "1",
-            ),
         )
 
     fun runAlrRuntimeTrampolineInstalledPackageGimpGuiWaylandFastProbe(rootfsDir: File): NativeCommandResult =
-        runAlrRuntimeTrampolineGlibcRootfsProgram(
-            rootfsDir,
-            "/usr/bin/gimp",
-            listOf("--new-instance", "--no-data", "--no-fonts", "--no-splash"),
+        runAlrRuntimeTrampolineGimp3ProgramProbe(
+            rootfsDir = rootfsDir,
+            program = "/usr/bin/gimp",
+            arguments = listOf("--new-instance", "--no-data", "--no-fonts", "--no-splash"),
+            waylandSocketLeaf = "alr-gimp-0",
             timeoutMs = 15000,
-            pathRewrite = true,
             pathRewriteLimit = 80000,
             pathRewriteIdleSyscallLimit = 10000,
-            extraGuestEnvironment = preloadPathFastPathEnvironment(rootfsDir) + mapOf(
+        )
+
+    fun runAlrRuntimeTrampolineGimp3HelpProbe(rootfsDir: File): NativeCommandResult =
+        runAlrRuntimeTrampolineGimp3ProgramProbe(
+            rootfsDir = rootfsDir,
+            program = "/usr/bin/gimp",
+            arguments = listOf("--help"),
+            timeoutMs = 8000,
+            pathRewriteLimit = 20000,
+            pathRewriteIdleSyscallLimit = 4000,
+        )
+
+    fun runAlrRuntimeTrampolineGimp3ConsoleBatchQuitProbe(rootfsDir: File): NativeCommandResult =
+        runAlrRuntimeTrampolineGimp3ProgramProbe(
+            rootfsDir = rootfsDir,
+            program = "/usr/bin/gimp-console",
+            arguments = listOf(
+                "--no-interface",
+                "--no-data",
+                "--no-fonts",
+                "--batch-interpreter",
+                "plug-in-script-fu-eval",
+                "--batch",
+                "(gimp-quit 0)",
+                "--quit",
+            ),
+            timeoutMs = 8000,
+            pathRewriteLimit = 80000,
+            pathRewriteIdleSyscallLimit = 10000,
+        )
+
+    fun runAlrRuntimeTrampolineGimp3GuiQuitWaylandProbe(rootfsDir: File): NativeCommandResult =
+        runAlrRuntimeTrampolineGimp3ProgramProbe(
+            rootfsDir = rootfsDir,
+            program = "/usr/bin/gimp",
+            arguments = listOf("--new-instance", "--no-data", "--no-fonts", "--no-splash", "--quit"),
+            waylandSocketLeaf = "alr-gimp-quit-0",
+            timeoutMs = 20000,
+            pathRewriteLimit = 100000,
+            pathRewriteIdleSyscallLimit = 15000,
+        )
+
+    fun runAlrRuntimeTrampolineGimp3ProgramProbe(
+        rootfsDir: File,
+        program: String,
+        arguments: List<String>,
+        waylandSocketLeaf: String? = null,
+        timeoutMs: Int = 15000,
+        pathRewriteLimit: Int = 80000,
+        pathRewriteIdleSyscallLimit: Int = 10000,
+    ): NativeCommandResult {
+        val runtimeDir = File(rootfsDir, "tmp").absolutePath
+        val waylandEnvironment = if (waylandSocketLeaf == null) {
+            emptyMap()
+        } else {
+            mapOf(
                 "GDK_BACKEND" to "wayland",
-                "WAYLAND_DISPLAY" to File(rootfsDir, "tmp/alr-gimp-0").absolutePath,
-                "XDG_RUNTIME_DIR" to File(rootfsDir, "tmp").absolutePath,
-                "HOME" to File(rootfsDir, "tmp").absolutePath,
+                "WAYLAND_DISPLAY" to File(rootfsDir, "tmp/$waylandSocketLeaf").absolutePath,
+            )
+        }
+        return runAlrRuntimeTrampolineGlibcRootfsProgram(
+            rootfsDir,
+            program,
+            arguments,
+            timeoutMs = timeoutMs,
+            pathRewrite = true,
+            pathRewriteLimit = pathRewriteLimit,
+            pathRewriteIdleSyscallLimit = pathRewriteIdleSyscallLimit,
+            extraGuestEnvironment = preloadPathFastPathEnvironment(rootfsDir) + mapOf(
+                "XDG_RUNTIME_DIR" to runtimeDir,
+                "HOME" to runtimeDir,
                 "USER" to "android",
                 "LOGNAME" to "android",
                 "NO_AT_BRIDGE" to "1",
-            ),
+            ) + waylandEnvironment,
         )
+    }
 
     fun runAlrRuntimeTrampolineGimp3GtkWaylandPythonProbe(rootfsDir: File): NativeCommandResult =
         runAlrRuntimeTrampolineGlibcRootfsProgram(

@@ -87,20 +87,36 @@ def test_android_reports_materialized_gimp_version_probe():
     assert "runAlrRuntimeTrampolineInstalledPackageGimpDemoProfile" in runner
     assert "runAlrRuntimeTrampolineInstalledPackageGimpGuiWaylandProbe" in runner
     assert "runAlrRuntimeTrampolineInstalledPackageGimpGuiWaylandFastProbe" in runner
+    assert "runAlrRuntimeTrampolineGimp3HelpProbe" in runner
+    assert "runAlrRuntimeTrampolineGimp3ConsoleBatchQuitProbe" in runner
+    assert "plug-in-script-fu-eval" in runner
+    assert "runAlrRuntimeTrampolineGimp3GuiQuitWaylandProbe" in runner
+    assert "runAlrRuntimeTrampolineGimp3ProgramProbe" in runner
     assert "runAlrRuntimeTrampolineGimp3GtkWaylandPythonProbe" in runner
     assert '"GDK_BACKEND" to "wayland"' in runner
     assert "WAYLAND_DISPLAY" in runner
     assert '"XDG_RUNTIME_DIR" to "/tmp"' in runner
     assert "GIMP DEMO PROFILE EXECUTION:" in text
+    assert "GIMP CLI HELP PROBE EXECUTION:" in text
+    assert "GIMP CONSOLE BATCH QUIT PROBE EXECUTION:" in text
+    assert "GIMP CONSOLE BATCH QUIT BLOCKER:" in text
     assert "GIMP GTK WAYLAND PROBE EXECUTION:" in text
+    assert "GIMP GUI QUIT WAYLAND PROBE EXECUTION:" in text
     assert "GIMP GUI WAYLAND PROBE EXECUTION:" in text
     assert "GIMP GUI WAYLAND BLOCKER:" in text
+    assert "gimp cli help handoff=" in text
+    assert "gimp console batch quit handoff=" in text
+    assert "gimp console batch quit exit=" in text
+    assert "gimp console batch quit interpreter=plug-in-script-fu-eval" in text
+    assert "gimp console batch quit blocker=" in text
     assert "gimp gtk wayland request=" in text
     assert "gimp gtk wayland server requests=" in text
     assert "gimp gtk wayland server response bytes=" in text
     assert "gimp gtk wayland server globals=" in text
     assert "minimalWaylandGlobals" in text
     assert "waylandRegistryGlobal" in text
+    assert "gimp gui quit wayland request=" in text
+    assert "gimp gui quit wayland server globals=" in text
     assert "gimp gui wayland request=" in text
     assert "GIMP DEMO BUNDLE LOCK:" in text
     assert "rootfs /usr/bin/gimp exists=" in text

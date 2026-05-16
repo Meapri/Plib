@@ -287,8 +287,12 @@ def test_v104_adb_verifier_checks_gimp3_wayland_evidence():
     assert "simple gui demo glibc dynamic=" in text
     assert "simple gui demo android surface candidate=" in text
     assert "GIMP DEMO PROFILE EXECUTION: PASS" in script
+    assert "GIMP CLI HELP PROBE EXECUTION: PASS" in script
+    assert "GIMP CONSOLE BATCH QUIT PROBE EXECUTION:" in script
+    assert "GIMP CONSOLE BATCH QUIT BLOCKER: CORE_BATCH_TIMEOUT" in script
     assert "full gimp probe mode=skipped" in script
     assert "GIMP GTK WAYLAND PROBE EXECUTION: PASS" in script
+    assert "GIMP GUI QUIT WAYLAND PROBE EXECUTION:" in script
     assert "GIMP GUI WAYLAND PROBE EXECUTION:" in script
     assert "GIMP GUI WAYLAND BLOCKER: FAST_VERIFIER_SKIPPED" in script
     assert "ALR_GIMP_DEMO_PROFILE_READY target=gimp" in script
@@ -298,6 +302,9 @@ def test_v104_adb_verifier_checks_gimp3_wayland_evidence():
     assert "ALR_GIMP_DEMO_BINARY present=true path=/usr/bin/gimp" in script
     assert "ALR_GIMP_DEMO_VERSION_EXIT 0" in script
     assert "ALR_GIMP_DEMO_VERSION_STDOUT GNU Image Manipulation Program version 3." in script
+    assert "gimp cli help handoff=ALR STATIC ENTRY HANDOFF: PASS" in script
+    assert "gimp console batch quit interpreter=plug-in-script-fu-eval" in script
+    assert "gimp console batch quit blocker=core-batch-timeout" in script
     assert "gimp gtk wayland object=1" in script
     assert "gimp gtk wayland opcode=1" in script
     assert "gimp gtk wayland size=12" in script
@@ -307,6 +314,7 @@ def test_v104_adb_verifier_checks_gimp3_wayland_evidence():
     assert "gimp gtk wayland server globals=wl_compositor,wl_shm,xdg_wm_base,wl_seat,wl_output" in script
     assert "gimp gtk wayland handoff=ALR STATIC ENTRY HANDOFF: PASS" in script
     assert "gimp gtk wayland stdout=ALR_GIMP3_GTK_WAYLAND_PROBE ok" in script
+    assert "gimp gui quit wayland connected=" in script
     assert "gimp gui wayland blocker=fast-verifier-skipped" in script
     assert "versionName=0.4.104-gimp3-wayland" in script
     assert "ALR_WL_BINARY_STREAM bytes=%zu messages=%d checksum=%08x wire=wayland-binary-v1 endian=little" in display_source

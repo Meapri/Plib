@@ -1691,14 +1691,28 @@ staging. The lock now resolves the trixie arm64 strict dependency closure,
 including GTK3 and `libwayland-client0`, and the materialized rootfs records the
 GIMP package version in `gimp-demo-materialized.txt`.
 
-V104 also splits the GIMP 3 Wayland gate into two Android-side filesystem
-Unix-domain probes. The GTK/PyGObject probe at `$rootfs/tmp/alr-gimp-gtk-0`
-now talks to a tiny clean-room Wayland responder rather than a passive socket:
-Android advertises `wl_compositor`, `wl_shm`, `xdg_wm_base`, `wl_seat`, and
-`wl_output`, answers the initial `wl_display.sync`, and lets GTK finish
-`Gtk.init([])` through ALR. The full GIMP probe at `$rootfs/tmp/alr-gimp-0`
-remains a separate deep evidence line so the current blocker is visible instead
-of being hidden behind the version check.
+V104 also makes GIMP 3 on Wayland the primary GUI target. X11 remains useful as
+an older bridge comparison, but the GIMP demo path is now explicitly
+`GDK_BACKEND=wayland` with filesystem Unix-domain sockets in the rootfs runtime
+directory.
+
+The GIMP 3 gate is split into staged probes so startup failures are attributable
+instead of hidden behind one long launch timeout:
+
+- `gimp --help` proves the GIMP 3 binary, dynamic loader, and ALR handoff can
+  run beyond a version probe.
+- `gimp-console --batch-interpreter plug-in-script-fu-eval --batch
+  "(gimp-quit 0)" --quit` is the current GIMP 3 core/plugin startup probe.
+  On the connected device it still times out before ALR handoff, so it is
+  tracked as the next non-Wayland blocker rather than counted as GUI progress.
+- The GTK/PyGObject probe at `$rootfs/tmp/alr-gimp-gtk-0` talks to a tiny
+  clean-room Wayland responder rather than a passive socket. Android advertises
+  `wl_compositor`, `wl_shm`, `xdg_wm_base`, `wl_seat`, and `wl_output`, answers
+  the initial `wl_display.sync`, and lets GTK finish `Gtk.init([])` through ALR.
+- The full GIMP probes at `$rootfs/tmp/alr-gimp-quit-0` and
+  `$rootfs/tmp/alr-gimp-0` remain separate deep evidence lines so the next
+  blocker is visible while the fast verifier still skips the long interactive
+  launch.
 
 ```text
 build: 0.4.104-gimp3-wayland
@@ -1708,8 +1722,12 @@ rootfs_version=trixie-slim-2026-05-gimp3-wayland-v104
 rootfs_sha256=9ed659c149510393662754f2508805f84edef5721a49539c26fe820481fcd75e
 rootfs_size=1365166080
 GIMP DEMO PROFILE EXECUTION: PASS
+GIMP CLI HELP PROBE EXECUTION: PASS
+GIMP CONSOLE BATCH QUIT PROBE EXECUTION: FAIL
+GIMP CONSOLE BATCH QUIT BLOCKER: CORE_BATCH_TIMEOUT
 full gimp probe mode=skipped
 GIMP GTK WAYLAND PROBE EXECUTION: PASS
+GIMP GUI QUIT WAYLAND PROBE EXECUTION:
 GIMP GUI WAYLAND PROBE EXECUTION:
 GIMP GUI WAYLAND BLOCKER: FAST_VERIFIER_SKIPPED
 GIMP DEMO BUNDLE LOCK: PASS
@@ -1717,6 +1735,9 @@ ALR_GIMP_DEMO_PROFILE_ENV GDK_BACKEND=wayland WAYLAND_DISPLAY=alr-gimp-0 XDG_RUN
 ALR_GIMP_DEMO_BUNDLE_LOCK present=true suite=trixie package_count=313
 ALR_GIMP_DEMO_MATERIALIZED present=true package_count=313 gimp_version=3.0.4-3+deb13u7
 ALR_GIMP_DEMO_VERSION_STDOUT GNU Image Manipulation Program version 3.
+gimp cli help handoff=ALR STATIC ENTRY HANDOFF: PASS
+gimp console batch quit interpreter=plug-in-script-fu-eval
+gimp console batch quit blocker=core-batch-timeout
 gimp gtk wayland connected=true
 gimp gtk wayland object=1
 gimp gtk wayland opcode=1

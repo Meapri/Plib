@@ -1092,17 +1092,24 @@ ALR_GIMP_DEMO_EXEC_READY true mode=version-probe
 Build `0.4.104-gimp3-wayland` moves the GIMP target to Debian trixie arm64
 GIMP 3.0.4 and makes Wayland the only intended GUI backend for the GIMP demo
 profile. The simple GUI demo remains the current full Android Surface rendering
-source, while GIMP now has layered Wayland ingress evidence: Android creates a
-filesystem Unix socket for a GTK/PyGObject Wayland probe, serves a minimal
+source, while GIMP now has layered Wayland ingress evidence: Android creates
+filesystem Unix sockets for GTK and GIMP startup probes, serves a minimal
 clean-room registry/sync response, and keeps a separate deep full-GIMP probe
-switch for the slower GUI startup investigation.
+switch for the slower GUI startup investigation. GIMP 3 batch mode is also
+checked with `plug-in-script-fu-eval`, because GIMP 3 no longer has a default
+batch interpreter. That core/plugin startup probe is currently an explicit
+blocker (`core-batch-timeout`), while the GTK Wayland registry probe is passing.
 
 Expected V104 GIMP 3 Wayland evidence:
 
 ```text
 GIMP DEMO PROFILE EXECUTION: PASS
+GIMP CLI HELP PROBE EXECUTION: PASS
+GIMP CONSOLE BATCH QUIT PROBE EXECUTION: FAIL
+GIMP CONSOLE BATCH QUIT BLOCKER: CORE_BATCH_TIMEOUT
 full gimp probe mode=skipped
 GIMP GTK WAYLAND PROBE EXECUTION: PASS
+GIMP GUI QUIT WAYLAND PROBE EXECUTION:
 GIMP GUI WAYLAND PROBE EXECUTION:
 GIMP GUI WAYLAND BLOCKER: FAST_VERIFIER_SKIPPED
 GIMP DEMO BUNDLE LOCK: PASS
@@ -1110,6 +1117,9 @@ ALR_GIMP_DEMO_PROFILE_ENV GDK_BACKEND=wayland WAYLAND_DISPLAY=alr-gimp-0 XDG_RUN
 ALR_GIMP_DEMO_BUNDLE_LOCK present=true suite=trixie package_count=313
 ALR_GIMP_DEMO_MATERIALIZED present=true package_count=313 gimp_version=3.
 ALR_GIMP_DEMO_VERSION_STDOUT GNU Image Manipulation Program version 3.
+gimp cli help handoff=ALR STATIC ENTRY HANDOFF: PASS
+gimp console batch quit interpreter=plug-in-script-fu-eval
+gimp console batch quit blocker=core-batch-timeout
 gimp gtk wayland connected=true
 gimp gtk wayland object=1
 gimp gtk wayland opcode=1

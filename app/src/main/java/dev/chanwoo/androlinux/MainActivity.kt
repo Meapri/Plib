@@ -2213,7 +2213,10 @@ class MainActivity : Activity() {
         )
         val runFullGimpProbe = intent.getBooleanExtra("ALR_RUN_FULL_GIMP_PROBE", false)
         val gimpProfileResult = nativeCommandRunner.runAlrRuntimeTrampolineInstalledPackageGimpDemoProfile(rootfsStatus.rootfsDir)
+        val gimpHelpResult = nativeCommandRunner.runAlrRuntimeTrampolineGimp3HelpProbe(rootfsStatus.rootfsDir)
+        val gimpConsoleBatchQuitResult = nativeCommandRunner.runAlrRuntimeTrampolineGimp3ConsoleBatchQuitProbe(rootfsStatus.rootfsDir)
         val gimpGtkWaylandProbeResult = runGimpGtkWaylandProbe(nativeCommandRunner, rootfsStatus.rootfsDir)
+        val gimpGuiQuitWaylandProbeResult = runGimpGuiQuitWaylandProbe(nativeCommandRunner, rootfsStatus.rootfsDir)
         val gimpGuiWaylandProbeResult = if (runFullGimpProbe) {
             runGimpGuiWaylandProbe(nativeCommandRunner, rootfsStatus.rootfsDir, fast = true)
         } else {
@@ -2266,7 +2269,16 @@ class MainActivity : Activity() {
                 rootfsGimpBinaryFile.isFile &&
                 rootfsGimpBinaryFile.canExecute() &&
                 gimpDemoProfileStdout.contains("ALR_GIMP_DEMO_VERSION_STDOUT GNU Image Manipulation Program version 3.")
+        val gimpHelpExecutionPassed =
+            gimpHelpResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+                gimpHelpResult.stdout.alrHandoffStdoutText().contains("--no-interface") &&
+                gimpHelpResult.stdout.alrHandoffStdoutText().contains("--quit")
+        val gimpConsoleBatchQuitPassed =
+            gimpConsoleBatchQuitResult.stdout.contains("ALR STATIC ENTRY HANDOFF: PASS") &&
+                gimpConsoleBatchQuitResult.exitCode == 0
+        val gimpConsoleBatchQuitBlocker = describeGimpConsoleBatchQuitBlocker(gimpConsoleBatchQuitPassed, gimpConsoleBatchQuitResult)
         val gimpGtkWaylandProbePassed = isWaylandRegistryProbe(gimpGtkWaylandProbeResult)
+        val gimpGuiQuitWaylandProbePassed = isWaylandRegistryProbe(gimpGuiQuitWaylandProbeResult)
         val gimpGuiWaylandProbePassed = isWaylandRegistryProbe(gimpGuiWaylandProbeResult)
         val gimpGuiWaylandBlocker = if (runFullGimpProbe) {
             describeGimpGuiWaylandBlocker(gimpGuiWaylandProbePassed, gimpGuiWaylandProbeResult)
@@ -2282,11 +2294,24 @@ class MainActivity : Activity() {
             "rootfs verified=${rootfsStatus.verified} extracted=${rootfsStatus.extracted}",
             "full gimp probe mode=${if (runFullGimpProbe) "enabled" else "skipped"}",
             "GIMP DEMO PROFILE EXECUTION: ${if (gimpDemoProfileExecutionPassed) "PASS" else "FAIL"}",
+            "GIMP CLI HELP PROBE EXECUTION: ${if (gimpHelpExecutionPassed) "PASS" else "FAIL"}",
+            "GIMP CONSOLE BATCH QUIT PROBE EXECUTION: ${if (gimpConsoleBatchQuitPassed) "PASS" else "FAIL"}",
+            "GIMP CONSOLE BATCH QUIT BLOCKER: ${gimpConsoleBatchQuitBlocker.uppercase().replace('-', '_')}",
             "GIMP GTK WAYLAND PROBE EXECUTION: ${if (gimpGtkWaylandProbePassed) "PASS" else "FAIL"}",
+            "GIMP GUI QUIT WAYLAND PROBE EXECUTION: ${if (gimpGuiQuitWaylandProbePassed) "PASS" else "FAIL"}",
             "GIMP GUI WAYLAND PROBE EXECUTION: ${if (gimpGuiWaylandProbePassed) "PASS" else "FAIL"}",
             "GIMP GUI WAYLAND BLOCKER: ${gimpGuiWaylandBlocker.uppercase().replace('-', '_')}",
             "GIMP DEMO BUNDLE LOCK: ${if (rootfsGimpDemoBundleLockFile.isFile) "PASS" else "FAIL"}",
             gimpDemoProfileStdout,
+            "gimp cli help handoff=${gimpHelpResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}",
+            "gimp cli help stdout=${gimpHelpResult.stdout.alrHandoffStdoutText().forEvidenceLog()}",
+            "gimp cli help stderr=${gimpHelpResult.stdout.alrHandoffStderrText().forEvidenceLog()}",
+            "gimp console batch quit handoff=${gimpConsoleBatchQuitResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}",
+            "gimp console batch quit exit=${gimpConsoleBatchQuitResult.exitCode}",
+            "gimp console batch quit interpreter=plug-in-script-fu-eval",
+            "gimp console batch quit blocker=$gimpConsoleBatchQuitBlocker",
+            "gimp console batch quit stdout=${gimpConsoleBatchQuitResult.stdout.alrHandoffStdoutText().forEvidenceLog()}",
+            "gimp console batch quit stderr=${gimpConsoleBatchQuitResult.stdout.alrHandoffStderrText().forEvidenceLog()}",
             "rootfs gimp demo materialized exists=${rootfsGimpDemoMaterializedFile.isFile}",
             "rootfs /usr/bin/gimp exists=${rootfsGimpBinaryFile.isFile} executable=${rootfsGimpBinaryFile.canExecute()}",
             "gimp gtk wayland socket path=${gimpGtkWaylandProbeResult.socketPath}",
@@ -2304,6 +2329,21 @@ class MainActivity : Activity() {
             "gimp gtk wayland handoff=${gimpGtkWaylandProbeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}",
             "gimp gtk wayland stdout=${gimpGtkWaylandProbeResult.clientResult.stdout.alrHandoffStdoutText().forEvidenceLog()}",
             "gimp gtk wayland stderr=${gimpGtkWaylandProbeResult.clientResult.stdout.alrHandoffStderrText().forEvidenceLog()}",
+            "gimp gui quit wayland socket path=${gimpGuiQuitWaylandProbeResult.socketPath}",
+            "gimp gui quit wayland connected=${gimpGuiQuitWaylandProbeResult.connected}",
+            "gimp gui quit wayland setup bytes=${gimpGuiQuitWaylandProbeResult.setupBytes}",
+            "gimp gui quit wayland object=${gimpGuiQuitWaylandProbeResult.objectId}",
+            "gimp gui quit wayland opcode=${gimpGuiQuitWaylandProbeResult.opcode}",
+            "gimp gui quit wayland size=${gimpGuiQuitWaylandProbeResult.messageSize}",
+            "gimp gui quit wayland request=${gimpGuiQuitWaylandProbeResult.requestName}",
+            "gimp gui quit wayland raw prefix=${gimpGuiQuitWaylandProbeResult.rawPrefixHex}",
+            "gimp gui quit wayland server requests=${gimpGuiQuitWaylandProbeResult.waylandRequestCount}",
+            "gimp gui quit wayland server response bytes=${gimpGuiQuitWaylandProbeResult.waylandResponseBytes}",
+            "gimp gui quit wayland server globals=${gimpGuiQuitWaylandProbeResult.waylandGlobals.joinToString(",")}",
+            "gimp gui quit wayland error=${gimpGuiQuitWaylandProbeResult.error ?: "none"}",
+            "gimp gui quit wayland handoff=${gimpGuiQuitWaylandProbeResult.clientResult.stdout.lineStartingWith("ALR STATIC ENTRY HANDOFF:")}",
+            "gimp gui quit wayland stdout=${gimpGuiQuitWaylandProbeResult.clientResult.stdout.alrHandoffStdoutText().forEvidenceLog()}",
+            "gimp gui quit wayland stderr=${gimpGuiQuitWaylandProbeResult.clientResult.stdout.alrHandoffStderrText().forEvidenceLog()}",
             "gimp gui wayland socket path=${gimpGuiWaylandProbeResult.socketPath}",
             "gimp gui wayland connected=${gimpGuiWaylandProbeResult.connected}",
             "gimp gui wayland setup bytes=${gimpGuiWaylandProbeResult.setupBytes}",
@@ -2371,6 +2411,20 @@ class MainActivity : Activity() {
             "pre-handoff-timeout"
         } else {
             "wayland-handshake-incomplete"
+        }
+
+    private fun describeGimpConsoleBatchQuitBlocker(
+        passed: Boolean,
+        result: NativeCommandResult,
+    ): String =
+        if (passed) {
+            "none"
+        } else if (result.exitCode == -124) {
+            "core-batch-timeout"
+        } else if (!result.stdout.contains("ALR STATIC ENTRY HANDOFF:")) {
+            "missing-handoff"
+        } else {
+            "exit-${result.exitCode}"
         }
 
     private data class GuestGpuCommand(
@@ -3402,6 +3456,19 @@ class MainActivity : Activity() {
             socketLeaf = "alr-gimp-gtk-0",
             threadName = "alr-gimp-gtk-wayland-probe",
             runClient = { nativeCommandRunner.runAlrRuntimeTrampolineGimp3GtkWaylandPythonProbe(rootfsDir) },
+        )
+    }
+
+    private fun runGimpGuiQuitWaylandProbe(
+        nativeCommandRunner: NativeCommandRunner,
+        rootfsDir: File,
+    ): GimpWaylandProbeResult {
+        return runGimpWaylandSocketProbe(
+            rootfsDir = rootfsDir,
+            socketLeaf = "alr-gimp-quit-0",
+            threadName = "alr-gimp-gui-quit-wayland-probe",
+            acceptJoinTimeoutMs = 25000,
+            runClient = { nativeCommandRunner.runAlrRuntimeTrampolineGimp3GuiQuitWaylandProbe(rootfsDir) },
         )
     }
 
