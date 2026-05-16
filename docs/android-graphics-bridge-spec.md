@@ -936,10 +936,40 @@ wayland ahardwarebuffer surface sync fence accounting=ok
 wayland ahardwarebuffer surface hardware render=true
 ```
 
+Build `0.4.97-wayland-ahb-pool` adds the first persistent host-buffer lifecycle
+to that Surface path. The guest still contributes only Wayland state and dirty
+rectangles, but the Android side now keys a three-slot pool by
+`buffer_slot`, allocates/imports each slot once, and reuses those same
+`AHardwareBuffer`/`EGLImage`/texture objects on the second replay pass. Any
+fence returned by `AHardwareBuffer_unlock` is retained on the slot and supplied
+to the next `AHardwareBuffer_lock` for that slot when the platform provides one.
+
+Expected V97 pool evidence:
+
+```text
+WAYLAND AHARDWAREBUFFER SURFACE COMPOSITOR EXECUTION: PASS
+wayland ahardwarebuffer surface replay passes=2
+wayland ahardwarebuffer surface total frame submissions=6
+wayland ahardwarebuffer surface buffer pool mode=slot-reuse
+wayland ahardwarebuffer surface buffer pool slots=3
+wayland ahardwarebuffer surface buffer pool misses=3
+wayland ahardwarebuffer surface buffer pool reuses=3
+wayland ahardwarebuffer surface allocated buffers=3
+wayland ahardwarebuffer surface imported textures=3
+wayland ahardwarebuffer surface sampled frames=6
+wayland ahardwarebuffer surface presented frames=6
+wayland ahardwarebuffer surface dirty rect bytes=345600
+wayland ahardwarebuffer surface partial upload ratio pct=25
+wayland ahardwarebuffer surface fence wait candidates=3
+wayland ahardwarebuffer surface fence pacing mode=reuse-slot-fence-handoff
+wayland ahardwarebuffer surface sync fence accounting=ok
+wayland ahardwarebuffer surface hardware render=true
+```
+
 ## Open Questions
 
 - Can the V90 file-backed payload bridge move fully behind the v96 host-buffer path without keeping memfd payloads as mandatory fallback evidence?
-- Can `AHardwareBuffer` fence FDs be promoted from accounting evidence to real cross-frame pacing for guest display commits?
+- Which target devices return sync FDs for this AHardwareBuffer lock/unlock path, and where do we need EGL fence objects instead?
 - How much Wayland protocol is worth implementing before using an existing compositor/proxy component?
 - Should X11 support begin with image transport, GLX proxy research, or Xvfb/VNC comparison?
 - Which Vulkan subset is small enough to be credible but useful enough to guide the ICD design?

@@ -1384,10 +1384,46 @@ std::string render_wayland_hardware_buffers_to_android_surface(JNIEnv* env, jobj
     int host_backed = 0;
     int dirty_rect_frames = 0;
     int write_fences = 0;
+    int reused_frames = 0;
+    int pool_misses = 0;
+    int fence_wait_candidates = 0;
+    int fence_wait_handoffs = 0;
     uint32_t dirty_bytes_total = 0;
     uint32_t full_bytes_total = 0;
     GLenum last_gl_error = GL_NO_ERROR;
     EGLBoolean last_swap = EGL_FALSE;
+    constexpr int replay_passes = 2;
+    const int total_present_targets = frame_count * replay_passes;
+
+    struct PooledSurfaceBuffer {
+        AHardwareBuffer* buffer = nullptr;
+        EGLImageKHR image = EGL_NO_IMAGE_KHR;
+        GLuint texture = 0;
+        int pending_fence_fd = -1;
+        bool ready = false;
+    };
+    std::array<PooledSurfaceBuffer, 3> buffer_pool{};
+    auto cleanup_pool = [&]() {
+        for (auto& slot : buffer_pool) {
+            if (slot.pending_fence_fd >= 0) {
+                close(slot.pending_fence_fd);
+                slot.pending_fence_fd = -1;
+            }
+            if (slot.texture != 0) {
+                glDeleteTextures(1, &slot.texture);
+                slot.texture = 0;
+            }
+            if (slot.image != EGL_NO_IMAGE_KHR && destroy_image != nullptr) {
+                destroy_image(display, slot.image);
+                slot.image = EGL_NO_IMAGE_KHR;
+            }
+            if (slot.buffer != nullptr) {
+                AHardwareBuffer_release(slot.buffer);
+                slot.buffer = nullptr;
+            }
+            slot.ready = false;
+        }
+    };
 
     if (import_functions_ready && program != 0 && sampler_location >= 0) {
         static const GLfloat vertices[] = {
@@ -1396,7 +1432,9 @@ std::string render_wayland_hardware_buffers_to_android_surface(JNIEnv* env, jobj
             -1.0F,  1.0F, 0.0F, 0.0F,
              1.0F,  1.0F, 1.0F, 0.0F,
         };
-        for (int index = 0; index < frame_count; ++index) {
+        bool stop_rendering = false;
+        for (int pass = 0; pass < replay_passes && !stop_rendering; ++pass) {
+            for (int index = 0; index < frame_count; ++index) {
             const auto& frame = frames[static_cast<size_t>(index)];
             const int dirty_x = std::clamp(frame.dirty_x, 0, static_cast<int>(buffer_width) - 1);
             const int dirty_y = std::clamp(frame.dirty_y, 0, static_cast<int>(buffer_height) - 1);
@@ -1409,29 +1447,71 @@ std::string render_wayland_hardware_buffers_to_android_surface(JNIEnv* env, jobj
             dirty_bytes_total += dirty_bytes;
             full_bytes_total += buffer_width * buffer_height * 4u;
 
-            AHardwareBuffer_Desc request{};
-            request.width = buffer_width;
-            request.height = buffer_height;
-            request.layers = 1;
-            request.format = AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM;
-            request.usage =
-                AHARDWAREBUFFER_USAGE_CPU_WRITE_RARELY |
-                AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE |
-                AHARDWAREBUFFER_USAGE_GPU_COLOR_OUTPUT;
-            AHardwareBuffer* buffer = nullptr;
-            if (AHardwareBuffer_allocate(&request, &buffer) != 0 || buffer == nullptr) {
-                out << "\nwayland ahardwarebuffer surface allocate index=" << index << " status=fail";
-                break;
+            const int slot_index = frame.buffer_slot >= 0
+                ? std::clamp(frame.buffer_slot, 0, static_cast<int>(buffer_pool.size()) - 1)
+                : index % static_cast<int>(buffer_pool.size());
+            auto& slot = buffer_pool[static_cast<size_t>(slot_index)];
+            const bool reused_slot = slot.ready;
+            if (reused_slot) {
+                ++reused_frames;
+                ++fence_wait_candidates;
+            } else {
+                ++pool_misses;
+                AHardwareBuffer_Desc request{};
+                request.width = buffer_width;
+                request.height = buffer_height;
+                request.layers = 1;
+                request.format = AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM;
+                request.usage =
+                    AHARDWAREBUFFER_USAGE_CPU_WRITE_RARELY |
+                    AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE |
+                    AHARDWAREBUFFER_USAGE_GPU_COLOR_OUTPUT;
+                if (AHardwareBuffer_allocate(&request, &slot.buffer) != 0 || slot.buffer == nullptr) {
+                    out << "\nwayland ahardwarebuffer surface allocate index=" << index << " pass=" << pass << " status=fail";
+                    stop_rendering = true;
+                    break;
+                }
+                ++allocated;
+                EGLClientBuffer client_buffer = get_native_client_buffer(slot.buffer);
+                const EGLint image_attribs[] = {EGL_IMAGE_PRESERVED_KHR, EGL_TRUE, EGL_NONE};
+                slot.image = client_buffer == nullptr ? EGL_NO_IMAGE_KHR : create_image(
+                    display,
+                    EGL_NO_CONTEXT,
+                    EGL_NATIVE_BUFFER_ANDROID,
+                    client_buffer,
+                    image_attribs
+                );
+                if (slot.image == EGL_NO_IMAGE_KHR) {
+                    out << "\nwayland ahardwarebuffer surface egl image index=" << index << " pass=" << pass << " status=fail error=" << egl_error_hex();
+                    stop_rendering = true;
+                    break;
+                }
+                ++imported;
+                glGenTextures(1, &slot.texture);
+                glBindTexture(GL_TEXTURE_2D, slot.texture);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                image_target_texture(GL_TEXTURE_2D, reinterpret_cast<GLeglImageOES>(slot.image));
+                slot.ready = true;
             }
-            ++allocated;
             AHardwareBuffer_Desc actual{};
-            AHardwareBuffer_describe(buffer, &actual);
+            AHardwareBuffer_describe(slot.buffer, &actual);
             const ARect dirty_rect{dirty_x, dirty_y, dirty_x + dirty_w, dirty_y + dirty_h};
             void* write_address = nullptr;
-            int lock_result = AHardwareBuffer_lock(buffer, AHARDWAREBUFFER_USAGE_CPU_WRITE_RARELY, -1, &dirty_rect, &write_address);
+            const int lock_fence_fd = slot.pending_fence_fd;
+            if (lock_fence_fd >= 0) {
+                ++fence_wait_handoffs;
+                slot.pending_fence_fd = -1;
+            }
+            int lock_result = AHardwareBuffer_lock(slot.buffer, AHARDWAREBUFFER_USAGE_CPU_WRITE_RARELY, lock_fence_fd, &dirty_rect, &write_address);
+            if (lock_fence_fd >= 0) {
+                close(lock_fence_fd);
+            }
             if (lock_result != 0 || write_address == nullptr || actual.stride < buffer_width) {
-                out << "\nwayland ahardwarebuffer surface cpu lock index=" << index << " status=fail result=" << lock_result;
-                AHardwareBuffer_release(buffer);
+                out << "\nwayland ahardwarebuffer surface cpu lock index=" << index << " pass=" << pass << " status=fail result=" << lock_result;
+                stop_rendering = true;
                 break;
             }
             const uint8_t red = static_cast<uint8_t>(std::clamp(frame.red, 0.0F, 1.0F) * 255.0F);
@@ -1448,44 +1528,25 @@ std::string render_wayland_hardware_buffers_to_android_surface(JNIEnv* env, jobj
                 }
             }
             int fence_fd = -1;
-            const int unlock_result = AHardwareBuffer_unlock(buffer, &fence_fd);
+            const int unlock_result = AHardwareBuffer_unlock(slot.buffer, &fence_fd);
+            if (slot.pending_fence_fd >= 0) {
+                close(slot.pending_fence_fd);
+                slot.pending_fence_fd = -1;
+            }
             if (fence_fd >= 0) {
                 ++write_fences;
-                close(fence_fd);
+                slot.pending_fence_fd = fence_fd;
             }
             if (unlock_result != 0) {
-                out << "\nwayland ahardwarebuffer surface cpu unlock index=" << index << " status=fail result=" << unlock_result;
-                AHardwareBuffer_release(buffer);
+                out << "\nwayland ahardwarebuffer surface cpu unlock index=" << index << " pass=" << pass << " status=fail result=" << unlock_result;
+                stop_rendering = true;
                 break;
             }
-            EGLClientBuffer client_buffer = get_native_client_buffer(buffer);
-            const EGLint image_attribs[] = {EGL_IMAGE_PRESERVED_KHR, EGL_TRUE, EGL_NONE};
-            EGLImageKHR image = client_buffer == nullptr ? EGL_NO_IMAGE_KHR : create_image(
-                display,
-                EGL_NO_CONTEXT,
-                EGL_NATIVE_BUFFER_ANDROID,
-                client_buffer,
-                image_attribs
-            );
-            if (image == EGL_NO_IMAGE_KHR) {
-                out << "\nwayland ahardwarebuffer surface egl image index=" << index << " status=fail error=" << egl_error_hex();
-                AHardwareBuffer_release(buffer);
-                break;
-            }
-            ++imported;
-            GLuint texture = 0;
-            glGenTextures(1, &texture);
-            glBindTexture(GL_TEXTURE_2D, texture);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-            image_target_texture(GL_TEXTURE_2D, reinterpret_cast<GLeglImageOES>(image));
             glClearColor(0.02F, 0.025F, 0.03F, 1.0F);
             glClear(GL_COLOR_BUFFER_BIT);
             glUseProgram(program);
             glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, texture);
+            glBindTexture(GL_TEXTURE_2D, slot.texture);
             glUniform1i(sampler_location, 0);
             glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 4, vertices);
             glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 4, vertices + 2);
@@ -1501,18 +1562,23 @@ std::string render_wayland_hardware_buffers_to_android_surface(JNIEnv* env, jobj
                 ++presented;
             }
             out << "\nwayland ahardwarebuffer surface frame " << (index + 1)
+                << " pass=" << (pass + 1)
                 << " seq=" << frame.seq
-                << " slot=" << frame.buffer_slot
+                << " slot=" << slot_index
                 << " dirty_bytes=" << dirty_bytes
+                << " reused=" << (reused_slot ? "true" : "false")
+                << " lock_fence=" << (lock_fence_fd >= 0 ? "provided" : "none")
                 << " imported=true sampled=" << (last_gl_error == GL_NO_ERROR ? "true" : "false")
                 << " present=" << (last_swap == EGL_TRUE ? "ok" : "fail");
-            glDeleteTextures(1, &texture);
-            destroy_image(display, image);
-            AHardwareBuffer_release(buffer);
-            if (last_gl_error != GL_NO_ERROR || last_swap != EGL_TRUE) break;
+            if (last_gl_error != GL_NO_ERROR || last_swap != EGL_TRUE) {
+                stop_rendering = true;
+                break;
+            }
+            }
         }
     }
 
+    cleanup_pool();
     if (program != 0) {
         glDeleteProgram(program);
     }
@@ -1526,23 +1592,33 @@ std::string render_wayland_hardware_buffers_to_android_surface(JNIEnv* env, jobj
         std::chrono::steady_clock::now() - started
     ).count();
     const bool passed =
-        allocated == frame_count &&
-        imported == frame_count &&
-        sampled == frame_count &&
-        presented == frame_count &&
-        host_backed == frame_count &&
+        allocated == std::min(frame_count, static_cast<int>(buffer_pool.size())) &&
+        imported == allocated &&
+        sampled == total_present_targets &&
+        presented == total_present_targets &&
+        host_backed == total_present_targets &&
+        reused_frames == total_present_targets - allocated &&
         last_gl_error == GL_NO_ERROR &&
         last_swap == EGL_TRUE &&
         !software;
+    out << "\nwayland ahardwarebuffer surface replay passes=" << replay_passes;
+    out << "\nwayland ahardwarebuffer surface total frame submissions=" << total_present_targets;
+    out << "\nwayland ahardwarebuffer surface buffer pool mode=slot-reuse";
+    out << "\nwayland ahardwarebuffer surface buffer pool slots=" << buffer_pool.size();
+    out << "\nwayland ahardwarebuffer surface buffer pool misses=" << pool_misses;
+    out << "\nwayland ahardwarebuffer surface buffer pool reuses=" << reused_frames;
     out << "\nwayland ahardwarebuffer surface allocated buffers=" << allocated;
     out << "\nwayland ahardwarebuffer surface imported textures=" << imported;
     out << "\nwayland ahardwarebuffer surface sampled frames=" << sampled;
     out << "\nwayland ahardwarebuffer surface presented frames=" << presented;
-    out << "\nwayland ahardwarebuffer surface host-backed frames=" << host_backed << "/" << frame_count;
-    out << "\nwayland ahardwarebuffer surface dirty rect frames=" << dirty_rect_frames << "/" << frame_count;
+    out << "\nwayland ahardwarebuffer surface host-backed frames=" << host_backed << "/" << total_present_targets;
+    out << "\nwayland ahardwarebuffer surface dirty rect frames=" << dirty_rect_frames << "/" << total_present_targets;
     out << "\nwayland ahardwarebuffer surface dirty rect bytes=" << dirty_bytes_total;
     out << "\nwayland ahardwarebuffer surface partial upload ratio pct=" << (full_bytes_total > 0 ? (dirty_bytes_total * 100u) / full_bytes_total : 0u);
     out << "\nwayland ahardwarebuffer surface write fence count=" << write_fences;
+    out << "\nwayland ahardwarebuffer surface fence wait candidates=" << fence_wait_candidates;
+    out << "\nwayland ahardwarebuffer surface fence wait handoffs=" << fence_wait_handoffs;
+    out << "\nwayland ahardwarebuffer surface fence pacing mode=reuse-slot-fence-handoff";
     out << "\nwayland ahardwarebuffer surface sync fence accounting=ok";
     out << "\nwayland ahardwarebuffer surface gl error=0x" << std::hex << last_gl_error << std::dec;
     out << "\nwayland ahardwarebuffer surface swap=" << (last_swap == EGL_TRUE ? "ok" : "fail");

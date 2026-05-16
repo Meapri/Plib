@@ -57,6 +57,9 @@ def test_native_ahardwarebuffer_probe_builds_host_managed_buffer_path():
     assert "wayland-display-commits" in text
     assert "render_wayland_hardware_buffers_to_android_surface" in text
     assert "wayland ahardwarebuffer surface compositor=egl-image-texture-to-android-surface" in text
+    assert "wayland ahardwarebuffer surface buffer pool mode=slot-reuse" in text
+    assert "wayland ahardwarebuffer surface buffer pool reuses=" in text
+    assert "wayland ahardwarebuffer surface fence pacing mode=reuse-slot-fence-handoff" in text
     assert "wayland ahardwarebuffer surface execution=" in text
 
 
@@ -98,6 +101,8 @@ def test_main_activity_owns_surface_view_and_appends_native_surface_report():
     assert 'waylandHardwareBufferBridgeProbe.lineStartingWith("ahardwarebuffer dirty rect bytes=")' in text
     assert 'waylandHardwareBufferSurfaceReport.lineStartingWith("wayland ahardwarebuffer surface hardware render=")' in text
     assert 'waylandHardwareBufferSurfaceReport.lineStartingWith("wayland ahardwarebuffer surface presented frames=")' in text
+    assert 'waylandHardwareBufferSurfaceReport.lineStartingWith("wayland ahardwarebuffer surface buffer pool reuses=")' in text
+    assert 'waylandHardwareBufferSurfaceReport.lineStartingWith("wayland ahardwarebuffer surface fence pacing mode=")' in text
     assert 'waylandHardwareBufferSurfaceReport.lineStartingWith("wayland ahardwarebuffer surface sync fence accounting=")' in text
     assert "nativeRenderWaylandHardwareBufferSurface" in text
     assert "Wayland AHardwareBuffer Surface compositor" in text

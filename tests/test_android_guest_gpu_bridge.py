@@ -212,6 +212,10 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "ahardwarebuffer egl image import=" in text
     assert "nativeRenderWaylandHardwareBufferSurface" in text
     assert "wayland ahardwarebuffer surface compositor=egl-image-texture-to-android-surface" in text
+    assert "wayland ahardwarebuffer surface buffer pool mode=slot-reuse" in text
+    assert "wayland ahardwarebuffer surface buffer pool reuses=" in text
+    assert "wayland ahardwarebuffer surface fence wait candidates=" in text
+    assert "wayland ahardwarebuffer surface fence pacing mode=reuse-slot-fence-handoff" in text
     assert "wayland ahardwarebuffer surface hardware render=" in text
     assert "wayland ahardwarebuffer surface presented frames=" in text
     assert "wayland ahardwarebuffer surface sync fence accounting=ok" in text
@@ -228,18 +232,22 @@ def test_android_runs_loopback_ipc_bridge_and_reports_loss_metrics():
     assert "alr installed package vulkan proxy stdout" in text
 
 
-def test_v96_adb_verifier_checks_wayland_ahardwarebuffer_surface_evidence():
-    script = (ROOT / "scripts/verify-android-v96-wayland-ahb-surface.sh").read_text()
+def test_v97_adb_verifier_checks_wayland_ahardwarebuffer_pool_evidence():
+    script = (ROOT / "scripts/verify-android-v97-wayland-ahb-pool.sh").read_text()
     text = MAIN.read_text()
     runner = RUNNER.read_text()
     assert "WAYLAND AHARDWAREBUFFER SURFACE COMPOSITOR EXECUTION: PASS" in script
     assert "wayland ahardwarebuffer surface compositor=egl-image-texture-to-android-surface" in script
-    assert "wayland ahardwarebuffer surface presented frames=3" in script
+    assert "wayland ahardwarebuffer surface replay passes=2" in script
+    assert "wayland ahardwarebuffer surface total frame submissions=6" in script
+    assert "wayland ahardwarebuffer surface buffer pool reuses=3" in script
+    assert "wayland ahardwarebuffer surface presented frames=6" in script
     assert "wayland ahardwarebuffer surface hardware render=true" in script
-    assert "wayland ahardwarebuffer surface dirty rect bytes=172800" in script
+    assert "wayland ahardwarebuffer surface dirty rect bytes=345600" in script
+    assert "wayland ahardwarebuffer surface fence pacing mode=reuse-slot-fence-handoff" in script
     assert "wayland ahardwarebuffer surface sync fence accounting=ok" in script
     assert "surface vulkan hardware render=true" in script
-    assert "versionName=0.4.96-wayland-ahb-surface" in script
+    assert "versionName=0.4.97-wayland-ahb-pool" in script
     assert "alr installed package vulkan icd surface clear request" in text
     assert "alr installed package vulkan icd surface clear accepted" in text
     assert "alr installed package vulkan icd stdout" in text

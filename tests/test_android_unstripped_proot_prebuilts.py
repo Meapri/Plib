@@ -14,4 +14,4 @@ def test_termux_proot_prebuilts_are_excluded_from_gradle_strip():
 
 def test_build_stamp_identifies_unstripped_proot_package():
     text = BUILD.read_text()
-    assert 'versionName = "0.4.96-wayland-ahb-surface"' in text
+    assert 'versionName = "0.4.97-wayland-ahb-pool"' in text

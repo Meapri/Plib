@@ -1500,6 +1500,39 @@ wayland ahardwarebuffer surface hardware render=true
 surface vulkan hardware render=true
 ```
 
+### V97 Wayland AHardwareBuffer Pool Reuse
+
+Build `0.4.97-wayland-ahb-pool` stops treating the visible compositor pass as a
+fresh allocation benchmark. The compositor now builds a three-slot host
+`AHardwareBuffer` pool keyed by the guest `buffer_slot`, imports each slot once,
+and replays the same three Wayland commits through two presentation passes.
+That gives direct evidence that Android can keep the native buffers and EGLImage
+textures resident while later commits reuse them and hand any returned fence FD
+back into the next lock on the same slot.
+
+```text
+build: 0.4.97-wayland-ahb-pool
+versionCode=97
+versionName=0.4.97-wayland-ahb-pool
+WAYLAND AHARDWAREBUFFER SURFACE COMPOSITOR EXECUTION: PASS
+wayland ahardwarebuffer surface replay passes=2
+wayland ahardwarebuffer surface total frame submissions=6
+wayland ahardwarebuffer surface buffer pool mode=slot-reuse
+wayland ahardwarebuffer surface buffer pool slots=3
+wayland ahardwarebuffer surface buffer pool misses=3
+wayland ahardwarebuffer surface buffer pool reuses=3
+wayland ahardwarebuffer surface allocated buffers=3
+wayland ahardwarebuffer surface imported textures=3
+wayland ahardwarebuffer surface sampled frames=6
+wayland ahardwarebuffer surface presented frames=6
+wayland ahardwarebuffer surface dirty rect bytes=345600
+wayland ahardwarebuffer surface partial upload ratio pct=25
+wayland ahardwarebuffer surface fence wait candidates=3
+wayland ahardwarebuffer surface fence pacing mode=reuse-slot-fence-handoff
+wayland ahardwarebuffer surface sync fence accounting=ok
+wayland ahardwarebuffer surface hardware render=true
+```
+
 Report:
 
 ```text

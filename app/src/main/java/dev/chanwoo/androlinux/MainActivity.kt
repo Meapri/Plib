@@ -863,7 +863,7 @@ class MainActivity : Activity() {
                 "vulkan-loader:${if (alrInstalledPackageVulkanLoaderInfoPassed) "PASS" else "FAIL"}," +
                 "vulkan-loader-unix:${if (alrInstalledPackageVulkanUnixLoaderInfoPassed) "PASS" else "FAIL"}"
 
-        val executionSummary = "build: 0.4.96-wayland-ahb-surface" +
+        val executionSummary = "build: 0.4.97-wayland-ahb-pool" +
             "\nexecution summary" +
             "\nROOTFS EXECUTION: ${if (rootfsExecutionPassed) "PASS" else "FAIL"}" +
             "\nSHELL SCRIPT EXECUTION: ${if (shellScriptExecutionPassed) "PASS" else "FAIL"}" +
@@ -1732,7 +1732,7 @@ class MainActivity : Activity() {
         Log.i(
             "ALR_DEVICE_EVIDENCE",
             listOf(
-                "build: 0.4.96-wayland-ahb-surface",
+                "build: 0.4.97-wayland-ahb-pool",
                 "WAYLAND DISPLAY SOCKET AVAILABLE: ${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}",
                 "WAYLAND DISPLAY COMMIT SURFACE EXECUTION: ${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}",
                 "ANDROID HOST AHARDWAREBUFFER EXECUTION: ${if (hostHardwareBufferPassed) "PASS" else "FAIL"}",
@@ -1838,7 +1838,7 @@ class MainActivity : Activity() {
                     Log.i(
                         "ALR_SURFACE_EVIDENCE",
                         listOf(
-                            "build: 0.4.96-wayland-ahb-surface",
+                            "build: 0.4.97-wayland-ahb-pool",
                             "WAYLAND DISPLAY SOCKET AVAILABLE: ${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}",
                             "WAYLAND DISPLAY COMMIT SURFACE EXECUTION: ${if (alrInstalledPackageWaylandDisplayBridgePassed) "PASS" else "FAIL"}",
                             "ANDROID HOST AHARDWAREBUFFER EXECUTION: ${if (hostHardwareBufferPassed) "PASS" else "FAIL"}",
@@ -1858,12 +1858,21 @@ class MainActivity : Activity() {
                             waylandHardwareBufferBridgeProbe.lineStartingWith("ahardwarebuffer partial upload ratio pct="),
                             waylandHardwareBufferBridgeProbe.lineStartingWith("ahardwarebuffer visible payload bytes="),
                             waylandHardwareBufferSurfaceReport.lineStartingWith("wayland ahardwarebuffer surface compositor="),
+                            waylandHardwareBufferSurfaceReport.lineStartingWith("wayland ahardwarebuffer surface replay passes="),
+                            waylandHardwareBufferSurfaceReport.lineStartingWith("wayland ahardwarebuffer surface total frame submissions="),
+                            waylandHardwareBufferSurfaceReport.lineStartingWith("wayland ahardwarebuffer surface buffer pool mode="),
+                            waylandHardwareBufferSurfaceReport.lineStartingWith("wayland ahardwarebuffer surface buffer pool slots="),
+                            waylandHardwareBufferSurfaceReport.lineStartingWith("wayland ahardwarebuffer surface buffer pool misses="),
+                            waylandHardwareBufferSurfaceReport.lineStartingWith("wayland ahardwarebuffer surface buffer pool reuses="),
                             waylandHardwareBufferSurfaceReport.lineStartingWith("wayland ahardwarebuffer surface imported textures="),
                             waylandHardwareBufferSurfaceReport.lineStartingWith("wayland ahardwarebuffer surface sampled frames="),
                             waylandHardwareBufferSurfaceReport.lineStartingWith("wayland ahardwarebuffer surface presented frames="),
                             waylandHardwareBufferSurfaceReport.lineStartingWith("wayland ahardwarebuffer surface hardware render="),
                             waylandHardwareBufferSurfaceReport.lineStartingWith("wayland ahardwarebuffer surface dirty rect bytes="),
                             waylandHardwareBufferSurfaceReport.lineStartingWith("wayland ahardwarebuffer surface partial upload ratio pct="),
+                            waylandHardwareBufferSurfaceReport.lineStartingWith("wayland ahardwarebuffer surface fence wait candidates="),
+                            waylandHardwareBufferSurfaceReport.lineStartingWith("wayland ahardwarebuffer surface fence wait handoffs="),
+                            waylandHardwareBufferSurfaceReport.lineStartingWith("wayland ahardwarebuffer surface fence pacing mode="),
                             waylandHardwareBufferSurfaceReport.lineStartingWith("wayland ahardwarebuffer surface sync fence accounting="),
                             waylandHardwareBufferSurfaceReport.lineStartingWith("wayland ahardwarebuffer surface execution="),
                             "wayland display surface commits=${alrInstalledPackageWaylandDisplayBridgeResult.commands.size}/${alrInstalledPackageWaylandDisplayBridgeResult.expectedFrames}",
@@ -3707,13 +3716,21 @@ class MainActivity : Activity() {
                 surfaceReport.lineStartingWith("wayland ahardwarebuffer surface hardware render=") ==
                 "wayland ahardwarebuffer surface hardware render=true" &&
                 surfaceReport.lineStartingWith("wayland ahardwarebuffer surface presented frames=") ==
-                "wayland ahardwarebuffer surface presented frames=3" &&
+                "wayland ahardwarebuffer surface presented frames=6" &&
+                surfaceReport.lineStartingWith("wayland ahardwarebuffer surface buffer pool reuses=") ==
+                "wayland ahardwarebuffer surface buffer pool reuses=3" &&
                 surfaceReport.lineStartingWith("wayland ahardwarebuffer surface dirty rect bytes=") ==
-                "wayland ahardwarebuffer surface dirty rect bytes=172800" &&
+                "wayland ahardwarebuffer surface dirty rect bytes=345600" &&
                 surfaceReport.lineStartingWith("wayland ahardwarebuffer surface sync fence accounting=") ==
                 "wayland ahardwarebuffer surface sync fence accounting=ok"
         return "WAYLAND AHARDWAREBUFFER SURFACE COMPOSITOR EXECUTION: ${if (passed) "PASS" else "FAIL"}" +
             "\n${surfaceReport.lineStartingWith("wayland ahardwarebuffer surface compositor=")}" +
+            "\n${surfaceReport.lineStartingWith("wayland ahardwarebuffer surface replay passes=")}" +
+            "\n${surfaceReport.lineStartingWith("wayland ahardwarebuffer surface total frame submissions=")}" +
+            "\n${surfaceReport.lineStartingWith("wayland ahardwarebuffer surface buffer pool mode=")}" +
+            "\n${surfaceReport.lineStartingWith("wayland ahardwarebuffer surface buffer pool slots=")}" +
+            "\n${surfaceReport.lineStartingWith("wayland ahardwarebuffer surface buffer pool misses=")}" +
+            "\n${surfaceReport.lineStartingWith("wayland ahardwarebuffer surface buffer pool reuses=")}" +
             "\n${surfaceReport.lineStartingWith("wayland ahardwarebuffer surface allocated buffers=")}" +
             "\n${surfaceReport.lineStartingWith("wayland ahardwarebuffer surface imported textures=")}" +
             "\n${surfaceReport.lineStartingWith("wayland ahardwarebuffer surface sampled frames=")}" +
@@ -3723,6 +3740,9 @@ class MainActivity : Activity() {
             "\n${surfaceReport.lineStartingWith("wayland ahardwarebuffer surface dirty rect bytes=")}" +
             "\n${surfaceReport.lineStartingWith("wayland ahardwarebuffer surface partial upload ratio pct=")}" +
             "\n${surfaceReport.lineStartingWith("wayland ahardwarebuffer surface write fence count=")}" +
+            "\n${surfaceReport.lineStartingWith("wayland ahardwarebuffer surface fence wait candidates=")}" +
+            "\n${surfaceReport.lineStartingWith("wayland ahardwarebuffer surface fence wait handoffs=")}" +
+            "\n${surfaceReport.lineStartingWith("wayland ahardwarebuffer surface fence pacing mode=")}" +
             "\n${surfaceReport.lineStartingWith("wayland ahardwarebuffer surface sync fence accounting=")}" +
             "\n${surfaceReport.lineStartingWith("wayland ahardwarebuffer surface hardware render=")}" +
             "\n${surfaceReport.lineStartingWith("wayland ahardwarebuffer surface render elapsed us=")}" +

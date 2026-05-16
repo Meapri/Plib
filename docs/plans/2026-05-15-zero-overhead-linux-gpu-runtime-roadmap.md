@@ -1615,10 +1615,45 @@ Android Surface, AHardwareBuffer lock/unlock fence accounting is logged beside
 the dirty-region counters, and the first adb verifier script captures the
 minimum device evidence for the GUI/GPU path.
 
+Latest V97 Wayland AHardwareBuffer pool evidence:
+
+```text
+build: 0.4.97-wayland-ahb-pool
+versionCode=97
+versionName=0.4.97-wayland-ahb-pool
+WAYLAND DISPLAY SOCKET AVAILABLE: PASS
+WAYLAND DISPLAY COMMIT SURFACE EXECUTION: PASS
+WAYLAND DISPLAY AHARDWAREBUFFER BACKING EXECUTION: PASS
+WAYLAND AHARDWAREBUFFER SURFACE COMPOSITOR EXECUTION: PASS
+wayland ahardwarebuffer surface replay passes=2
+wayland ahardwarebuffer surface total frame submissions=6
+wayland ahardwarebuffer surface buffer pool mode=slot-reuse
+wayland ahardwarebuffer surface buffer pool slots=3
+wayland ahardwarebuffer surface buffer pool misses=3
+wayland ahardwarebuffer surface buffer pool reuses=3
+wayland ahardwarebuffer surface allocated buffers=3
+wayland ahardwarebuffer surface imported textures=3
+wayland ahardwarebuffer surface sampled frames=6
+wayland ahardwarebuffer surface presented frames=6
+wayland ahardwarebuffer surface dirty rect bytes=345600
+wayland ahardwarebuffer surface partial upload ratio pct=25
+wayland ahardwarebuffer surface fence wait candidates=3
+wayland ahardwarebuffer surface fence pacing mode=reuse-slot-fence-handoff
+wayland ahardwarebuffer surface sync fence accounting=ok
+wayland ahardwarebuffer surface hardware render=true
+surface vulkan hardware render=true
+```
+
+V97 replaces the one-shot v96 Surface compositor allocation pattern with a
+three-slot Android-native buffer pool. The current evidence proves the pool can
+hold resident `AHardwareBuffer`/EGLImage/texture objects, reuse all three slots
+on a second presentation pass, and feed slot-local fence FDs into the next
+dirty-rect lock whenever the device returns them.
+
 Next implementation batch:
 
 1. Expand the minimal Wayland bridge from ALR_WL text records to a stricter subset of real Wayland wire opcodes for registry, compositor, shm, surface, and buffer lifetimes.
-2. Promote the v96 fence accounting into real sync-FD pacing and buffer reuse instead of allocating a fresh AHardwareBuffer per frame.
+2. Replace the replay-based pool proof with real continuous guest commits and long-lived buffer reuse across Surface callbacks.
 3. Replace the loader-info smoke with the real Khronos Vulkan loader or a stricter ABI-compatible loader subset.
 4. Add a small real toolkit fixture target, likely a tiny GTK/Qt-independent Wayland protocol smoke before pulling in a larger GUI stack.
 5. Start measuring compositor-path CPU/GPU cost against PRoot image transport and the existing Vulkan Surface clear path.
